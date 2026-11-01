@@ -3,13 +3,17 @@ package top.alanvampuke.dininglog.feature.restaurants
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.feature.components.*
@@ -19,7 +23,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     onSearch: (String) -> Unit, onFilters: (ListFilters) -> Unit, onRecord: (RecordSummary) -> Unit,
     onRefresh: () -> Unit, onMore: () -> Unit, onAdd: (() -> Unit)? = null, onTrash: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null, titleOverride: String? = null, onChooseRestaurant: (() -> Unit)? = null,
-    onClearRestaurant: (() -> Unit)? = null, bottomBar: @Composable () -> Unit = {}) {
+    onClearRestaurant: (() -> Unit)? = null, bottomBar: @Composable () -> Unit = {}, listState: LazyListState = rememberLazyListState()) {
     val kind = state.query.kind
     val isSearch = searchText.isNotBlank()
     val title = titleOverride ?: if (state.query.deleted == DeletedFilter.ONLY) if (kind == RecordKind.REVISION) "隐藏的修改历史" else "回收站" else when (kind) {
@@ -28,31 +32,45 @@ import top.alanvampuke.dininglog.feature.theme.*
     }
     val tag = if (isSearch && kind == RecordKind.RESTAURANT) "screen:search" else "screen:${kind.name.lowercase()}:list"
     var expandedFilters by rememberSaveable(kind) { mutableStateOf(false) }
+    var menu by remember { mutableStateOf(false) }
     ScreenFrame(tag, bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("record-list"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("record-list"), state = listState,
+            contentPadding = PaddingValues(horizontal = QuietGridDimensions.edge, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             item { PageHeader(title, onBack) }
             item {
                 OutlinedTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
                     RecordKind.RESTAURANT -> "搜索餐厅、菜品、评价、备注"
                     RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
-                }) }, textStyle = QuietGridText.input)
+                }) }, textStyle = QuietGridText.input, singleLine = true)
             }
-            if (kind == RecordKind.RESTAURANT) item { GridText("可搜店名 · 类型 · 菜系 · 地址 · 菜品 · 短评 · 评价 · 备注", style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary) }
             item {
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (onAdd != null) Button(onClick = onAdd, modifier = Modifier.fillMaxWidth().testTag("add")) { Text(when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" }) }
-                    TextButton(onClick = onRefresh, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh")) { Text(if (state.isRefreshing) "正在刷新…" else "刷新第一页") }
-                    if (kind != RecordKind.REVISION) TextButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) { Text(if (expandedFilters) "收起筛选" else "筛选与排序") }
-                    if (onChooseRestaurant != null) TextButton(onClick = onChooseRestaurant, modifier = Modifier.testTag("choose-restaurant")) { Text("按餐厅筛选") }
-                    if (onClearRestaurant != null) {
-                        GridText("当前只显示所选餐厅的到店记录", color = LocalQuietGridColors.current.secondary)
-                        TextButton(onClick = onClearRestaurant, modifier = Modifier.testTag("clear-restaurant")) { Text("显示全部餐厅") }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onAdd != null) Button(onClick = onAdd, modifier = Modifier.weight(1f).heightIn(min = 48.dp).testTag("add")) {
+                        Text(when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" })
+                    } else Spacer(Modifier.weight(1f))
+                    if (kind != RecordKind.REVISION) IconButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) {
+                        Icon(QuietGridIcons.filter, contentDescription = if (expandedFilters) "收起筛选" else "筛选与排序",
+                            tint = if (expandedFilters || filters != ListFilters()) LocalQuietGridColors.current.accentInk else LocalQuietGridColors.current.secondary)
                     }
-                    if (onTrash != null) TextButton(onClick = onTrash, modifier = Modifier.testTag("trash")) { Text(if (kind == RecordKind.REVISION) "管理隐藏历史" else "打开回收站") }
+                    Box {
+                        IconButton(onClick = { menu = true }, modifier = Modifier.testTag("list-more")) {
+                            Icon(QuietGridIcons.more, contentDescription = "更多操作", tint = LocalQuietGridColors.current.secondary)
+                        }
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(text = { Text(if (state.isRefreshing) "正在刷新…" else "刷新") },
+                                onClick = { menu = false; onRefresh() }, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh"))
+                            if (onChooseRestaurant != null) DropdownMenuItem(text = { Text("按餐厅筛选") },
+                                onClick = { menu = false; onChooseRestaurant() }, modifier = Modifier.testTag("choose-restaurant"))
+                            if (onClearRestaurant != null) DropdownMenuItem(text = { Text("显示全部餐厅") },
+                                onClick = { menu = false; onClearRestaurant() }, modifier = Modifier.testTag("clear-restaurant"))
+                            if (onTrash != null) DropdownMenuItem(text = { Text(if (kind == RecordKind.REVISION) "管理隐藏历史" else "回收站") },
+                                onClick = { menu = false; onTrash() }, modifier = Modifier.testTag("trash"))
+                        }
+                    }
                 }
             }
             if (expandedFilters) item { ListFilterPanel(kind, filters, onFilters) }
-            item {
+            if (state.isOffline || (state.localScope && isSearch) || state.error != null) item {
                 CacheStatus(state.isOffline, state.fetchedAt, localSearch = (state.isOffline || state.localScope) && isSearch)
                 if (state.error != null) ErrorMessage(state.error!!, "load-error")
             }
@@ -81,7 +99,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable fun RecordRow(record: RecordSummary, onRecord: (RecordSummary) -> Unit) {
     val c = LocalQuietGridColors.current
     val large = LocalDensity.current.fontScale > 1.3f
-    Column(Modifier.fillMaxWidth().clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (large) {
             RowText(record)
             if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Score(record.fields["rating_tenths"])
@@ -95,15 +113,26 @@ import top.alanvampuke.dininglog.feature.theme.*
 }
 @Composable private fun RowText(record: RecordSummary) {
     var absolute by remember(record.ref.id) { mutableStateOf(false) }
-    GridText(record.title, Modifier.testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium)
+    val large = LocalDensity.current.fontScale > 1.3f
+    GridText(record.title, Modifier.testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium,
+        maxLines = if (large) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
     val fields = record.fields
     val secondary = when (record.ref.kind) {
-        RecordKind.RESTAURANT -> "${categoryLabel(fields["category"])} · ${fields["cuisine"] ?: "菜系未填写"}\n${fields["address_excerpt"] ?: ""} · ${fields["dish_count"] ?: "0"} 道菜\n最近到店 ${fields["last_visit_date"] ?: "还未到店"}"
-        RecordKind.DISH -> fields["review_excerpt"] ?: "还没有短评"
-        RecordKind.VISIT -> "${fields["restaurant_name"] ?: "餐厅"} · ${mealLabel(fields["meal"])}\n${fields["note_excerpt"] ?: ""}"
-        RecordKind.REVISION -> "${fields["entity_label"] ?: "记录"}\n${historySummary(record, null)}${fields["note"]?.let { "\n$it" } ?: ""}"
+        RecordKind.RESTAURANT -> listOf(
+            listOfNotNull(categoryLabel(fields["category"]), fields["cuisine"]?.takeIf { it.isNotBlank() },
+                fields["dish_count"]?.let { "$it 道菜" }).joinToString(" · "),
+            listOfNotNull(fields["address_excerpt"]?.takeIf { it.isNotBlank() },
+                fields["last_visit_date"]?.let { "最近到店 $it" } ?: "尚未记录到店").joinToString(" · ")
+        ).joinToString("\n")
+        RecordKind.DISH -> fields["review_excerpt"]?.takeIf { it.isNotBlank() } ?: ""
+        RecordKind.VISIT -> listOfNotNull(
+            listOfNotNull(fields["restaurant_name"] ?: "餐厅", fields["meal"]?.let(::mealLabel)).joinToString(" · "),
+            fields["note_excerpt"]?.takeIf { it.isNotBlank() }).joinToString("\n")
+        RecordKind.REVISION -> listOfNotNull(fields["entity_label"] ?: "记录", historySummary(record, null),
+            fields["note"]?.takeIf { it.isNotBlank() }).joinToString("\n")
     }
-    GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodySmall)
+    if (secondary.isNotEmpty()) GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary,
+        style = QuietGridText.metadata, maxLines = if (large) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
     if (record.ref.kind == RecordKind.REVISION) {
         TextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time:${record.ref.id}")) {
             Text(if (absolute) "收起绝对时间" else "显示绝对时间")

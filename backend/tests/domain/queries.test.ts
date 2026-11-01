@@ -7,6 +7,23 @@ type Page<T> = { items: T[] };
 type Search = { restaurants: { restaurant: Entity; matched_fields: string[] }[]; visits: Entity[]; revisions: Revision[] };
 async function search(token: string, q: string) { return data<Search>(await request(`/search?q=${encodeURIComponent(q)}`, token)); }
 describe('P3 literal search filters and keyset pagination', () => {
+  it.each([undefined, null, '', '   '])('creates searchable restaurants with optional address %s and no literal null in the index', async address => {
+    const a = await account(), t = a.access_token;
+    const created = await data<Mutation>(await request('/restaurants', t, { id: crypto.randomUUID(), name: 'Optional marker', category: 'restaurant', address }), 201);
+    expect(created.entity.address).toBeNull();
+    expect(created.entity.note).toBeNull();
+    const content = await env.DB.prepare('SELECT content FROM restaurant_search WHERE user_id=? AND restaurant_id=?').bind(a.user.id, created.entity.id).first<string>('content');
+    expect(content).not.toBeNull();
+    expect(content).not.toContain('null');
+    expect(JSON.parse(content!).text).toBe('optional marker restaurant  ');
+    expect((await search(t, 'optional marker')).restaurants.map(result => result.restaurant.id)).toEqual([created.entity.id]);
+    const changed = await data<Mutation>(await request(`/restaurants/${created.entity.id}`, t, { expected_version: 1, address: 'Recorded location' }, 'PATCH'));
+    expect(changed.entity.address).toBe('Recorded location');
+    expect((await search(t, 'recorded location')).restaurants).toHaveLength(1);
+    const cleared = await data<Mutation>(await request(`/restaurants/${created.entity.id}`, t, { expected_version: 2, address: '   ' }, 'PATCH'));
+    expect(cleared.entity.address).toBeNull();
+    expect((await search(t, 'recorded location')).restaurants).toEqual([]);
+  });
   it('S13 normalized Chinese English fullwidth multiple keywords and literal percent underscore hits', async () => {
     const a = await account(), t = a.access_token, r = await restaurant(t, { name: '川菜 ＢＩＳＴＲＯ', cuisine: 'ＳＩＣＨＵＡＮ', review: '鲜香 SERVICE 100%', note: '星期一 low_cost' });
     const d = await data<Mutation>(await request(`/restaurants/${r.entity.id}/dishes`, t, { id: crypto.randomUUID(), name: '招牌 ＴＯＦＵ', review: 'CRISPY 豆腐' }), 201);

@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import type { AppEnv, Bindings } from './env';
 import { cleanupAuth } from './auth/cleanup';
+import { cleanupDeletedAccounts } from './auth/account-cleanup';
 import { auth } from './routes/auth';
+import { appVersion } from './routes/app-version';
 import { restaurants } from './routes/restaurants';
 import { dishes } from './routes/dishes';
 import { visits } from './routes/visits';
@@ -13,6 +15,7 @@ import { cleanupDomain } from './domain/cleanup';
 const app = new Hono<AppEnv>();
 const api = new Hono<AppEnv>();
 api.get('/health', (c) => c.json({ status: 'ok', api_version: 'v1' }));
+api.route('/', appVersion);
 api.route('/', auth);
 api.route('/', restaurants);
 api.route('/', dishes);
@@ -28,5 +31,9 @@ app.notFound((c) => {
     meta: { request_id: crypto.randomUUID() } }, 404);
 });
 export default Object.assign(app, {
-  async scheduled(_controller: ScheduledController, env: Bindings) { await cleanupAuth(env.DB); await cleanupDomain(env.DB); },
+  async scheduled(_controller: ScheduledController, env: Bindings) {
+    await cleanupAuth(env.DB);
+    await cleanupDomain(env.DB);
+    await cleanupDeletedAccounts(env.DB);
+  },
 });

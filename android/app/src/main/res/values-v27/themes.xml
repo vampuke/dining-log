@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.DiningLog" parent="Theme.DiningLog.Base">
+        <item name="android:windowLightNavigationBar">@bool/quiet_grid_light_bars</item>
+    </style>
+</resources>

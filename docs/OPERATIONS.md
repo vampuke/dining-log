@@ -129,6 +129,31 @@ Cloudflare 自动管理目标 DNS / TLS，不手工创建 A / AAAA 或假源站�
 
 `release-evidence` 保存部署前 Worker deployment/version IDs、有效 Time Travel bookmark（空库仅接受 provider 明确报告无历史）、域名冲突检查、应用后的 SQL 完整性、health、固定 smoke 步骤标签、APK 公开 package / SDK badging、签名 / 元数据 / SHA-256，以及未登录的全新模拟器上的启动结果与 AndroidRuntime 错误。安装检查读取运行日志；API 26 的 `logcat -c` 可能无法清理 main buffer，不能用该准备命令阻断尚未开始的安装。安装 / 启动 / 存活 / 崩溃 / 重装任何检查失败仍停止发布，失败时尽量保留运行日志。不保存 DB export、auth 响应、keystore 或合成账号资料。
 
+### P6 地址迁移
+
+0001 的冻结 SHA-256 仍为 `191d1a80a7411ba828effc9041fbd144fa4d10abb372f61c793a8f6dc1a5b80b`。0002 会重建 restaurants；`foreign_keys=ON` 时 DROP 会级联删除 dishes、visits、restaurant_search、revisions，因此迁移必须保留现有的四表备份/恢复和五个索引重建。不得用单独的 foreign_key_check 代替数据保留验证。
+
+发布前在相同提交上执行 `bash backend/scripts/verify_migration_0002.sh` 与 `cd backend && npm test -- tests/migration0002.test.ts`。独立脚本从 0001 建库，在显式 SQLite 事务内验证全部 14 表逐表行数/校验和、完整 integrity_check、原始索引 SQL、可空/空白 CHECK、不可变触发器与 DROP 后注入失败的回滚。D1 的 authorizer 禁止 integrity_check，D1 测试补充使用支持的 quick_check，完整断言仍由独立脚本执行。
+
+D1 migration API 自身以原子 batch 执行迁移，SQL 文件不包含 D1 禁止的 BEGIN/COMMIT。不得把该文件拆成多个独立远端 execute 调用。生产应用仍走日常 release 的 Time Travel checkpoint 和受保护的 migrations apply；本期实现验证不代表已对生产库执行迁移。
+
+### 应用版本入口
+
+`GET /api/v1/app/version` 无需登录、无需 D1，返回原始 `{latest: ...}` JSON。以下六项全部来自 `backend/wrangler.toml` 的 `[vars]`，只允许公开发布信息：
+
+| 变量 | 内容 |
+| --- | --- |
+| APP_VERSION_CODE | APK 的整数 versionCode |
+| APP_VERSION_NAME | APK 的 versionName |
+| APP_DOWNLOAD_URL | 已发布的 HTTPS 下载 URL |
+| APP_APK_SHA256 | 该附件的 64 位 SHA-256 |
+| APP_RELEASE_NOTES | 中文发布说明，最多 4000 字符 |
+| APP_RELEASED_AT | GitHub Release 实际 published_at 的 Unix 秒 |
+
+P6 构建号为 6，但尚未发布 0.6.0；当前配置使用已发布 v0.5.0 的真实附件及摘要，不能预填未生成 APK 的摘要。正式附件发布后，从发布证据和 GitHub 公开附件 digest 核对 SHA-256、版本与 published_at；在同一个评审变更中更新全部六项，运行 `npm run check`、`npm test -- tests/app-version.test.ts` 与契约检查，随后按现有受保护流程发布 Worker。更新后公开 GET 必须返回新发布信息，不能只更新 APK 而把 feed 长期留在旧版。发布初期最多存在五分钟的公开缓存延迟。
+
+Android 用独立的无认证客户端在后台检查，使用 BuildConfig.VERSION_CODE 比较。更新入口只出现在「我的」，点击以 ACTION_VIEW 打开 HTTPS 链接；不下载或安装，不申请安装权限。关闭检查会持久化到本地设置、取消在途检查并移除入口；设备下次启动保持关闭。网络或配置错误静默处理。
+
 ## 日志、Cron 与监控
 
 Wrangler 开启 observability、head sampling 0.1、`invocation_logs=false`。应用不输出请求正文、Authorization、密码、refresh token、恢复码、搜索 q 或数据库内容。读取实时日志时使用错误级别和必要时段，不把原始请求转存 artifact：
@@ -142,6 +167,8 @@ npx --no-install wrangler triggers deploy
 VPS 对应使用已验证的 `node "$DINING_WRANGLER_SCRIPT" ...`，而非安装 backend 依赖。`triggers deploy` 是实际配置写入，只有需要修正 / 发布 Cron 时执行，随后通过 Cloudflare schedules API 核对。
 
 Cron 每小时第 17 分钟调用同一 scheduled handler：清理过期 refresh 重试密文 / 幂等响应 / 限流窗口，再按 30 天保留期和预算分块清理软删除领域记录。测试已覆盖边界和中断；真实 Cron CPU、扫描成本和恢复演练另列 unverified，配置存在不等于实际清理已运行。
+
+P6 增加注销账号的最终清理：每阶段最多 20 行，依次删除该过期账号的刷新重试结果、refresh tokens、sessions、恢复码、幂等缓存。users 只有在全部 11 张子表均无数据时才能删除；领域记录和 change_sets 继续由前一阶段分块清理，最终 CASCADE 不得清除残余数据。用户名因此在保留期内占用，真正完成物理清理后才可由新 user_id 注册。users / 鉴权时间为秒，领域时间为毫秒，清理测试覆盖差一秒、精确 30 天、分块进度、其他账号校验和、批次失败回滚和重新注册不继承旧记录。
 
 只读查看 Worker errors / CPU 与 D1 rows_read / rows_written / size，按账户共享额度监控。D1 存储达到免费单库容量约 70% 时应告警并评估容量；不能用本地 p95 报告代替生产性能。当前没有自动新建付费服务或新增监控 token。
 

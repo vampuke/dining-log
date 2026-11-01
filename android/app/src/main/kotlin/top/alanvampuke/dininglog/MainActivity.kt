@@ -3,6 +3,11 @@ package top.alanvampuke.dininglog
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.net.Uri
+import android.widget.Toast
+import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle
 import android.os.PersistableBundle
@@ -13,6 +18,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -30,6 +36,8 @@ import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.data.auth.*
 import top.alanvampuke.dininglog.feature.auth.AuthRoot
 import top.alanvampuke.dininglog.feature.theme.QuietGridTheme
+import top.alanvampuke.dininglog.feature.theme.QuietGridDark
+import top.alanvampuke.dininglog.feature.theme.QuietGridLight
 import top.alanvampuke.dininglog.feature.ProductRoot
 import top.alanvampuke.dininglog.feature.ProductViewModel
 import javax.inject.Inject
@@ -43,6 +51,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var repository: ProductRepository
     @Inject lateinit var security: AccountSecurity
     @Inject lateinit var preferences: ThemePreferences
+    @Inject lateinit var updates: AppUpdateChecker
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -50,6 +59,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
         setContent {
             val choice by preferences.theme.collectAsStateWithLifecycle(ThemeChoice.SYSTEM)
+            val updateState by updates.state.collectAsStateWithLifecycle()
             val dark = when (choice) { ThemeChoice.SYSTEM -> isSystemInDarkTheme(); ThemeChoice.DARK -> true; ThemeChoice.LIGHT -> false }
             val scope = rememberCoroutineScope()
             SideEffect { applySystemBarTheme(window, dark) }
@@ -82,7 +92,12 @@ class MainActivity : ComponentActivity() {
                         } }
                         val vm: ProductViewModel = viewModel(key = "product:${session.userId}:$generation", factory = factory)
                         ProductRoot(vm, session.username, choice, onTheme = { next -> scope.launch { preferences.setTheme(next) } }, onLogout = logout,
-                            version = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) " debug" else "")
+                            version = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) " 调试版" else "",
+                            updateState = updateState, onUpdateToggle = { enabled -> scope.launch { updates.setEnabled(enabled) } },
+                            onOpenUpdate = { release ->
+                                try { startActivity(appUpdateIntent(release)) }
+                                catch (_: ActivityNotFoundException) { Toast.makeText(this, "请安装浏览器后再打开下载链接", Toast.LENGTH_SHORT).show() }
+                            })
                     })
             }
         }
@@ -95,9 +110,15 @@ fun applySystemBarTheme(window: Window, dark: Boolean) {
     // switch. Let the approved Compose background paint both system bars.
     window.statusBarColor = android.graphics.Color.TRANSPARENT
     window.navigationBarColor = android.graphics.Color.TRANSPARENT
+    window.setBackgroundDrawable(ColorDrawable((if (dark) QuietGridDark else QuietGridLight).bg.toArgb()))
     if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
     WindowInsetsControllerCompat(window, window.decorView).apply {
         isAppearanceLightStatusBars = !dark
         isAppearanceLightNavigationBars = !dark
     }
+}
+
+fun appUpdateIntent(release: AppRelease): Intent {
+    require(release.valid)
+    return Intent(Intent.ACTION_VIEW, Uri.parse(release.url))
 }

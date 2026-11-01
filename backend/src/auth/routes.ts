@@ -44,7 +44,7 @@ export async function commit(c: C, statements: D1PreparedStatement[], data: unkn
   }
   return status === 204 ? c.body(null, 204) : json(c, response, status);
 }
-async function verifyLoginPassword(c: C, name: string, password: string, user: UserRow | null): Promise<string> {
+export async function verifyLoginPassword(c: C, name: string, password: string, user: UserRow | null): Promise<string> {
   const key = await failureKey(c.env, name);
   await checkLock(c.env, key);
   const config = passwordConfig(c.env);
@@ -60,8 +60,8 @@ auth.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); await 
 auth.post('/auth/register', async c => {
   const input = await body(c, registerSchema); idemKey(c);
   if (c.env.REGISTRATION_ENABLED !== 'true') throw new AuthError(503, 'TEMPORARILY_UNAVAILABLE', 'Registration is currently disabled.');
-  const existing = await userByName(c.env.DB, input.username);
-  if (existing) { const replay = await cached(c, await idempotency(c, existing.id, input)); if (replay) return replay; }
+  const existing = await userByName(c.env.DB, input.username, true);
+  if (existing && existing.deleted_at === null) { const replay = await cached(c, await idempotency(c, existing.id, input)); if (replay) return replay; }
   await consumeLimits(c.env, 'register', ip(c));
   if (existing) throw new AuthError(409, 'USERNAME_TAKEN', 'Username is already registered.');
   const record = await hashPassword(input.password, passwordConfig(c.env));
@@ -74,7 +74,7 @@ auth.post('/auth/register', async c => {
   return commit(c, [c.env.DB.prepare(`INSERT INTO users (id,username,display_name,password_algorithm,password_hash,password_salt,password_iterations,pepper_version,password_changed_at,created_at,updated_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(user.id, user.username, user.display_name, record.password_algorithm, record.password_hash, record.password_salt, record.password_iterations, record.pepper_version, now, now, now),
     ...session.statements, ...recovery.statements], { ...session.result, recovery_codes: recovery.codes }, 201, idem, async () => {
-      const winner = await userByName(c.env.DB, input.username);
+      const winner = await userByName(c.env.DB, input.username, true);
       if (winner) { const retry = await cached(c, await idempotency(c, winner.id, input)); if (retry) return retry; throw new AuthError(409, 'USERNAME_TAKEN', 'Username is already registered.'); }
       throw new AuthError(503, 'TEMPORARILY_UNAVAILABLE', 'Please try again later.');
     });
@@ -174,5 +174,5 @@ export { auth };
 auth.onError((error, c) => {
   const failure = error instanceof AuthError ? error : new AuthError(503, 'TEMPORARILY_UNAVAILABLE', 'Please try again later.');
   if (failure.retryAfter) c.header('Retry-After', String(failure.retryAfter));
-  return json(c, { error: { code: failure.code, message: failure.message, field_errors: {} }, meta: { request_id: crypto.randomUUID() } }, failure.status);
+  return json(c, { error: { code: failure.code, message: failure.message, field_errors: failure.fieldErrors, ...(failure.current === undefined ? {} : { current: failure.current }) }, meta: { request_id: crypto.randomUUID() } }, failure.status);
 });

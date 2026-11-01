@@ -11,5 +11,11 @@ export interface Bindings {
   PASSWORD_ITERATIONS: string;
   REFRESH_RETRY_KEY_ID: string;
   REGISTRATION_ENABLED: string;
+  APP_VERSION_CODE?: string;
+  APP_VERSION_NAME?: string;
+  APP_DOWNLOAD_URL?: string;
+  APP_APK_SHA256?: string;
+  APP_RELEASE_NOTES?: string;
+  APP_RELEASED_AT?: string;
 }
 export type AppEnv = { Bindings: Bindings; Variables: { userId: string } };

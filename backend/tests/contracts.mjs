@@ -35,7 +35,7 @@ const expected = [
   'POST /auth/register', 'POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout',
   'POST /auth/logout-all', 'POST /auth/password', 'POST /auth/recover', 'POST /auth/recovery-codes',
   'GET /auth/sessions', 'DELETE /auth/sessions/{session_id}', 'GET /auth/session',
-  'GET /me', 'PATCH /me', 'DELETE /me', 'GET /health',
+  'GET /me', 'PATCH /me', 'DELETE /me', 'GET /health', 'GET /app/version',
   'POST /restaurants', 'GET /restaurants', 'GET /restaurants/{restaurant_id}',
   'PATCH /restaurants/{restaurant_id}', 'DELETE /restaurants/{restaurant_id}', 'POST /restaurants/{restaurant_id}/restore',
   'POST /restaurants/{restaurant_id}/dishes', 'GET /restaurants/{restaurant_id}/dishes',
@@ -52,4 +52,20 @@ assert.equal(schemas.RevisionApply.properties.fields.maxItems, 7);
 assert.equal(schemas.RevisionApply.properties.fields.uniqueItems, true);
 assert.equal(schemas.RestaurantPatch.additionalProperties, false);
 assert.ok(!schemas.FieldDiff.properties.field.enum.includes('version'));
+assert.deepEqual(Object.keys(schemas.User.properties).sort(), ['id', 'username', 'display_name', 'version', 'created_at', 'updated_at'].sort());
+assert.equal(schemas.User.additionalProperties, false);
+assert.equal(schemas.UserPatch.additionalProperties, false);
+assert.ok(doc.paths['/me'].patch.parameters.some(p => p.$ref.endsWith('/IdempotencyKey')));
+assert.ok(!doc.paths['/me'].delete.parameters?.some(p => p.$ref.endsWith('/IdempotencyKey')));
+assert.equal(schemas.RecoveryCodeResult.properties.recovery_codes.minItems, 8);
+assert.equal(schemas.RecoveryCodeResult.properties.recovery_codes.maxItems, 8);
+assert.equal(schemas.RecoveryCodeResult.properties.recovery_codes.uniqueItems, true);
+assert.ok(!schemas.RestaurantCreate.required.includes('address'));
+for (const name of ['Restaurant', 'RestaurantCreate', 'RestaurantPatch', 'RestaurantDetail']) {
+  assert.deepEqual(schemas[name].properties.address.type, ['string', 'null']);
+}
+assert.deepEqual(doc.paths['/app/version'].get.security, []);
+assert.equal(doc.paths['/app/version'].get.x_auth, undefined);
+assert.equal(doc.paths['/app/version'].get['x-auth'], 'Public');
+assert.equal(readFileSync('../contracts/openapi.yaml', 'utf8').match(/TODO|notImplemented/g)?.length ?? 0, 0);
 console.log(`Verified ${endpoints} v1 endpoint contracts and all references`);

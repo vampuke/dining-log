@@ -60,7 +60,7 @@
 
 ### 1.2 首版核心规则
 
-1. 餐厅名称、类型和文本地址必填；主要菜系、评分、评价、备注可选。
+1. 餐厅名称和类型必填，文本地址选填；主要菜系、评分、评价、备注可选。
 2. 类型使用固定代码，菜系可自行输入一个主要菜系文本。首版不增加分类管理系统。
 3. 「评价」记录体验判断；「备注」记录备忘，例如营业时间、排队提醒。两者不是同一个字段。
 4. 菜品名称必填，可独立评分、评价；不要求对应某次到店。
@@ -215,7 +215,7 @@ Python 按 WCAG 2.x 相对亮度公式实测：
 - dining_date 是 YYYY-MM-DD 文本，与系统时刻分开。
 - 业务 version 从 1 开始，每次有效 create / update / delete / restore 顺序增长；创建前版本为 0。
 - 请求不能提供 user_id、系统时间、历史 diff、业务版本的目标值、密码哈希或内部搜索影子字段。
-- 可选短文本空白规范为 null；名称、地址必填。业务文本保存时仅 NFC、首尾去空白、CRLF 转 LF，不压缩用户正文中间的换行。
+- 可选短文本空白规范为 null；名称、类型必填，地址选填。业务文本保存时仅 NFC、首尾去空白、CRLF 转 LF，不压缩用户正文中间的换行。
 - 密码完全保留输入，不 trim、不大小写转换、不 Unicode 归一化。
 - 搜索索引文本另行做 NFKC、lowercase、空白规整，保留显示文本原样；餐厅聚合搜索使用 `restaurant_search.content`。
 - D1 不用 REAL 存评分，而用 `rating_tenths INTEGER` 存十分位：1.0 存 10、4.3 存 43，NULL 表示未评分。REAL 在 JSON 往返和比较中会引入 `4.300000000000001` 一类噪声；十分位整数可以精确比较。API 层仍输出 `4.3` 数字，由服务端执行 `tenths / 10` 转换。
@@ -263,6 +263,8 @@ erDiagram
 ### 3.3 完整首个迁移 DDL
 
 以下 SQL 是审批后的首个迁移设计，使用 SQLite 方言，不含 PostgreSQL 类型或 ALTER COLUMN。
+
+P6 将文本地址改为选填，通过新迁移 `0002_address_optional.sql` 应用；本节保留冻结的 0001 原始 DDL。重建 restaurants 时必须在同一事务中备份并恢复 dishes、visits、restaurant_search、revisions，重建原有五个索引，并通过逐表行数/校验和验证。
 
 D1 默认强制开启外键，相当于每个事务 PRAGMA foreign_keys = ON。下方 pragma 用于本地 SQLite 校验；在 D1 不依靠它切换外键状态，也不尝试将外键关闭。
 
@@ -757,7 +759,7 @@ message 为稳定的英文兜底，Android 按 code / field_errors 本地化；�
 | AuthResult | user: User、token_type: "Bearer"、access_token、expires_in: 600、refresh_token、refresh_expires_at、session_expires_at、session_id |
 | RegisterRequest | username: string、password: string、display_name?: string、device_name: string |
 | LoginRequest | username: string、password: string、device_name: string |
-| RestaurantInput | name: string、category: enum、address: string、cuisine?: string\|null、rating?: number\|null（1.0–5.0，最多一位小数）、review?: string\|null、note?: string\|null |
+| RestaurantInput | name: string、category: enum、address?: string\|null、cuisine?: string\|null、rating?: number\|null（1.0–5.0，最多一位小数）、review?: string\|null、note?: string\|null |
 | RestaurantCreate | id: UUID、RestaurantInput 的全部字段、first_visit?: {id: UUID, dining_date: date, meal?: enum\|null, note?: string\|null} |
 | RestaurantPatch | expected_version: integer、RestaurantInput 任意至少一个字段；id / first_visit / restaurant_id 不可修改 |
 | Restaurant | id、name、category、cuisine、address、rating、review、note、version、created_at、updated_at、deleted_at |

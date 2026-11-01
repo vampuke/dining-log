@@ -1,0 +1,7 @@
+<resources>
+    <color name="quiet_grid_background">#FBFBFA</color>
+    <color name="quiet_grid_ink">#181916</color>
+    <color name="quiet_grid_accent">#23543C</color>
+    <color name="launcher_background">#23543C</color>
+    <bool name="quiet_grid_light_bars">true</bool>
+</resources>

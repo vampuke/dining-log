@@ -13,3 +13,8 @@ export const loginSchema = z.object({ username, password: passwordInput, device_
 export const refreshSchema = z.object({ refresh_token: z.string().max(128) }).strict();
 export const recoverSchema = z.object({ username, recovery_code: z.string().max(128), new_password: newPassword, device_name: device }).strict();
 export const passwordSchema = z.object({ current_password: passwordInput, new_password: newPassword, device_name: device }).strict();
+
+export const reauthSchema = z.object({ password: passwordInput }).strict();
+export const userPatchSchema = z.object({ expected_version: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  display_name: z.string().transform(v => v.normalize('NFC').replace(/\r\n/g, '\n').trim()).refine(v => v.length > 0 && !v.includes('\0') && Array.from(v).length <= 50) }).strict();
+export const accountDeleteSchema = reauthSchema.extend({ expected_version: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER), confirm_username: z.string().max(256) }).strict();

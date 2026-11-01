@@ -30,5 +30,10 @@ object AppModule {
     @Provides @Singleton fun products(@ApplicationContext context: Context, database: ProductDatabase, owner: OwnerCache, account: AccountSession, remote: ProductRemote): ProductRepository =
         ProductRepositoryImpl(database, owner, account, remote, connectivity(context, CoroutineScope(SupervisorJob() + Dispatchers.Default)))
     @Provides @Singleton fun security(refresh: RefreshCoordinator, account: AccountSession): AccountSecurity = RetrofitAccountSecurity.create(ApiConfiguration.BASE_URL, refresh, account)
-    @Provides @Singleton fun preferences(@ApplicationContext context: Context): ThemePreferences = AndroidThemePreferences(context)
+    @Provides @Singleton fun preferences(@ApplicationContext context: Context) = AndroidThemePreferences(context)
+    @Provides fun themePreferences(preferences: AndroidThemePreferences): ThemePreferences = preferences
+    @Provides fun updatePreferences(preferences: AndroidThemePreferences): UpdatePreferences = preferences
+    @Provides @Singleton fun versions(): AppVersionGateway = PublicAppVersionGateway.create(ApiConfiguration.BASE_URL)
+    @Provides @Singleton fun updates(versions: AppVersionGateway, preferences: UpdatePreferences) =
+        AppUpdateChecker(versions, preferences, BuildConfig.VERSION_CODE, CoroutineScope(SupervisorJob() + Dispatchers.IO))
 }

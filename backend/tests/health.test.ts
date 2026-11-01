@@ -37,6 +37,10 @@ const routes = [
   ],
   [
     "GET",
+    "/api/v1/auth/session"
+  ],
+  [
+    "GET",
     "/api/v1/auth/sessions"
   ],
   [
@@ -181,17 +185,12 @@ describe('versioned routing', () => {
   });
   it.each(routes)('checks %s %s routing and error semantics', async (method, path) => {
     const response = await app.request(path, { method });
-    const promotedWrites = ['/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout', '/api/v1/auth/password', '/api/v1/auth/recover'];
-    const promotedAccess = ['/api/v1/auth/sessions', '/api/v1/auth/sessions/00000000-0000-4000-8000-000000000001'];
-    const status = promotedWrites.includes(path) ? 415 : promotedAccess.includes(path) || (!path.startsWith('/api/v1/auth/') && path !== '/api/v1/me') ? 401 : 501;
+    const requiresJson = (method === 'POST' && path.startsWith('/api/v1/auth/')) || (method === 'DELETE' && path === '/api/v1/me');
+    const status = requiresJson ? 415 : 401;
     expect(response.status).toBe(status);
-    const body = await response.json();
-    if (status === 501) expect(body).toEqual({ status: 'not_implemented', api_version: 'v1' });
-    else {
-      const failure = body as { error: { code: string; message: string } };
-      expect(failure.error.code).toBe(status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : 'SESSION_REVOKED');
-      expect(failure.error.message.length).toBeGreaterThan(0);
-    }
+    const failure = await response.json() as { error: { code: string; message: string } };
+    expect(failure.error.code).toBe(status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : 'SESSION_REVOKED');
+    expect(failure.error.message.length).toBeGreaterThan(0);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
   it('does not expose a global dishes list or an unversioned API', async () => {

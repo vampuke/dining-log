@@ -1,0 +1,12 @@
+<resources>
+    <style name="Theme.DiningLog.Base" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/quiet_grid_background</item>
+        <item name="android:colorBackground">@color/quiet_grid_background</item>
+        <item name="android:textColorPrimary">@color/quiet_grid_ink</item>
+        <item name="android:colorAccent">@color/quiet_grid_accent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">@bool/quiet_grid_light_bars</item>
+    </style>
+    <style name="Theme.DiningLog" parent="Theme.DiningLog.Base" />
+</resources>

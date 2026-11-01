@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import top.alanvampuke.dininglog.core.*
@@ -28,8 +30,8 @@ val BackgroundArgb = SemanticsPropertyKey<Int>("QuietGridBackgroundArgb")
 val ForegroundArgb = SemanticsPropertyKey<Int>("QuietGridForegroundArgb")
 val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
 @Composable fun GridText(text: String, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.bodyMedium,
-    color: Color = LocalQuietGridColors.current.ink) {
-    Text(text, modifier.semantics { this[ForegroundArgb] = color.toArgb() }, color = color, style = style)
+    color: Color = LocalQuietGridColors.current.ink, maxLines: Int = Int.MAX_VALUE, overflow: TextOverflow = TextOverflow.Clip) {
+    Text(text, modifier.semantics { this[ForegroundArgb] = color.toArgb() }, color = color, style = style, maxLines = maxLines, overflow = overflow)
 }
 @Composable fun ScreenFrame(tag: String, bottomBar: @Composable () -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
     val c = LocalQuietGridColors.current
@@ -62,10 +64,11 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal), bottomBar = bottomBar, content = content)
 }
 @Composable fun PageHeader(title: String, onBack: (() -> Unit)? = null, subtitle: String? = null) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (onBack != null) TextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
-        GridText("食记 / QUIET GRID", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-        GridText(title, Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineMedium)
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (onBack != null) TextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
+            GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+        }
         if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
     }
 }
@@ -94,7 +97,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
 }
 @Composable fun RatingEditor(value: String?, onChange: (String?) -> Unit, enabled: Boolean, tag: String = "rating") {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        GridText("评分", style = MaterialTheme.typography.titleMedium)
+        GridText("评分 · 选填", style = MaterialTheme.typography.titleMedium)
         Score(value, meter = true)
         Slider(value = (value?.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
             enabled = enabled, valueRange = 1f..5f, steps = 39, modifier = Modifier.fillMaxWidth().testTag(tag).semantics {

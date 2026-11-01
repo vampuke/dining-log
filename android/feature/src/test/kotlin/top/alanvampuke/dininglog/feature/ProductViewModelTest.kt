@@ -70,6 +70,35 @@ class ProductViewModelTest {
     }
     private fun TestScope.start() { runCurrent(); advanceTimeBy(300); runCurrent() }
 
+    @Test fun restaurantWithOnlyNameAndCategoryCanBeSavedAndOptionalTextStillHasLimits() {
+        val minimal = SavedDraft("A", "minimal", ref, WriteAction.CREATE, null,
+            mapOf("name" to "只填名称", "category" to "restaurant"))
+        assertTrue(validateDraft(minimal).isEmpty())
+        for (address in listOf(null, "", "   ")) {
+            assertTrue(validateDraft(minimal.copy(localFields = minimal.localFields + ("address" to address))).isEmpty())
+        }
+        assertEquals(setOf("name"), validateDraft(minimal.copy(localFields = minimal.localFields + ("name" to "   "))).keys)
+        assertEquals(setOf("category"), validateDraft(minimal.copy(localFields = minimal.localFields - "category")).keys)
+        assertEquals(setOf("address"), validateDraft(minimal.copy(localFields = minimal.localFields + ("address" to "x".repeat(501)))).keys)
+    }
+
+    @Test fun newRestaurantEditorSubmitsWithOnlyANameAndTheDefaultCategory() = runTest { fixture { vm, repo, _, _ ->
+        start(); vm.openEditor(ref, true); runCurrent()
+        assertEquals("restaurant", vm.editor.value.draft!!.localFields["category"])
+        assertNull(vm.editor.value.draft!!.localFields["address"])
+        vm.editField("name", "只填名称的小馆")
+        vm.saveEditor(); runCurrent()
+        assertTrue(vm.editor.value.errors.isEmpty())
+        assertEquals(1, repo.submitted.size)
+        val saved = repo.submitted.single()
+        assertEquals(WriteAction.CREATE, saved.action)
+        assertEquals("只填名称的小馆", saved.localFields["name"])
+        assertEquals("restaurant", saved.localFields["category"])
+        for (field in listOf("address", "cuisine", "review", "note")) assertNull(saved.localFields[field])
+        assertEquals("已保存到服务器", vm.editor.value.message)
+        assertFalse(vm.editor.value.saving)
+    } }
+
     @Test fun refreshFailureAndPaginationKeepVisibleRowsAndDeduplicateIds() = runTest { fixture { vm, repo, _, _ ->
         val first = CompletableDeferred<Unit>(); val more = CompletableDeferred<Unit>()
         repo.refreshBody = { _, loadMore -> if (loadMore) more.await() else first.await() }
