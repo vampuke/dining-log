@@ -1,5 +1,7 @@
 package top.alanvampuke.dininglog.product
 
+import top.alanvampuke.dininglog.BuildConfig
+
 import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
@@ -107,7 +109,7 @@ class ProductEndToEndTest {
                 }, onCopyRecoveryCodes = { copied = it }, onAuthenticated = { session, logout ->
                     val model = remember(session.userId, account.generation) { ProductViewModel(session.userId, actualRepository, security, account) }
                     vm = model
-                    ProductRoot(model, session.username, ThemeChoice.DARK, {}, logout)
+                    ProductRoot(model, session.username, ThemeChoice.DARK, {}, logout, version = BuildConfig.VERSION_NAME + " debug")
                 })
             } }
             compose.onNodeWithText("注册账号").performScrollTo().performClick()

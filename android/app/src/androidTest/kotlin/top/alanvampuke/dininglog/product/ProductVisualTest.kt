@@ -1,5 +1,7 @@
 package top.alanvampuke.dininglog.product
 
+import top.alanvampuke.dininglog.BuildConfig
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
@@ -67,7 +69,7 @@ class ProductVisualTest {
                     revision.fields, changedFields = listOf("rating_tenths"), cachedDiff = revision.diff)), query = ListQuery(RecordKind.REVISION, ref.id), localScope = false))
                 "visits" -> listScreen(ListUiState(items = listOf(RecordSummary(RecordRef(RecordKind.VISIT, "visual-visit", ref.id), "2026-11-01", 1, snapshot.updatedAt,
                     mapOf("restaurant_name" to snapshot.title, "dining_date" to "2026-11-01", "meal" to "dinner", "note_excerpt" to "同日第二次到店"))), query = ListQuery(RecordKind.VISIT), localScope = false))
-                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.DARK, "0.4.0", {}, {}, { _, _ -> }, {}, {}, {}, {})
+                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.DARK, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, {}, {})
                 "conflict" -> ConflictDialog(compareConflict(draft, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, {}, {})
             }
         } }
@@ -166,7 +168,7 @@ class ProductVisualTest {
                         "list" -> RecordListScreen(ListUiState(items = listOf(summary), localScope = false), "", ListFilters(), {}, {}, {}, {}, {}, bottomBar = tabs)
                         "detail" -> RecordDetailScreen(DetailUiState(CachedDetail(snapshot)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
                         "history" -> RevisionDetailScreen(DetailUiState(CachedDetail(revision)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
-                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.SYSTEM, "0.4.0", {}, {}, { _, _ -> }, {}, {}, {}, tabs)
+                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.SYSTEM, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, {}, tabs)
                     }
                 }
             }
