@@ -2,7 +2,7 @@
 
 食记是一款私人餐厅记录应用：餐厅档案、餐厅级菜品库、多次到店日期及字段级修改记录，账号之间完全隔离。Android 提供餐厅 / 到店 / 我的三 tab，采用 D2 Quiet Grid 明暗主题。
 
-唯一生产 API 为 **https://dining.alanvampuke.top/api/v1**。发布版本 `0.5.0` / versionCode `5`；正式包名 `top.alanvampuke.dininglog`，debug 包名 `top.alanvampuke.dininglog.debug`。签名 APK 与校验和通过 [GitHub Releases](https://github.com/vampuke/dining-log/releases) 分发，实际发布与部署状态以 [P5_DONE.md](P5_DONE.md) 为准。
+唯一生产 API 为 **https://dining.alanvampuke.top/api/v1**。发布版本 `0.5.0` / versionCode `5`；正式包名 `top.alanvampuke.dininglog`，debug 包名 `top.alanvampuke.dininglog.debug`。正式产物：[v0.5.0 Release](https://github.com/vampuke/dining-log/releases/tag/v0.5.0)、[signed APK](https://github.com/vampuke/dining-log/releases/download/v0.5.0/app-release.apk)、[SHA-256 校验和](https://github.com/vampuke/dining-log/releases/download/v0.5.0/app-release.apk.sha256)。发布和部署证据见 [P5_DONE.md](P5_DONE.md)。
 
 ```text
 Android (Kotlin / Compose)
@@ -108,6 +108,8 @@ Actions 从 environment secret 解码 keystore 到 `$RUNNER_TEMP`，使用 `umas
 sha256sum --check app-release.apk.sha256
 ```
 
+`v0.5.0` APK 的 SHA-256 为 `d77da09cd64b914076693d0bcfc03916a655d6b8cc5a24ce59b73a3e1d43d678`，大小 2,541,529 bytes；正式产物已在 API 26/35 模拟器安装、启动和重装。实际手机与历史正式版本升级的未验证项见 P5_DONE.md。已发布的 `v0.5.0` 不重新创建或覆盖；下一版先递增源码版本并通过 PR / CI。
+
 Windows 可执行 `Get-FileHash .\app-release.apk -Algorithm SHA256` 并与 checksum 比较。checksum 的稳定文件名为 `app-release.apk`；证书摘要是签名身份，文件 SHA-256 是这一版本的下载完整性，两项都检查。
 
 校验通过后可在 API 26 及以上设备安装：
@@ -145,7 +147,7 @@ cd backend
 npm run smoke:production
 ```
 
-health 必须 HTTP 200 且正文为 `{"status":"ok","api_version":"v1"}`。smoke 真正注册、登录、建餐厅 / 菜品 / 两次同日到店、改分 4.0→4.3、核对历史 40→43、删除 / 恢复、刷新、登出并验证旧 access 401；仅输出步骤与状态码。结束软删除测试餐厅、撤销两个 session，保留无可登录凭据的合成账号，后续遵循 30 天清理策略。
+health 必须 HTTP 200 且正文为 `{"status":"ok","api_version":"v1"}`。smoke 真正注册、登录、建餐厅 / 菜品 / 两次同日到店、改分 4.0→4.3、核对历史 40→43、删除 / 恢复、刷新、登出并验证旧 access 401；仅输出步骤与状态码。结束软删除测试餐厅、撤销两个 session；合成用户行保留，脚本不保存其凭据。测试餐厅及关联软删除记录遵循 30 天清理策略，用户行不在这项清理范围。
 
 ## 回滚
 
