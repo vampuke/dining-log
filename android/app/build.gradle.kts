@@ -15,7 +15,8 @@ android {
         applicationId = "top.alanvampuke.dininglog"
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.2.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -34,6 +35,7 @@ kotlin { jvmToolchain(17) }
 
 dependencies {
     implementation(project(":core"))
+    implementation(libs.coroutines.core)
     implementation(project(":data"))
     implementation(project(":feature"))
     implementation(platform(libs.compose.bom))
@@ -42,4 +44,9 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

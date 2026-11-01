@@ -9,5 +9,7 @@ export interface Bindings {
   JWT_ACTIVE_KID: string;
   PASSWORD_ACTIVE_PEPPER: string;
   PASSWORD_ITERATIONS: string;
+  REFRESH_RETRY_KEY_ID: string;
+  REGISTRATION_ENABLED: string;
 }
 export type AppEnv = { Bindings: Bindings };
