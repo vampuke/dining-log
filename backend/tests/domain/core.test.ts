@@ -103,3 +103,11 @@ describe('P3 creation operation identity', () => {
     expect(await counts()).toMatchObject({ restaurants: 1, visits: 1, change_sets: 1, revisions: 2, mutation_guards: 0 });
   });
 });
+describe('P3 creation failure ownership', () => {
+  it('foreign IDs fail without revealing current or leaving a partial restaurant first visit', async () => {
+    const a = await account(), b = await account('bob'), t = a.access_token, privateRestaurant = await restaurant(b.access_token), privateVisit = await data<Mutation>(await request(`/restaurants/${privateRestaurant.entity.id}/visits`, b.access_token, { id: crypto.randomUUID(), dining_date: '2024-02-29' }), 201), before = await counts();
+    await error(await request('/restaurants', t, restaurantInput({ id: privateRestaurant.entity.id })), 404, 'NOT_FOUND');
+    const failure = await error(await request('/restaurants', t, restaurantInput({ first_visit: { id: privateVisit.entity.id, dining_date: '2024-02-29' } })), 404, 'NOT_FOUND'); expect(failure).not.toHaveProperty('current');
+    expect(await counts()).toEqual(before);
+  });
+});
