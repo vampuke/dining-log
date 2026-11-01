@@ -12,7 +12,7 @@ concurrency:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: backend
@@ -28,6 +28,23 @@ jobs:
       - run: npm test
       - name: Verify SQL with sqlite3 CLI
         run: bash tests/sql/verify.sh
+      - name: Measure 4500 and 6000 object capacity
+        timeout-minutes: 15
+        continue-on-error: false
+        run: |
+          mkdir -p tests/capacity/output
+          npm run test:capacity 2>&1 | tee tests/capacity/output/capacity.log
+      - name: Render measured capacity report
+        if: always()
+        run: node tests/capacity/report.mjs tests/capacity/output/capacity.log
+      - name: Upload capacity measurements
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capacity-results
+          path: backend/tests/capacity/output/
+          if-no-files-found: error
+          retention-days: 14
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -54,6 +71,25 @@ jobs:
       - name: Build debug APK and write dependency locks
         working-directory: android
         run: ./gradlew :app:assembleDebug :core:test :app:testDebugUnitTest :app:lintDebug --write-locks --no-daemon
+      - name: Verify debug APK identity and checksums
+        working-directory: android/app/build/outputs/apk/debug
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging app-debug.apk > APK_BADGING.txt
+          rg "^package: name='top\.alanvampuke\.dininglog' " APK_BADGING.txt
+          rg "^sdkVersion:'26'$" APK_BADGING.txt
+          rg "^targetSdkVersion:'35'$" APK_BADGING.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app-debug.apk > APK_SIGNATURE.txt
+          sha256sum app-debug.apk > SHA256SUMS
+          md5sum app-debug.apk > MD5SUMS
+          stat -c '%n %s bytes' app-debug.apk > APK_SIZE.txt
+          cat APK_SIZE.txt SHA256SUMS MD5SUMS
+      - name: Upload verified debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/
+          if-no-files-found: error
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: android-build

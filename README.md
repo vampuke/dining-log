@@ -28,6 +28,7 @@ npm ci
 npm run check
 npm test
 npm run db:verify
+npm run test:capacity
 ```
 
 具备足够内存的开发环境可使用 `npm run dev` 启动本地 Wrangler（默认 `http://localhost:8787`），从迁移创建独立本地 D1。`.dev.vars.example` 仅列变量名；需要开发密钥时在仓库外受控配置，`.dev.vars` 已忽略。P1 健康检查不需要密钥，其余 42 个契约端点仅为占位。配置中的 D1 ID 仍是方案占位符，真实资源留到 P5。
@@ -40,7 +41,9 @@ bash backend/tests/sql/verify.sh
 
 命令拒绝覆盖已有数据库。完整命令及实测输出见 [VERIFY.md](backend/migrations/VERIFY.md) 和 [P1_DONE.md](P1_DONE.md)。本地 SQLite 的结果与 Cloudflare Workers pool 中的 D1 测试分别记录。
 
-Android 工具链固定为 JDK 17、SDK 35、AGP 8.9.2、Gradle Wrapper 8.11.1、Kotlin 2.1.21；四个模块为 `app/core/data/feature`。依赖版本集中在 `android/gradle/libs.versions.toml`，应用包名为 `top.alanvampuke.dininglog`，debug 附加 `.debug`。
+容量测试使用固定 seed，在 GitHub Actions 的独立 step 测量 4,500 对象 / 13,500 历史以及 6,000 对象 / 18,000 历史；每种查询执行 30 次，p95 上限为 100 ms。原始样本与自动生成的报告在 `capacity-results` artifact；已验收实测值见 [RESULTS.md](backend/tests/capacity/RESULTS.md)。
+
+Android 工具链固定为 JDK 17、SDK 35、AGP 8.9.2、Gradle Wrapper 8.11.1、Kotlin 2.1.21；四个模块为 `app/core/data/feature`。依赖版本集中在 `android/gradle/libs.versions.toml`，debug 与 release 应用包名均为 `top.alanvampuke.dininglog`。
 
 GitHub Actions 使用 SDK 缓存，并执行：
 
@@ -49,7 +52,7 @@ cd android
 ./gradlew :app:assembleDebug :core:test :app:testDebugUnitTest :app:lintDebug --no-daemon
 ```
 
-debug APK 可从 CI 的 `debug-apk` artifact 下载。`android-ui` 留待 P4 的 API 26/35 合成数据 UI 测试；`release` 留待 P5，当前均为手动占位流程。
+debug APK 可从 CI 的 `app-debug` artifact 下载，附带实际包名 / SDK、签名检查输出和校验和。VPS 发布路径为 `/var/www/html/dl/dining/shiji-debug.apk`，校验记录为同目录 `SHA256SUMS`；产物来源和验收见 [P1_ACCEPTANCE.md](P1_ACCEPTANCE.md)。`android-ui` 留待 P4 的 API 26/35 合成数据 UI 测试；`release` 留待 P5，当前均为手动占位流程。
 
 ## 部署
 

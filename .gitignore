@@ -40,3 +40,4 @@ service-account*.json
 *.log
 logs/
 design/*_run.log
+backend/tests/capacity/output/
