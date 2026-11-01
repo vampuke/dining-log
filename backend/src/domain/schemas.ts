@@ -5,7 +5,9 @@ export const id = uuid.transform(v => v.toLowerCase());
 export const normalizeText = (v: string) => v.normalize('NFC').replace(/\r\n/g, '\n').trim();
 export const normalizeSearch = (v: string) => v.normalize('NFKC').toLowerCase().replace(/\s+/gu, ' ').trim();
 function text(max: number, required = false) {
-  return z.string().max(max * 4 + 1024).transform(normalizeText).pipe(z.string().refine(v => !v.includes('\0') && Array.from(v).length <= max && (!required || v.length > 0), `Use ${required ? '1' : '0'}–${max} characters.`));
+  // The streamed body reader already enforces 64 KiB. Field limits apply to
+  // normalized content, so outer whitespace cannot turn a no-op into an error.
+  return z.string().transform(normalizeText).pipe(z.string().refine(v => !v.includes('\0') && Array.from(v).length <= max && (!required || v.length > 0), `Use ${required ? '1' : '0'}–${max} characters.`));
 }
 const optionalText = (max: number) => text(max).transform(v => v || null).nullable().optional();
 export const rating = z.number().min(1).max(5).refine(v => Math.round(v * 10) / 10 === v, 'Use at most one decimal place.');

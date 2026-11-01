@@ -3,7 +3,8 @@ info:
   title: 食记 API
   version: 1.0.0
   description: 'P3 v1 domain contract: owner-scoped restaurant, dish, visit, revision and literal search APIs. JSON
-    bodies <=64 KiB, snake_case, strict input, CAS expected_version and atomic successful idempotency. P2 authentication
+    bodies <=64 KiB, snake_case, strict input, CAS expected_version and atomic successful idempotency. Domain text
+    lengths count Unicode characters after NFC, CRLF-to-LF and outer trim; internal whitespace is preserved. P2 authentication
     contracts are retained. Existing logout-all, recovery-codes and /me handlers are outside the P3 domain implementation;
     their v1 schemas describe the planned account lifecycle.'
 servers:
