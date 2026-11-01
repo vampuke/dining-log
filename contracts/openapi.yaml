@@ -1,9 +1,8 @@
 openapi: 3.1.0
 info:
   title: 食记 API
-  version: 0.1.0
-  description: P1 路径和 schema 骨架；完整 query 与响应字段在 P2/P3 补全。endpoint 清单位于 PLAN.md 4.3–4.8（第
-    6 节说明 diff 语义）。
+  version: 0.2.0
+  description: P2 独立账号闭环；其余业务端点仍为 P1 契约骨架。认证成功/错误信封遵循 PLAN 4.1，错误码使用大写。
 servers:
 - url: https://dining.alanvampuke.top/api/v1
 security:
@@ -20,9 +19,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResultWithRecoveryCodes'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
@@ -34,6 +67,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
+      parameters:
+      - $ref: '#/components/parameters/AuthIdempotencyKey'
   /auth/login:
     post:
       operationId: post_auth_login
@@ -45,9 +80,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
@@ -59,6 +128,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
+      parameters:
+      - $ref: '#/components/parameters/AuthIdempotencyKey'
   /auth/refresh:
     post:
       operationId: post_auth_refresh
@@ -71,9 +142,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
@@ -102,6 +207,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
       security: []
       requestBody:
         required: true
@@ -109,6 +235,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RefreshRequest'
+      parameters:
+      - $ref: '#/components/parameters/AuthIdempotencyKey'
   /auth/logout-all:
     post:
       operationId: post_auth_logout_all
@@ -141,9 +269,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
@@ -154,6 +316,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PasswordChange'
+      parameters:
+      - $ref: '#/components/parameters/AuthIdempotencyKey'
   /auth/recover:
     post:
       operationId: post_auth_recover
@@ -166,9 +330,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthResultWithRecoveryCodes'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
@@ -180,6 +378,8 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/RecoverRequest'
+      parameters:
+      - $ref: '#/components/parameters/AuthIdempotencyKey'
   /auth/recovery-codes:
     post:
       operationId: post_auth_recovery_codes
@@ -215,9 +415,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SessionList'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
           content:
             application/json:
               schema:
@@ -236,6 +470,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
       parameters:
       - name: session_id
         in: path
@@ -243,6 +498,7 @@ paths:
         schema: &id001
           type: string
           format: uuid
+      - $ref: '#/components/parameters/AuthIdempotencyKey'
   /me:
     get:
       operationId: get_me
@@ -1082,6 +1338,57 @@ paths:
               schema:
                 $ref: '#/components/schemas/Health'
       security: []
+  /auth/session:
+    get:
+      operationId: get_auth_session
+      summary: 当前账号与会话元数据
+      responses:
+        '200':
+          description: 当前账号与会话
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CurrentSession'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        default:
+          description: 认证错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '429':
+          description: 全局限流或连续失败锁定。
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                minimum: 1
+              description: 等待秒数
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 components:
   securitySchemes:
     AccessBearer:
@@ -1099,6 +1406,15 @@ components:
       in: header
       required: true
       schema: *id001
+    AuthIdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: 可选 UUID v4。同账号、同 key、同 method/path/payload 在 120 秒内返回相同加密缓存结果；不同
+        payload 或过期 key 返回 409。鉴权响应仅存 AES-GCM 密文；密码仅参与 HMAC 请求指纹。
   schemas:
     User:
       type: object
@@ -1365,10 +1681,25 @@ components:
     RegisterRequest:
       type: object
       properties:
-        username: *id002
-        password: *id002
-        display_name: *id002
-        device_name: *id002
+        username:
+          type: string
+          maxLength: 256
+          description: NFKC → trim → lowercase 后满足 ^[a-z][a-z0-9_]{2,31}$。
+        password: &id013
+          type: string
+          maxLength: 128
+          minLength: 12
+          writeOnly: true
+          description: 12–128 Unicode 字符，UTF-8 ≤512 bytes；允许空格和 Unicode，拒绝全空白、NUL
+            与随包 v1 弱口令表。密码不做规范化。
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 80
       required:
       - username
       - password
@@ -1377,9 +1708,18 @@ components:
     LoginRequest:
       type: object
       properties:
-        username: *id002
-        password: *id002
-        device_name: *id002
+        username:
+          type: string
+          maxLength: 256
+          description: NFKC → trim → lowercase 后满足 ^[a-z][a-z0-9_]{2,31}$。
+        password: &id012
+          type: string
+          maxLength: 512
+          writeOnly: true
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 80
       required:
       - username
       - password
@@ -1388,7 +1728,10 @@ components:
     RefreshRequest:
       type: object
       properties:
-        refresh_token: *id002
+        refresh_token:
+          type: string
+          maxLength: 128
+          writeOnly: true
       required:
       - refresh_token
       additionalProperties: false
@@ -1402,9 +1745,12 @@ components:
     PasswordChange:
       type: object
       properties:
-        current_password: *id002
-        new_password: *id002
-        device_name: *id002
+        current_password: *id012
+        new_password: *id013
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 80
       required:
       - current_password
       - new_password
@@ -1413,10 +1759,19 @@ components:
     RecoverRequest:
       type: object
       properties:
-        username: *id002
-        recovery_code: *id002
-        new_password: *id002
-        device_name: *id002
+        username:
+          type: string
+          maxLength: 256
+          description: NFKC → trim → lowercase 后满足 ^[a-z][a-z0-9_]{2,31}$。
+        recovery_code:
+          type: string
+          maxLength: 128
+          writeOnly: true
+        new_password: *id013
+        device_name:
+          type: string
+          minLength: 1
+          maxLength: 80
       required:
       - username
       - recovery_code
@@ -1446,19 +1801,29 @@ components:
     AuthResult:
       type: object
       properties:
-        user:
+        user: &id014
           $ref: '#/components/schemas/User'
-        token_type:
+        token_type: &id015
           const: Bearer
           type: string
         access_token: *id002
-        expires_in:
+        expires_in: &id016
           type: integer
           const: 600
         refresh_token: *id002
         refresh_expires_at: *id003
         session_expires_at: *id003
         session_id: *id001
+      required:
+      - user
+      - token_type
+      - access_token
+      - expires_in
+      - refresh_token
+      - refresh_expires_at
+      - session_expires_at
+      - session_id
+      additionalProperties: false
     Health:
       type: object
       properties:
@@ -1541,3 +1906,78 @@ components:
       required:
       - error
       - meta
+    AuthResultWithRecoveryCodes:
+      description: AuthResult 的全部字段加 recovery_codes。
+      type: object
+      properties:
+        user: *id014
+        token_type: *id015
+        access_token: *id002
+        expires_in: *id016
+        refresh_token: *id002
+        refresh_expires_at: *id003
+        session_expires_at: *id003
+        session_id: *id001
+        recovery_codes:
+          type: array
+          minItems: 8
+          maxItems: 8
+          items:
+            type: string
+          description: 随机 128 bit Base32 分组；仅注册/恢复响应返回。
+      required:
+      - user
+      - token_type
+      - access_token
+      - expires_in
+      - refresh_token
+      - refresh_expires_at
+      - session_expires_at
+      - session_id
+      - recovery_codes
+    DeviceSession:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - device_name
+      - created_at
+      - last_refreshed_at
+      - expires_at
+      - is_current
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_refreshed_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        is_current:
+          type: boolean
+    CurrentSession:
+      type: object
+      required:
+      - user
+      - session
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        session:
+          $ref: '#/components/schemas/DeviceSession'
+    SessionList:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceSession'

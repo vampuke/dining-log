@@ -1,1 +1,1 @@
-auth 功能目录；P1 不实现页面。源码将放在 feature/src/main/kotlin 下，仍为单个 feature Gradle 模块。
+P2 登录、注册、恢复页面见 `feature/src/main/kotlin/top/alanvampuke/dininglog/feature/auth/AuthScreens.kt`。使用现有 D2 双主题 token；表单滚动适配大字体，密码不存 SavedState，错误提示持续展示。
