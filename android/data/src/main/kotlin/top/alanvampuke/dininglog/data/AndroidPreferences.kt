@@ -16,7 +16,11 @@ import kotlinx.coroutines.flow.*
 import top.alanvampuke.dininglog.core.*
 
 private val Context.displaySettings by preferencesDataStore("display-settings")
-class AndroidThemePreferences(context: Context, private val data: DataStore<Preferences> = context.applicationContext.displaySettings) : ThemePreferences, UpdatePreferences {
+class AndroidThemePreferences private constructor(private val data: DataStore<Preferences>) : ThemePreferences, UpdatePreferences {
+    constructor(context: Context) : this(context.applicationContext.displaySettings)
+    companion object {
+        internal fun fromDataStore(data: DataStore<Preferences>) = AndroidThemePreferences(data)
+    }
     private val themeKey = stringPreferencesKey("theme")
     private val updatesKey = booleanPreferencesKey("update-checks")
     override val theme = data.data.map { preferences -> ThemeChoice.entries.firstOrNull { it.name == preferences[themeKey] } ?: ThemeChoice.SYSTEM }

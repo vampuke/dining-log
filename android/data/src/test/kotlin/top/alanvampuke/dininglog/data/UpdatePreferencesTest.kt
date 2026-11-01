@@ -21,14 +21,14 @@ class UpdatePreferencesTest {
         val file = File.createTempFile("p6-settings-", ".preferences_pb", context.cacheDir).also { it.delete() }
         suspend fun close(scope: CoroutineScope) { scope.coroutineContext[Job]!!.cancelAndJoin() }
         val firstScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val first = AndroidThemePreferences(context, PreferenceDataStoreFactory.create(scope = firstScope, produceFile = { file }))
+        val first = AndroidThemePreferences.fromDataStore(PreferenceDataStoreFactory.create(scope = firstScope, produceFile = { file }))
         try {
             assertTrue(first.updateChecksEnabled.first())
             first.setUpdateChecksEnabled(false); first.setTheme(ThemeChoice.DARK)
             assertTrue(file.isFile); assertTrue(file.length() > 0)
         } finally { close(firstScope) }
         val nextScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        val next = AndroidThemePreferences(context, PreferenceDataStoreFactory.create(scope = nextScope, produceFile = { file }))
+        val next = AndroidThemePreferences.fromDataStore(PreferenceDataStoreFactory.create(scope = nextScope, produceFile = { file }))
         try {
             assertFalse(next.updateChecksEnabled.first()); assertEquals(ThemeChoice.DARK, next.theme.first())
             next.setUpdateChecksEnabled(true)

@@ -21,7 +21,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -45,9 +44,9 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Serializable data class ChooseRestaurantRoute(val purpose: String)
 
 @Composable fun ProductRoot(vm: ProductViewModel, username: String, theme: ThemeChoice, onTheme: (ThemeChoice) -> Unit,
-    onLogout: () -> Unit, version: String, navController: NavHostController = rememberNavController(),
+    onLogout: () -> Unit, version: String,
     updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {}) {
-    val nav = navController
+    val nav = rememberNavController()
     val animate = rememberNavigationAnimationsEnabled()
     val motionPx = with(LocalDensity.current) { 12.dp.roundToPx() }
     val restaurantScroll = rememberLazyListState()
@@ -117,6 +116,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     NavHost(nav, startDestination = when (vm.restoredTab) { "visits" -> VisitsRoute; "settings" -> SettingsRoute; else -> RestaurantsRoute },
         modifier = Modifier.fillMaxSize().background(colors.bg).testTag("product-navigation").semantics {
             this[BackgroundArgb] = colors.bg.toArgb(); this[NavigationAnimationsEnabled] = animate
+            entry?.id?.let { this[NavigationEntryId] = it }
         },
         enterTransition = { if (animate) fadeIn(tween(200)) + slideInVertically(tween(200)) { motionPx } else EnterTransition.None },
         exitTransition = { if (animate) fadeOut(tween(180)) + slideOutVertically(tween(180)) { -motionPx } else ExitTransition.None },

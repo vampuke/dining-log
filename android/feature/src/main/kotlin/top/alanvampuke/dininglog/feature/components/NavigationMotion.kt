@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 
 val NavigationAnimationsEnabled = SemanticsPropertyKey<Boolean>("NavigationAnimationsEnabled")
+val NavigationEntryId = SemanticsPropertyKey<String>("NavigationEntryId")
 
 @Composable fun rememberNavigationAnimationsEnabled(): Boolean {
     val resolver = LocalContext.current.contentResolver

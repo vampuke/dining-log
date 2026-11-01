@@ -25,9 +25,6 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -136,11 +133,9 @@ class P6UiTest {
 
     @Test fun allThreeTabReselectionsKeepTheSameBackStackEntryAndScrollToTop() {
         val fixture = Fixture()
-        lateinit var nav: NavHostController
         try {
             compose.setContent { QuietGridTheme(true) {
-                nav = rememberNavController()
-                ProductRoot(fixture.vm, "p6_owner", ThemeChoice.DARK, {}, {}, "0.6.0", navController = nav)
+                ProductRoot(fixture.vm, "p6_owner", ThemeChoice.DARK, {}, {}, "0.6.0")
             } }
             waitForRows(fixture, RecordKind.RESTAURANT)
             for (tab in listOf("restaurants", "visits", "settings")) {
@@ -149,22 +144,27 @@ class P6UiTest {
                 else waitForRows(fixture, if (tab == "restaurants") RecordKind.RESTAURANT else RecordKind.VISIT)
                 val listTag = if (tab == "settings") "settings-scroll" else "record-list"
                 compose.onNodeWithTag(listTag).performScrollToIndex(10)
-                var entry = ""; var refreshes = 0; var profiles = 0
-                compose.runOnIdle { entry = nav.currentBackStackEntry!!.id; refreshes = fixture.repository.refreshes.get(); profiles = fixture.security.profiles.get() }
+                val entry = compose.onNodeWithTag("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
+                var refreshes = 0; var profiles = 0
+                compose.runOnIdle { refreshes = fixture.repository.refreshes.get(); profiles = fixture.security.profiles.get() }
                 repeat(4) {
                     compose.onNodeWithTag("tab:$tab").performClick()
                     compose.onNodeWithTag("page-title").assertIsDisplayed()
+                    assertEquals("$tab must reuse its existing entry", entry,
+                        compose.onNodeWithTag("product-navigation").fetchSemanticsNode().config[NavigationEntryId])
                     compose.runOnIdle {
-                        assertEquals("$tab must reuse its existing entry", entry, nav.currentBackStackEntry!!.id)
                         assertEquals(refreshes, fixture.repository.refreshes.get())
                         assertEquals(profiles, fixture.security.profiles.get())
                     }
                 }
                 println("P6 tab=$tab reselections=4 entry_preserved=true scrolled_to_top=true")
             }
-            compose.runOnIdle { nav.navigate(DetailRoute(RecordKind.RESTAURANT.name, rows.first().ref.id)) }
             compose.onNodeWithTag("tab:restaurants").performClick()
-            compose.runOnIdle { assertTrue(nav.currentBackStackEntry!!.destination.hasRoute<RestaurantsRoute>()) }
+            waitForRows(fixture, RecordKind.RESTAURANT)
+            compose.onNodeWithTag("record:${rows.first().ref.id}").performClick()
+            compose.onNodeWithTag("screen:detail").assertIsDisplayed()
+            compose.onNodeWithTag("tab:restaurants").performClick()
+            compose.onNodeWithTag("screen:restaurant:list").assertIsDisplayed()
         } finally { fixture.close() }
     }
 
