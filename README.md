@@ -56,7 +56,7 @@ adb shell am start -n top.alanvampuke.dininglog.debug/top.alanvampuke.dininglog.
 cd backend
 npm ci
 node --test ../.github/scripts/release-guards.test.mjs
-python3 -B -m unittest discover -s ../.github/scripts -p 'test_apk_metadata.py'
+python3 -B -m unittest discover -s ../.github/scripts -p 'test_*.py'
 npm run check
 node tests/contracts.mjs
 npm test
@@ -110,6 +110,15 @@ sha256sum --check app-release.apk.sha256
 
 Windows 可执行 `Get-FileHash .\app-release.apk -Algorithm SHA256` 并与 checksum 比较。checksum 的稳定文件名为 `app-release.apk`；证书摘要是签名身份，文件 SHA-256 是这一版本的下载完整性，两项都检查。
 
+校验通过后可在 API 26 及以上设备安装：
+
+```sh
+adb install -r app-release.apk
+adb shell am start -n top.alanvampuke.dininglog/top.alanvampuke.dininglog.MainActivity
+```
+
+P4 旧 debug 包使用正式包名和 debug 证书，与本次 release 签名不兼容。若设备装有该旧测试包，先保存本机草稿与记录，再移除旧测试包并安装正式 APK；卸载会删除该包的本机数据。本次及后续 debug 包使用 `.debug`，可以与正式包并存。
+
 ## 生产部署与发布
 
 正式资源：Worker `dining-log-api`，D1 `dining-log-prod` / `90d3c1ef-5ea0-4308-a866-89a96e0411d8`。Wrangler 关闭 workers.dev / preview URLs，裸主机 Custom Domain 只绑定 `dining.alanvampuke.top`。非秘密配置在 [wrangler.toml](backend/wrangler.toml)，secret 名称、首次初始化与运维命令见 [OPERATIONS.md](docs/OPERATIONS.md)，决策见 [ADR](design/adr/0001-production-release.md)。
@@ -118,13 +127,14 @@ Windows 可执行 `Get-FileHash .\app-release.apk -Algorithm SHA256` 并与 chec
 
 SHA 格式、HEAD 和 master 祖先关系由 workflow 内的命令先检查，通过后才执行所选提交中的脚本；不能让尚未确认来源的代码自行决定是否可以使用生产 secrets。
 
-日常发布从 `master` 手动触发 [release.yml](.github/workflows/release.yml)，明确输入已审查的 40 位 SHA 和 `vX.Y.Z` tag，例如：
+日常发布先经 PR 同步递增 `versionCode`、`versionName` 与 CHANGELOG，等待合并提交的完整 master CI 成功，再从 `master` 手动触发 [release.yml](.github/workflows/release.yml)。输入已审查的 40 位 SHA 和对应未发布的 `vX.Y.Z` tag；以下下一版示例要求源码已更新为 versionCode=6 / versionName=0.5.1：
 
 ```sh
 git fetch origin master
 DINING_RELEASE_COMMIT="$(git rev-parse origin/master)"
+DINING_RELEASE_TAG=v0.5.1
 gh workflow run release.yml --repo vampuke/dining-log --ref master \
-  -f commit_sha="$DINING_RELEASE_COMMIT" -f release_tag=v0.5.0
+  -f commit_sha="$DINING_RELEASE_COMMIT" -f release_tag="$DINING_RELEASE_TAG"
 ```
 
 workflow 校验 SHA、HEAD、master 祖先、相同 SHA 的 master CI 和 API 26/35 检查、tag / Release 不存在及版本递增；按顺序验证后端、签名 APK、有效 checkpoint、迁移兼容性及域名冲突、apply、完整性、deploy、health、独立 smoke，最后 `gh release create`。`concurrency=dining-production`、`cancel-in-progress=false` 串行化生产发布；迁移、部署、smoke 失败不会自动重试、回滚 D1 或覆盖已有 Release。
