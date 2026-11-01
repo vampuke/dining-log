@@ -2,11 +2,10 @@ openapi: 3.1.0
 info:
   title: 食记 API
   version: 1.0.0
-  description: 'P3 v1 domain contract: owner-scoped restaurant, dish, visit, revision and literal search APIs. JSON
+  description: 'v1 contract: owner-scoped restaurant, dish, visit, revision, account lifecycle and literal search APIs. JSON
     bodies <=64 KiB, snake_case, strict input, CAS expected_version and atomic successful idempotency. Domain text
     lengths count Unicode characters after NFC, CRLF-to-LF and outer trim; internal whitespace is preserved. P2 authentication
-    contracts are retained. Existing logout-all, recovery-codes and /me handlers are outside the P3 domain implementation;
-    their v1 schemas describe the planned account lifecycle.'
+    contracts include password reauthentication, immediate session revocation and a 30-day account deletion retention period.'
 servers:
 - url: https://dining.alanvampuke.top/api/v1
 security:
@@ -245,6 +244,12 @@ paths:
       summary: '{password: string} → 204；auth_version +1，撤销全部会话'
       x-auth: Reauth
       responses:
+        '400':
+          $ref: '#/components/responses/AccountError'
+        '401':
+          $ref: '#/components/responses/AccountError'
+        '429':
+          $ref: '#/components/responses/AccountError'
         '204':
           description: 204；auth_version +1，撤销全部会话
         default:
@@ -392,6 +397,14 @@ paths:
       summary: '{password: string} → 200：{recovery_codes: string[8]}；作废全部旧码'
       x-auth: Reauth
       responses:
+        '400':
+          $ref: '#/components/responses/AccountError'
+        '401':
+          $ref: '#/components/responses/AccountError'
+        '409':
+          $ref: '#/components/responses/AccountError'
+        '429':
+          $ref: '#/components/responses/AccountError'
         '200':
           description: '200：{recovery_codes: string[8]}；作废全部旧码'
           content:
@@ -529,6 +542,8 @@ paths:
       summary: 无 body → 200：User
       x-auth: Access
       responses:
+        '401':
+          $ref: '#/components/responses/AccountError'
         '200':
           description: 200：User
           content:
@@ -565,6 +580,12 @@ paths:
       summary: '{expected_version: integer, display_name: string}；Idempotency-Key → 200：User；用户名不允许修改'
       x-auth: Access
       responses:
+        '400':
+          $ref: '#/components/responses/AccountError'
+        '401':
+          $ref: '#/components/responses/AccountError'
+        '409':
+          $ref: '#/components/responses/AccountError'
         '200':
           description: 200：User；用户名不允许修改
           content:
@@ -609,6 +630,14 @@ paths:
       summary: '{expected_version: integer, password: string, confirm_username: string} → 202：{deleted_at, purge_after}；立即失效全部会话'
       x-auth: Reauth；不进业务幂等表
       responses:
+        '400':
+          $ref: '#/components/responses/AccountError'
+        '401':
+          $ref: '#/components/responses/AccountError'
+        '409':
+          $ref: '#/components/responses/AccountError'
+        '429':
+          $ref: '#/components/responses/AccountError'
         '202':
           description: 202：{deleted_at, purge_after}；立即失效全部会话
           content:
@@ -4261,6 +4290,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 components:
+  responses:
+    AccountError:
+      description: Authentication, strict input, rate limit or account version/idempotency conflict. VERSION_CONFLICT includes the six-field current User.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            const: no-store
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
   securitySchemes:
     AccessBearer:
       type: http
@@ -4952,6 +4993,8 @@ components:
       properties:
         password:
           type: string
+          maxLength: 512
+          writeOnly: true
       required:
       - password
       additionalProperties: false
@@ -5008,10 +5051,12 @@ components:
       type: object
       properties:
         expected_version:
-          type: integer
-          minimum: 1
+          $ref: '#/components/schemas/Version'
         display_name:
           type: string
+          minLength: 1
+          maxLength: 50
+          description: NFC, CRLF to LF and outer trim; reject blank text and NUL. Username is immutable.
       required:
       - expected_version
       - display_name
@@ -5020,12 +5065,15 @@ components:
       type: object
       properties:
         expected_version:
-          type: integer
-          minimum: 1
+          $ref: '#/components/schemas/Version'
         password:
           type: string
+          maxLength: 512
+          writeOnly: true
         confirm_username:
           type: string
+          maxLength: 256
+          description: Must exactly match the current normalized username.
       required:
       - expected_version
       - password
@@ -5783,6 +5831,7 @@ components:
             type: string
           minItems: 8
           maxItems: 8
+          uniqueItems: true
     AccountDeleteResult:
       type: object
       additionalProperties: false

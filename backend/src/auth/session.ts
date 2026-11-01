@@ -21,7 +21,7 @@ export function publicUser(user: UserRow) { return { id: user.id, username: user
   version: user.version, created_at: iso(user.created_at), updated_at: iso(user.updated_at) }; }
 export function publicSession(row: SessionRow, currentId: string) { return { id: row.id, device_name: row.device_name,
   created_at: iso(row.created_at), last_refreshed_at: iso(row.last_refreshed_at), expires_at: iso(row.expires_at), is_current: row.id === currentId }; }
-export async function userByName(db: D1Database, username: string): Promise<UserRow | null> { return db.prepare('SELECT * FROM users WHERE username=? AND deleted_at IS NULL').bind(username).first<UserRow>(); }
+export async function userByName(db: D1Database, username: string, includeDeleted = false): Promise<UserRow | null> { return db.prepare(`SELECT * FROM users WHERE username=?${includeDeleted ? '' : ' AND deleted_at IS NULL'}`).bind(username).first<UserRow>(); }
 export async function activeSession(env: Bindings, userId: string, sessionId: string, authVersion?: number): Promise<SessionRow | null> {
   return env.DB.prepare(`SELECT s.* FROM sessions s JOIN users u ON u.id=s.user_id
     WHERE s.id=? AND s.user_id=? AND s.revoked_at IS NULL AND s.expires_at>?
