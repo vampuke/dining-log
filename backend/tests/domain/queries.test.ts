@@ -79,3 +79,14 @@ describe('P3 per-kind IDs and bounded query output', () => {
     expect((await data<Page<Entity>>(await request(`/restaurants/${r.entity.id}/dishes?q=dishnamespace`, t))).items.map(x => x.id)).toEqual([r.entity.id]);
   });
 });
+describe('P3 documented query scopes', () => {
+  it('visited flag and date interval are independent predicates and visit q matches only note or restaurant name', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t, { name: 'Visitname', address: 'addressonlymarker' });
+    await data(await request(`/restaurants/${r.entity.id}/visits`, t, { id: crypto.randomUUID(), dining_date: '2024-02-29', meal: 'lunch', note: 'noteonlymarker' }), 201);
+    expect((await data<Page<Entity>>(await request('/restaurants?visited=false&visited_from=2025-01-01', t))).items).toEqual([]);
+    expect((await data<Page<Entity>>(await request('/restaurants?visited=true&visited_from=2025-01-01', t))).items).toEqual([]);
+    expect((await data<Page<Entity>>(await request('/restaurants?visited_from=2024-02-29&visited_to=2024-02-29', t))).items.map(x => x.id)).toEqual([r.entity.id]);
+    for (const q of ['visitname', 'noteonlymarker']) expect((await data<Page<Entity>>(await request(`/visits?q=${q}`, t))).items).toHaveLength(1);
+    for (const q of ['addressonlymarker', 'lunch', '2024-02-29']) expect((await data<Page<Entity>>(await request(`/visits?q=${q}`, t))).items).toEqual([]);
+  });
+});
