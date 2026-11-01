@@ -264,6 +264,8 @@ erDiagram
 
 以下 SQL 是审批后的首个迁移设计，使用 SQLite 方言，不含 PostgreSQL 类型或 ALTER COLUMN。
 
+P6 将文本地址改为选填，通过新迁移 `0002_address_optional.sql` 应用；本节保留冻结的 0001 原始 DDL。重建 restaurants 时必须在同一事务中备份并恢复 dishes、visits、restaurant_search、revisions，重建原有五个索引，并通过逐表行数/校验和验证。
+
 D1 默认强制开启外键，相当于每个事务 PRAGMA foreign_keys = ON。下方 pragma 用于本地 SQLite 校验；在 D1 不依靠它切换外键状态，也不尝试将外键关闭。
 
 ~~~sql
@@ -757,7 +759,7 @@ message 为稳定的英文兜底，Android 按 code / field_errors 本地化；�
 | AuthResult | user: User、token_type: "Bearer"、access_token、expires_in: 600、refresh_token、refresh_expires_at、session_expires_at、session_id |
 | RegisterRequest | username: string、password: string、display_name?: string、device_name: string |
 | LoginRequest | username: string、password: string、device_name: string |
-| RestaurantInput | name: string、category: enum、address: string、cuisine?: string\|null、rating?: number\|null（1.0–5.0，最多一位小数）、review?: string\|null、note?: string\|null |
+| RestaurantInput | name: string、category: enum、address?: string\|null、cuisine?: string\|null、rating?: number\|null（1.0–5.0，最多一位小数）、review?: string\|null、note?: string\|null |
 | RestaurantCreate | id: UUID、RestaurantInput 的全部字段、first_visit?: {id: UUID, dining_date: date, meal?: enum\|null, note?: string\|null} |
 | RestaurantPatch | expected_version: integer、RestaurantInput 任意至少一个字段；id / first_visit / restaurant_id 不可修改 |
 | Restaurant | id、name、category、cuisine、address、rating、review、note、version、created_at、updated_at、deleted_at |
