@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
-import type { AppEnv } from './env';
+import type { AppEnv, Bindings } from './env';
+import { cleanupAuth } from './auth/cleanup';
 import { auth } from './routes/auth';
 import { restaurants } from './routes/restaurants';
 import { dishes } from './routes/dishes';
@@ -22,4 +23,6 @@ app.notFound((c) => {
   return c.json({ error: { code: 'NOT_FOUND', message: 'Not found.', field_errors: {} },
     meta: { request_id: crypto.randomUUID() } }, 404);
 });
-export default app;
+export default Object.assign(app, {
+  async scheduled(_controller: ScheduledController, env: Bindings) { await cleanupAuth(env.DB); },
+});

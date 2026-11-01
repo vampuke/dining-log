@@ -1,6 +1,7 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import app from '../../src/index';
+import { cleanupAuth } from '../../src/auth/cleanup';
 import type { Bindings } from '../../src/env';
 import type { AuthResult } from '../../src/auth/session';
 import { base64UrlEncode } from '../../src/auth/encoding';
@@ -135,6 +136,7 @@ describe('P2 authentication against Workers D1', () => {
     const response = await refresh(auth.refresh_token, id); expect(response.status).toBe(401); expect((await error(response)).code).toBe('REFRESH_REUSED');
   });
   it('S5 password change invalidates all old access/refresh within the same second and creates current session', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(Date.now());
     const auth = await register(); const login = await request('/auth/login', registerPayload()); const other = (await login.json() as { data: AuthResult }).data;
     const response = await request('/auth/password', { current_password: password, new_password: newPassword, device_name: 'Changed' }, bearer(auth.access_token)); expect(response.status).toBe(200);
     const changed = (await response.json() as { data: AuthResult }).data;
@@ -315,6 +317,18 @@ describe('P2 authentication against Workers D1', () => {
     expect(await env.DB.prepare('SELECT pepper_version FROM users').first('pepper_version')).toBe('v1');
     expect(await env.DB.prepare('SELECT password_hash FROM users').first('password_hash')).not.toBe(old.password_hash);
     expect(await env.DB.prepare('SELECT count(*) n FROM mutation_guards').first('n')).toBe(0);
+  });
+
+  it('auth janitor wipes expired credential ciphertext but keeps conflict fingerprints', async () => {
+    const headers = { 'Idempotency-Key': crypto.randomUUID() };
+    const first = await request('/auth/register', registerPayload(), headers); const auth = (await first.json() as { data: AuthResult }).data;
+    await refresh(auth.refresh_token);
+    await env.DB.prepare('UPDATE refresh_rotation_results SET created_at=1,expires_at=2').run();
+    await env.DB.prepare('UPDATE idempotency_keys SET created_at=1,expires_at=?').bind(Math.floor(Date.now() / 1000) - 1).run();
+    await cleanupAuth(env.DB);
+    expect(await env.DB.prepare('SELECT count(*) n FROM refresh_rotation_results').first('n')).toBe(0);
+    expect(await env.DB.prepare('SELECT response_json FROM idempotency_keys').first('response_json')).toBe('{}');
+    expect((await request('/auth/register', registerPayload(), headers)).status).toBe(409);
   });
 
 });

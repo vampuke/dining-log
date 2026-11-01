@@ -150,9 +150,8 @@ auth.post('/auth/recover', async c => {
     clearFailures(c.env.DB, key), ...recovery.statements, ...next.statements], { ...next.result, recovery_codes: recovery.codes }, 200, idem, async () => { throw invalidCredentials(); });
 });
 auth.get('/auth/session', async c => {
-  const { user, claims } = await accessIdentity(c.env, c.req.header('Authorization'));
-  const session = (await activeSession(c.env, user.id, claims.sid, claims.av))!;
-  return json(c, envelope({ user: publicUser(user), session: publicSession(session, claims.sid) }));
+  const { user, claims, session } = await accessIdentity(c.env, c.req.header('Authorization'));
+  return json(c, envelope({ user: publicUser(user), session: publicSession(session!, claims.sid) }));
 });
 auth.get('/auth/sessions', async c => {
   const { user, claims } = await accessIdentity(c.env, c.req.header('Authorization'));

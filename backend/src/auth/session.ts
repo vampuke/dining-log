@@ -35,10 +35,11 @@ export async function accessIdentity(env: Bindings, authorization: string | unde
     if (error && typeof error === 'object' && 'code' in error && error.code === 'ERR_JWT_EXPIRED') throw new AuthError(401, 'TOKEN_EXPIRED', 'Access token has expired.');
     throw revoked();
   }
-  if (checkSession && !await activeSession(env, claims.sub, claims.sid, claims.av)) throw revoked();
+  const session = checkSession ? await activeSession(env, claims.sub, claims.sid, claims.av) : null;
+  if (checkSession && !session) throw revoked();
   const user = await env.DB.prepare('SELECT * FROM users WHERE id=? AND deleted_at IS NULL').bind(claims.sub).first<UserRow>();
   if (!user) throw revoked();
-  return { claims, user };
+  return { claims, user, session };
 }
 export async function newRefresh(userId: string, sessionId: string, now: number, expiresAt: number, parent: string | null = null) {
   const id = crypto.randomUUID(), token = `${id}.${base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)))}`;

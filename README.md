@@ -2,11 +2,11 @@
 
 食记是一款私人餐厅记录应用：餐厅档案、餐厅级菜品库、多次到店日期及字段级修改记录，账号之间完全隔离。
 
-方案唯一来源是 [design/PLAN.md](design/PLAN.md)，P1 范围见 [design/P1_TASK.md](design/P1_TASK.md)。当前交付为底座：业务端点返回 501，Android 只有构建入口与 D2 Quiet Grid 主题，没有页面。
+方案唯一来源是 [design/PLAN.md](design/PLAN.md)，P1 范围见 [design/P1_TASK.md](design/P1_TASK.md)。P2 已加入 9 个认证端点与 Android 登录/注册/恢复页面，验证范围与遗留见 [P2_DONE.md](P2_DONE.md) 和 [P2_BLOCKERS.md](P2_BLOCKERS.md)。餐厅/菜品/到店业务端点仍返回 501。
 
 ```text
 Android (Kotlin / Compose)
-  app → feature → core ← data (Retrofit / Room / Keystore，后续实现)
+  app → feature → core ← data (Retrofit / Keystore；Room 在 P3 实现)
                             │ HTTPS JSON
                             ▼
 dining.alanvampuke.top/api/v1
@@ -31,7 +31,7 @@ npm run db:verify
 npm run test:capacity
 ```
 
-具备足够内存的开发环境可使用 `npm run dev` 启动本地 Wrangler（默认 `http://localhost:8787`），从迁移创建独立本地 D1。`.dev.vars.example` 仅列变量名；需要开发密钥时在仓库外受控配置，`.dev.vars` 已忽略。P1 健康检查不需要密钥，其余 42 个契约端点仅为占位。配置中的 D1 ID 仍是方案占位符，真实资源留到 P5。
+具备足够内存的开发环境可使用 `npm run dev` 启动本地 Wrangler（默认 `http://localhost:8787`），从迁移创建独立本地 D1。`.dev.vars.example` 仅列变量名；需要开发密钥时在仓库外受控配置，`.dev.vars` 已忽略。健康检查不需要密钥；P2 auth 使用独立版本化密钥，测试仅使用公开合成 fixtures。未实现的业务及其他账号端点仍为占位。配置中的 D1 ID 仍是方案占位符，真实资源留到 P5。
 
 本机允许的 SQL 自检完全使用 sqlite3 CLI，数据库写在 `/tmp`，逐连接启用外键：
 
@@ -52,7 +52,7 @@ cd android
 ./gradlew :app:assembleDebug :core:test :app:testDebugUnitTest :app:lintDebug --no-daemon
 ```
 
-debug APK 可从 CI 的 `app-debug` artifact 下载，附带实际包名 / SDK、签名检查输出和校验和。VPS 发布路径为 `/var/www/html/dl/dining/shiji-debug.apk`，校验记录为同目录 `SHA256SUMS`；产物来源和验收见 [P1_ACCEPTANCE.md](P1_ACCEPTANCE.md)。`android-ui` 留待 P4 的 API 26/35 合成数据 UI 测试；`release` 留待 P5，当前均为手动占位流程。
+debug APK 可从 CI 的 `app-debug` artifact 下载，附带实际包名 / SDK、签名检查输出和校验和。VPS 发布路径为 `/var/www/html/dl/dining/shiji-debug.apk`，校验记录为同目录 `SHA256SUMS`；产物来源和验收见 [P1_ACCEPTANCE.md](P1_ACCEPTANCE.md)。常规 `ci` 另运行 API 26/35 模拟器 Keystore/认证页面测试；`android-ui` 留待 P4 的业务 UI 测试；`release` 留待 P5，当前均为手动占位流程。
 
 ## 部署
 
