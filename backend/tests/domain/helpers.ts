@@ -23,3 +23,23 @@ export async function restaurant(token: string, extra = {}) { return data<Mutati
 export async function counts() { const tables = ['restaurants', 'dishes', 'visits', 'change_sets', 'revisions', 'idempotency_keys', 'mutation_guards', 'restaurant_search']; const entries = await Promise.all(tables.map(async table => [table, await env.DB.prepare(`SELECT count(*) n FROM ${table}`).first<number>('n')] as const)); return Object.fromEntries(entries); }
 // Intercept the real D1 batch, while every statement still executes in Workers SQLite.
 export function batchDB(intercept: (statements: D1PreparedStatement[]) => Promise<D1Result[]>) { return { prepare: env.DB.prepare.bind(env.DB), batch: intercept } as D1Database; }
+// Return the actual cache miss after another request commits. Entity/parent
+// preflight then observes the winner, while all reads and writes use real D1.
+export function afterCacheMiss(interleave: () => Promise<void>) {
+  let injected = false;
+  return {
+    prepare(sql: string) {
+      const statement = env.DB.prepare(sql);
+      if (injected || sql !== 'SELECT * FROM idempotency_keys WHERE user_id=? AND idempotency_key=?') return statement;
+      return { bind: (...values: unknown[]) => {
+        const bound = statement.bind(...values);
+        return { first: async () => {
+          const row = await bound.first();
+          if (row === null && !injected) { injected = true; await interleave(); }
+          return row;
+        } } as D1PreparedStatement;
+      } } as D1PreparedStatement;
+    },
+    batch: env.DB.batch.bind(env.DB),
+  } as D1Database;
+}

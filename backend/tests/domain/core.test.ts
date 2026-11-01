@@ -1,6 +1,6 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { account, batchDB, counts, data, error, request, restaurant, restaurantInput, type Mutation, type Revision } from './helpers';
+import { account, afterCacheMiss, batchDB, counts, data, error, request, restaurant, restaurantInput, type Mutation, type Revision } from './helpers';
 beforeAll(async () => { await applyD1Migrations(env.DB, env.TEST_MIGRATIONS); });
 describe('P3 atomic mutations and server history', () => {
   it('S2 create history and 40 to 43 integer rating diff', async () => {
@@ -119,6 +119,40 @@ describe('P3 atomic mutations and server history', () => {
   });
 });
 describe('P3 forced interleavings preserve atomicity and error attribution', () => {
+  it('same-key commit after cache miss replays before entity and metadata preflight conflicts', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t);
+    const d = await data<Mutation>(await request(`/restaurants/${r.entity.id}/dishes`, t, { id: crypto.randomUUID(), name: 'Dish' }), 201);
+    const cases = [
+      { path: `/restaurants/${r.entity.id}`, method: 'PATCH', body: { expected_version: 1, review: 'winner' } },
+      { path: `/dishes/${d.entity.id}`, method: 'DELETE', body: { expected_version: 1 } },
+      { path: `/revisions/${r.revisions[0].id}`, method: 'PATCH', body: { expected_metadata_version: 1, note: 'winner metadata' } },
+    ];
+    for (const operation of cases) {
+      const key = crypto.randomUUID(); let original: unknown;
+      const db = afterCacheMiss(async () => {
+        const winner = await request(operation.path, t, operation.body, operation.method, key);
+        expect(winner.status).toBe(200); original = await winner.json();
+      });
+      const before = await counts();
+      const replay = await request(operation.path, t, operation.body, operation.method, key, db);
+      expect(replay.status, await replay.clone().text()).toBe(200); expect(await replay.json()).toEqual(original);
+      const after = await counts(); expect(after.idempotency_keys).toBe(before.idempotency_keys! + 1); expect(after.mutation_guards).toBe(0);
+      expect(after.revisions).toBe(before.revisions! + (operation.path.startsWith('/revisions/') ? 0 : 1));
+      expect(after.change_sets).toBe(before.change_sets! + (operation.path.startsWith('/revisions/') ? 0 : 1));
+    }
+  });
+  it('same-key child creation replays committed success when its parent disappears after the cache miss', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t), key = crypto.randomUUID();
+    const body = { id: crypto.randomUUID(), name: 'Committed dish' }; let original: unknown;
+    const db = afterCacheMiss(async () => {
+      const winner = await request(`/restaurants/${r.entity.id}/dishes`, t, body, 'POST', key);
+      expect(winner.status).toBe(201); original = await winner.json();
+      await data(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1 }, 'DELETE'));
+    });
+    const replay = await request(`/restaurants/${r.entity.id}/dishes`, t, body, 'POST', key, db);
+    expect(replay.status, await replay.clone().text()).toBe(201); expect(await replay.json()).toEqual(original);
+    expect(await counts()).toMatchObject({ restaurants: 1, dishes: 1, change_sets: 3, revisions: 3, idempotency_keys: 3, mutation_guards: 0 });
+  });
   it('no-op restaurant save loses a version race and leaves no successful cache or history', async () => {
     const a = await account(), t = a.access_token, r = await restaurant(t), before = await counts();
     const db = batchDB(async statements => { await data(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, name: 'winner' }, 'PATCH')); return env.DB.batch(statements); });
