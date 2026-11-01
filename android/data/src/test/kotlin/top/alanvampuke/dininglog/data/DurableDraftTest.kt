@@ -268,4 +268,23 @@ class DurableDraftTest {
             }
         }
     }
+    @Test fun clearingReviewAndNoteClearsCachedExcerptsAndTheirOfflineSearchMatches() = runBlocking {
+        Fixture().use { f ->
+            val previous = JsonObject(Json.parseToJsonElement(entity(1, "4.0")).jsonObject +
+                ("review" to JsonPrimitive("已清空的旧评价")) + ("note" to JsonPrimitive("已清空的旧备注")))
+            f.server.enqueue(MockResponse().setBody(buildJsonObject { put("data", previous) }.toString()))
+            val before = f.repository.refreshDetail("A", ref)
+            val editing = SavedDraft("A", "edit:clear-text", ref, WriteAction.UPDATE, before,
+                before.editable + ("rating_tenths" to "43") + ("review" to null) + ("note" to null))
+            f.server.enqueue(mutation()); f.server.enqueue(detail())
+            assertIs<SaveOutcome.Saved>(f.repository.submit(editing))
+            val brief = f.repository.observeList("A", ListQuery()).first().items.single()
+            assertTrue(brief.fields.containsKey("review_excerpt")); assertNull(brief.fields["review_excerpt"])
+            assertTrue(brief.fields.containsKey("note_excerpt")); assertNull(brief.fields["note_excerpt"])
+            for (term in listOf("已清空的旧评价", "已清空的旧备注")) {
+                assertTrue(f.repository.observeList("A", ListQuery(query = term)).first().items.isEmpty())
+            }
+            assertEquals(3, f.server.requestCount)
+        }
+    }
 }

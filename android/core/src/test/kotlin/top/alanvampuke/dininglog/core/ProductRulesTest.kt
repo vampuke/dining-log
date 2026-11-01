@@ -112,4 +112,29 @@ class ProductRulesTest {
         assertEquals(setOf("first", "second"), localSearch(query, listOf(first, second, otherDay), emptyList()).map { it.ref.id }.toSet())
         assertTrue(localSearch(query.copy(filters = ListFilters(from = "2026-11-02")), listOf(first, second, otherDay), emptyList()).isEmpty())
     }
+    @Test fun currentFullValuesSupersedeOldExcerptsIncludingExplicitlyClearedFields() {
+        val brief = summary().copy(fields = mapOf("review_excerpt" to "旧评价片段", "note_excerpt" to "旧备注片段"))
+        val current = snapshot(2, review = "新评价全文", note = null)
+        for (term in listOf("旧评价片段", "旧备注片段", "null")) {
+            assertTrue(localSearch(ListQuery(query = term), listOf(brief), listOf(current)).isEmpty())
+        }
+        val result = localSearch(ListQuery(query = "新评价全文"), listOf(brief), listOf(current)).single()
+        assertEquals(listOf(MatchType.REVIEW), result.matches)
+    }
+    @Test fun newerDishSummariesAndDeletionSupersedeOldDishDetailsInAggregatedSearch() {
+        val restaurant = summary()
+        val childRef = RecordRef(RecordKind.DISH, "dish", ref.id)
+        val brief = RecordSummary(childRef, "新菜名", 2, restaurant.updatedAt,
+            mapOf("name" to "新菜名", "review_excerpt" to "新短评"))
+        val oldDetail = RecordSnapshot(childRef, 1, mapOf("name" to "旧菜名", "review" to "旧短评"), restaurant.updatedAt)
+        for (term in listOf("旧菜名", "旧短评")) {
+            assertTrue(localSearch(ListQuery(query = term), listOf(restaurant, brief), listOf(oldDetail)).isEmpty())
+            assertTrue(localSearch(ListQuery(RecordKind.DISH, ref.id, query = term), listOf(restaurant, brief), listOf(oldDetail)).isEmpty())
+        }
+        assertEquals(listOf(MatchType.DISH), localSearch(ListQuery(query = "新菜名"), listOf(restaurant, brief), listOf(oldDetail)).single().matches)
+        assertEquals(listOf(MatchType.REVIEW), localSearch(ListQuery(query = "新短评"), listOf(restaurant, brief), listOf(oldDetail)).single().matches)
+        for (term in listOf("旧菜名", "旧短评", "新菜名", "新短评")) {
+            assertTrue(localSearch(ListQuery(query = term), listOf(restaurant, brief.copy(deleted = true)), listOf(oldDetail)).isEmpty())
+        }
+    }
 }

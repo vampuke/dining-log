@@ -197,9 +197,9 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         val fields = record.fields.toMutableMap()
         fields.remove("review"); fields.remove("note"); fields.remove("address")
         if (record.ref.kind == RecordKind.REVISION) fields["note"] = record.fields["note"]
-        record.fields["address"]?.let { fields["address_excerpt"] = it.take(120) }
-        record.fields["review"]?.let { fields["review_excerpt"] = it.take(120) }
-        record.fields["note"]?.let { fields["note_excerpt"] = it.take(120) }
+        for (field in listOf("address", "review", "note")) {
+            if (record.fields.containsKey(field)) fields["${field}_excerpt"] = record.fields[field]?.take(120)
+        }
         val brief = RecordSummary(record.ref, record.title, record.version,
             if (record.ref.kind == RecordKind.REVISION) record.fields["created_at"] ?: record.updatedAt else record.updatedAt,
             (old?.fields ?: emptyMap()) + fields, old?.matches ?: emptyList(), record.diff.map { it.field }.ifEmpty { old?.changedFields ?: emptyList() }, record.deletedAt != null)

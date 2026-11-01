@@ -10,4 +10,12 @@ plugins {
 }
 subprojects {
     dependencyLocking { lockAllConfigurations() }
+    configurations.configureEach {
+        if (name.endsWith("RuntimeClasspath", ignoreCase = true)) {
+            // Metadata-only stdlib-common has no JVM runtime classes. AGP's
+            // ASM artifact graph omits it, making a generated runtime lock
+            // fail on the next build. The JVM stdlib remains version-locked.
+            exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib-common")
+        }
+    }
 }
