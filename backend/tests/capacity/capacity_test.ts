@@ -169,7 +169,7 @@ function cluster(index: number, dishCount: number, restaurantRevisions: number, 
     metadata_updated_at: revision.createdAt, created_at: revision.createdAt,
   }));
   statements.push(insert('restaurant_search', { restaurant_id: restaurantId, user_id: USER_ID,
-    content: JSON.stringify({ parts: Object.fromEntries([restaurant, ...dishes].map(item => [item.id, fragment(item.type === 'restaurant' ? 'restaurant' : 'dish', { ...item.fields, id: item.id, deleted_at: null } as Row)])), text: normalize([restaurant, ...dishes].flatMap((item) => Object.values(item.fields)).join(' ')) }),
+    content: JSON.stringify({ parts: Object.fromEntries([restaurant, ...dishes].map(item => [`${item.type}:${item.id}`, fragment(item.type === 'restaurant' ? 'restaurant' : 'dish', { ...item.fields, id: item.id, deleted_at: null } as Row)])), text: normalize([restaurant, ...dishes].flatMap((item) => Object.values(item.fields)).join(' ')) }),
     updated_at: Math.max(...entities.map((item) => item.updatedAt)) }));
   return { statements, entities, summary: { id: restaurantId,
     rating: Number(restaurant.fields.rating_tenths), updatedAt: restaurant.updatedAt,

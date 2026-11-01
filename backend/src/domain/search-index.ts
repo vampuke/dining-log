@@ -15,11 +15,11 @@ export async function rebuild(db: D1Database, userId: string, kind: Kind, row: R
   const statements: D1PreparedStatement[] = [];
   if (full) {
     const dishes = await db.prepare('SELECT * FROM dishes WHERE user_id=? AND restaurant_id=?').bind(userId, restaurantId).all<Row>();
-    const parts = { [row.id]: fragment(kind, row), ...Object.fromEntries(dishes.results.map(d => [d.id, fragment('dish', d)])) };
+    const parts = { [`restaurant:${row.id}`]: fragment(kind, row), ...Object.fromEntries(dishes.results.map(d => [`dish:${d.id}`, fragment('dish', d)])) };
     statements.push(db.prepare(`INSERT INTO restaurant_search (restaurant_id,user_id,content,updated_at) VALUES (?,?,?,?)
       ON CONFLICT(restaurant_id) DO UPDATE SET content=excluded.content,updated_at=excluded.updated_at WHERE restaurant_search.user_id=excluded.user_id`).bind(restaurantId, userId, JSON.stringify({ parts, text: '' }), now));
   } else {
-    statements.push(db.prepare('UPDATE restaurant_search SET content=json_set(content,?,json(?)),updated_at=? WHERE user_id=? AND restaurant_id=?').bind(`$.parts."${row.id}"`, JSON.stringify(fragment(kind, row)), now, userId, restaurantId));
+    statements.push(db.prepare('UPDATE restaurant_search SET content=json_set(content,?,json(?)),updated_at=? WHERE user_id=? AND restaurant_id=?').bind(`$.parts."${kind}:${row.id}"`, JSON.stringify(fragment(kind, row)), now, userId, restaurantId));
   }
   statements.push(db.prepare(`UPDATE restaurant_search SET content=json_set(content,'$.text',coalesce((
     SELECT group_concat(f.value,' ') FROM json_each(json_extract(restaurant_search.content,'$.parts')) p,
