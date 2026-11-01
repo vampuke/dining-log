@@ -53,10 +53,10 @@ describe('P3 literal search filters and keyset pagination', () => {
     expect(new Set(seen.map(r => r.id)).size).toBe(5); expect(seen.map(r => r.rating)).toEqual([4.3, 4.3, 2, null, null]);
     const res = await request('/restaurants?limit=1', t); const raw = await res.json() as { meta: { next_cursor: string } }; const valid = raw.meta.next_cursor;
     const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(valid))) as Record<string, unknown>;
-    for (const modified of [{ ...payload, id: "' OR 1=1 --" }, { ...payload, key: 0 }, { ...payload, extra: true }, { ...payload, signature: '0'.repeat(64) }, { ...payload, sort: 'rating_desc' }]) {
+    for (const modified of [{ ...payload, id: "' OR 1=1 --" }, { ...payload, key: 0 }, { ...payload, extra: true }, { ...payload, signature: '0'.repeat(64) }, { ...payload, sort: 'rating_desc' }, { ...payload, id: String(payload.id).toUpperCase() }]) {
       const encoded = base64UrlEncode(new TextEncoder().encode(JSON.stringify(modified))); await error(await request(`/restaurants?limit=1&cursor=${encoded}`, t), 400, 'INVALID_CURSOR');
     }
-    for (const value of ['not-a-cursor', '%', 'A'.repeat(2049)]) await error(await request(`/restaurants?cursor=${encodeURIComponent(value)}`, t), 400, 'INVALID_CURSOR');
+    for (const value of ['', 'not-a-cursor', '%', 'A'.repeat(2049)]) await error(await request(`/restaurants?cursor=${encodeURIComponent(value)}`, t), 400, 'INVALID_CURSOR');
     await error(await request(`/restaurants?cursor=${valid}&category=cafe`, t), 400, 'INVALID_CURSOR'); await error(await request(`/restaurants?cursor=${valid}`, b.access_token), 400, 'INVALID_CURSOR');
     const r = ids[0]; for (let i = 0; i < 3; i++) await data(await request(`/restaurants/${r}/visits`, t, { id: crypto.randomUUID(), dining_date: '2024-02-29' }), 201);
     const first = await request('/visits?limit=2', t); const page = await first.json() as { data: Page<Entity>; meta: { next_cursor: string } }; const next = await data<Page<Entity>>(await request(`/visits?limit=2&cursor=${page.meta.next_cursor}`, t)); expect(new Set([...page.data.items, ...next.items].map(v => v.id)).size).toBe(3);
