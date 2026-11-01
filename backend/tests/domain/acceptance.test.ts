@@ -127,3 +127,23 @@ describe('P3 acceptance CRUD ownership and history', () => {
     await error(await request('/restaurants', t, input, 'POST', key), 409, 'IDEMPOTENCY_CONFLICT');
   });
 });
+describe('P3 child mutation endpoints and source validation', () => {
+  it('visit update no-op delete and restore keep one revision per save and scoped history', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t), v = await makeChild(t, r.entity.id, 'visits', { note: 'Original', meal: 'lunch' });
+    const changed = await data<Mutation>(await request(`/visits/${v.entity.id}`, t, { expected_version: 1, dining_date: '2024-03-01', meal: 'dinner', note: null }, 'PATCH'));
+    expect(changed.entity.version).toBe(2); expect(changed.revisions).toHaveLength(1);
+    const rev = await data<Revision>(await request(`/revisions/${changed.revisions[0].id}`, t)); expect(rev.diff).toEqual([{ field: 'dining_date', before: '2024-02-29', after: '2024-03-01' }, { field: 'meal', before: 'lunch', after: 'dinner' }, { field: 'note', before: 'Original', after: null }]);
+    const noop = await data<Mutation>(await request(`/visits/${v.entity.id}`, t, { expected_version: 2, note: '  ' }, 'PATCH')); expect(noop).toMatchObject({ changed: false, revisions: [], entity: { version: 2, updated_at: changed.entity.updated_at } });
+    await data(await request(`/visits/${v.entity.id}`, t, { expected_version: 2 }, 'DELETE')); await error(await request(`/visits/${v.entity.id}`, t), 404, 'NOT_FOUND');
+    expect((await data<Page<Entity>>(await request(`/restaurants/${r.entity.id}/visits?deleted=only`, t))).items.map(x => x.id)).toEqual([v.entity.id]);
+    expect((await data<Mutation>(await request(`/visits/${v.entity.id}/restore`, t, { expected_version: 3 }))).entity.version).toBe(4);
+    const history = await data<Page<Revision>>(await request(`/visits/${v.entity.id}/revisions`, t)); expect(history.items).toHaveLength(4);
+    const reapplied = await data<{ entity: Entity; revision: Revision }>(await request('/revisions', t, { source_revision_id: changed.revisions[0].id, side: 'before', fields: ['note'], expected_version: 4 }), 201); expect(reapplied.entity.note).toBe('Original'); expect(reapplied.revision.diff).toEqual([{ field: 'note', before: null, after: 'Original' }]);
+  });
+  it('dish reapplication validates integer historical tenths and preserves current text', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t), d = await makeChild(t, r.entity.id, 'dishes', { rating: 4, review: 'Original' });
+    const updated = await data<Mutation>(await request(`/dishes/${d.entity.id}`, t, { expected_version: 1, rating: 4.3, review: 'Keep' }, 'PATCH'));
+    const history = await data<Page<Revision>>(await request(`/dishes/${d.entity.id}/revisions`, t)); expect(history.items).toHaveLength(2);
+    const applied = await data<{ entity: Entity; revision: Revision }>(await request('/revisions', t, { source_revision_id: updated.revisions[0].id, side: 'before', fields: ['rating_tenths'], expected_version: 2 }), 201); expect(applied.entity).toMatchObject({ rating: 4, review: 'Keep' }); expect(applied.revision.diff).toEqual([{ field: 'rating_tenths', before: 43, after: 40 }]);
+  });
+});
