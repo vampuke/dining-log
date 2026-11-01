@@ -8,7 +8,7 @@ export default defineWorkersConfig(async () => ({
     hookTimeout: 60_000,
     poolOptions: { workers: {
       wrangler: { configPath: './wrangler.toml' },
-      miniflare: { compatibilityDate: '2025-06-20', bindings: {
+      miniflare: { compatibilityDate: '2025-06-17', bindings: {
         TEST_MIGRATIONS: await readD1Migrations('./migrations'),
       } },
     } },

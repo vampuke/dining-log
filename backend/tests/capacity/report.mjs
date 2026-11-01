@@ -39,7 +39,7 @@ const metadata = {
   runnerImage: process.env.ImageVersion ?? null,
   vitest: version('vitest'), workersPool: version('@cloudflare/vitest-pool-workers'),
   miniflare: version('miniflare'), workerd: version('workerd'),
-  compatibilityDate: '2025-06-20',
+  compatibilityDate: '2025-06-17',
   testSha256: fileHash('tests/capacity/capacity_test.ts'),
   migrationSha256: fileHash('migrations/0001_initial.sql'),
 };
@@ -88,6 +88,7 @@ for (const result of scenarios) {
     `\`SELECT SUM(pgsize) FROM dbstat\`：${result.storage.dbstatBytes === null ? `不可用（${result.storage.dbstatUnavailable.replace(/\s+/g, ' ')}）。采用逐表 TEXT/BLOB 的 \`SUM(length(CAST(column AS BLOB)))\`。` : mib(result.storage.dbstatBytes)}。`,
     `逐表 UTF-8 文本有效载荷合计：${mib(result.storage.textUtf8Bytes)}（不含数值、行头、索引与页空隙，不能直接当完整数据库存储）。`,
     `D1 \`meta.size_after\` 完整已分配数据库体积：${result.storage.allocatedBytes === null ? '该模拟器未提供，完整存储边界尚未验证' : mib(result.storage.allocatedBytes)}（含索引 / 元数据 / 空闲页，非远端账单）。`, '',
+    `受 D1 保护、不直接读取的内部表：${result.storage.protectedTables.join(', ') || '无'}；其页仍计入完整体积。全部 14 张应用表逐表统计如下。`, '',
     '| 表 | 行数 | TEXT/BLOB UTF-8 bytes |', '| --- | ---: | ---: | ---: |');
   for (const table of result.storage.tableStats) lines.push(`| ${table.table} | ${table.rows} | ${table.textUtf8Bytes} |`);
   if (result.storage.pagesByObject.length) {

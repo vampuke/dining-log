@@ -221,9 +221,13 @@ async function tableCounts() {
 
 async function storage() {
   const tables = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all<{ name: string }>();
+  // D1 exposes internal names in sqlite_master but forbids reading _cf_* metadata.
+  // Their pages still contribute to meta.size_after; all application tables remain measured.
+  const protectedTables = tables.results.filter(({ name }) => name.startsWith('_cf_')).map(({ name }) => name);
   const tableStats: { table: string; rows: number; textUtf8Bytes: number }[] = [];
   let allocatedBytes: number | null = null;
   for (const { name } of tables.results) {
+    if (protectedTables.includes(name)) continue;
     if (!/^[a-zA-Z0-9_]+$/.test(name)) throw new Error(`Unexpected table name: ${name}`);
     const columns = await env.DB.prepare(`PRAGMA table_info("${name}")`).all<{ name: string; type: string }>();
     const textColumns = columns.results.filter((column) => /TEXT|BLOB/i.test(column.type));
@@ -243,7 +247,7 @@ async function storage() {
     if (!/no such table|not authorized|not supported|SQLITE_AUTH|access denied/i.test(dbstatUnavailable)) throw error;
   }
   return { method: dbstatBytes !== null ? 'dbstat' : 'length(CAST(TEXT/BLOB AS BLOB))',
-    dbstatBytes, dbstatUnavailable, allocatedBytes, pagesByObject, tableStats,
+    dbstatBytes, dbstatUnavailable, allocatedBytes, pagesByObject, tableStats, protectedTables,
     textUtf8Bytes: tableStats.reduce((sum, table) => sum + table.textUtf8Bytes, 0) };
 }
 

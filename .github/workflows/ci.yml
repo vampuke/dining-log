@@ -32,6 +32,7 @@ jobs:
         timeout-minutes: 15
         continue-on-error: false
         run: |
+          set -euo pipefail
           mkdir -p tests/capacity/output
           npm run test:capacity 2>&1 | tee tests/capacity/output/capacity.log
       - name: Render measured capacity report
