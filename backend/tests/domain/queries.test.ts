@@ -71,3 +71,11 @@ describe('P3 literal search filters and keyset pagination', () => {
     for (const path of ['/restaurants?unrated=true&min_rating=1', '/restaurants?min_rating=5&max_rating=1', '/restaurants?deleted=only&visited=true', '/visits?from=2026-01-01&to=2025-01-01', '/revisions?entity_id='+r.entity.id, '/restaurants?limit=0', '/restaurants?limit=51', '/restaurants?limit=1&limit=2', '/search', '/search?q=x&groups=dishes', '/search?q=x&limit=21']) await error(await request(path, t), 400, 'VALIDATION_ERROR');
   });
 });
+describe('P3 per-kind IDs and bounded query output', () => {
+  it('restaurant and dish may share a UUID without overwriting search fragments', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t, { name: 'restaurantnamespace' });
+    await data(await request(`/restaurants/${r.entity.id}/dishes`, t, { id: r.entity.id, name: 'dishnamespace' }), 201);
+    expect((await search(t, 'restaurantnamespace dishnamespace')).restaurants.map(x => x.restaurant.id)).toEqual([r.entity.id]);
+    expect((await data<Page<Entity>>(await request(`/restaurants/${r.entity.id}/dishes?q=dishnamespace`, t))).items.map(x => x.id)).toEqual([r.entity.id]);
+  });
+});

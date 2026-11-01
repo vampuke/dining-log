@@ -95,3 +95,11 @@ describe('P3 forced interleavings preserve atomicity and error attribution', () 
     expect(await counts()).toMatchObject({ revisions: 2, change_sets: 2, mutation_guards: 0 });
   });
 });
+describe('P3 creation operation identity', () => {
+  it('restaurant and first visit sharing a UUID have independent changes guards and revisions', async () => {
+    const a = await account(), id = crypto.randomUUID();
+    const result = await data<Mutation>(await request('/restaurants', a.access_token, restaurantInput({ id, first_visit: { id, dining_date: '2024-02-29' } })), 201);
+    expect(result.revisions).toHaveLength(2); expect(result.first_visit!.id).toBe(id);
+    expect(await counts()).toMatchObject({ restaurants: 1, visits: 1, change_sets: 1, revisions: 2, mutation_guards: 0 });
+  });
+});
