@@ -25,6 +25,9 @@ import javax.crypto.KeyGenerator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
+import okhttp3.MediaType.Companion.toMediaType
+import retrofit2.Retrofit
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -60,13 +63,18 @@ class P6SmallScreenEndToEndTest {
         val keys = object : KeyManager { override fun existingKey() = key; override fun encryptionKey() = key }
         val store = SecureTokenStore(bytes, AesGcmTokenCipher(keys, context.packageName))
         val account = AccountSession(store, owner)
-        val gateway = RetrofitAuthGateway.create(baseUrl)
-        val refresh = RefreshCoordinator(store, account, gateway)
         val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false).addInterceptor { chain ->
                 // Local Wrangler closes idle keep-alive sockets; writes still have no retry.
-                chain.proceed(chain.request().newBuilder().header("Connection", "close").build())
+                // Give this synthetic client its own documentation IP in local CI,
+                // preserving the real one-registration-per-minute limit for P4.
+                chain.proceed(chain.request().newBuilder().header("Connection", "close")
+                    .header("CF-Connecting-IP", "192.0.2.6").build())
             }.build()
+        val gateway = RetrofitAuthGateway(Retrofit.Builder().baseUrl(baseUrl).client(client)
+            .addConverterFactory(ProductJson.asConverterFactory("application/json".toMediaType()))
+            .build().create(AuthApi::class.java))
+        val refresh = RefreshCoordinator(store, account, gateway)
         val remote = ProductRemote.create(baseUrl, refresh, client)
         val repository = ProductRepositoryImpl(db, owner, account, remote, MutableStateFlow(true))
         try {

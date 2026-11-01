@@ -1,5 +1,6 @@
 <resources>
     <style name="Theme.DiningLog" parent="Theme.DiningLog.Base">
+        <item name="android:windowLightNavigationBar">@bool/quiet_grid_light_bars</item>
         <item name="android:windowSplashScreenBackground">@color/quiet_grid_background</item>
         <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@color/launcher_background</item>
