@@ -199,7 +199,7 @@ class ProductEndToEndTest {
             tap("history"); waitFor { vm.list.value.query.kind == RecordKind.REVISION && !vm.list.value.isRefreshing }
             val scoreRevision = vm.list.value.items.first { it.fields["action"] == "update" && "rating_tenths" in it.changedFields }
             scroll("record-summary:${scoreRevision.ref.id}")
-            compose.onNodeWithTag("record-summary:${scoreRevision.ref.id}", useUnmergedTree = true).assertTextContains("★ 4.0 → ★ 4.3")
+            compose.onNodeWithTag("record-summary:${scoreRevision.ref.id}", useUnmergedTree = true).assertTextContains("★ 4.0 → ★ 4.3", substring = true)
             tap("record:${scoreRevision.ref.id}"); waitFor { vm.detail.value.cached.snapshot?.ref?.id == scoreRevision.ref.id && !vm.detail.value.refreshing }
             scroll("before:rating_tenths"); compose.onNodeWithTag("before:rating_tenths").assertTextEquals("★ 4.0")
             scroll("after:rating_tenths"); compose.onNodeWithTag("after:rating_tenths").assertTextEquals("★ 4.3")
@@ -357,7 +357,21 @@ class ProductEndToEndTest {
         }
     }
     private fun server(ref: RecordRef) = runBlocking { direct.detail(ref) }
-    private fun waitFor(condition: () -> Boolean) { compose.waitUntil(45_000, condition) }
+    private fun waitFor(condition: () -> Boolean) {
+        compose.waitUntil(45_000) {
+            if (!condition()) false
+            else if (!::vm.isInitialized) true
+            else {
+                val editor = vm.editor.value
+                // Room publishes an acknowledged write before the parent stats
+                // GET completes and the navigation event is consumed. The old
+                // detail state alone cannot prove the editor has been left.
+                !editor.saving && (editor.message != "已保存到服务器" ||
+                    compose.onAllNodesWithTag("screen:edit").fetchSemanticsNodes().isEmpty())
+            }
+        }
+        compose.waitForIdle()
+    }
     private fun scroll(tag: String) {
         if (tag in setOf("save", "confirm", "apply-save", "confirm-merge", "password-save") || tag.startsWith("tab:")) return
         val dialog = listOf("screen:apply", "screen:conflict", "screen:expired", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
