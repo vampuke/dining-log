@@ -185,9 +185,13 @@ describe('versioned routing', () => {
     const promotedAccess = ['/api/v1/auth/sessions', '/api/v1/auth/sessions/00000000-0000-4000-8000-000000000001'];
     const status = promotedWrites.includes(path) ? 415 : promotedAccess.includes(path) ? 401 : 501;
     expect(response.status).toBe(status);
-    const body = await response.json() as { error: { code: string; message: string } };
-    expect(body.error.code).toBe(status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : status === 401 ? 'SESSION_REVOKED' : 'NOT_IMPLEMENTED');
-    expect(body.error.message.length).toBeGreaterThan(0);
+    const body = await response.json();
+    if (status === 501) expect(body).toEqual({ status: 'not_implemented', api_version: 'v1' });
+    else {
+      const failure = body as { error: { code: string; message: string } };
+      expect(failure.error.code).toBe(status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : 'SESSION_REVOKED');
+      expect(failure.error.message.length).toBeGreaterThan(0);
+    }
     expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
   it('does not expose a global dishes list or an unversioned API', async () => {

@@ -7,7 +7,8 @@ import { base64UrlEncode } from '../../src/auth/encoding';
 import { failureKey } from '../../src/auth/rate-limit';
 import * as limits from '../../src/auth/rate-limit';
 import * as passwords from '../../src/auth/password';
-import { digest, privateHash } from '../../src/auth/config';
+import * as jwt from '../../src/auth/jwt';
+import { digest, privateHash, passwordConfig, jwtConfig } from '../../src/auth/config';
 import { normalizeRecoveryCode } from '../../src/auth/recovery';
 import { lookupRefresh } from '../../src/auth/session';
 
@@ -217,4 +218,103 @@ describe('P2 authentication against Workers D1', () => {
     expect((await app.request('/api/v1/auth/login', { method: 'POST', body: '{}' }, bindings)).status).toBe(415);
     const response = await request('/auth/login', registerPayload()); expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
+  it('password rows contain salted PBKDF2 10000 plus pepper, never plaintext', async () => {
+    await register(); await register('bob');
+    const rows = (await env.DB.prepare('SELECT * FROM users').all<import('../../src/auth/session').UserRow>()).results;
+    expect(rows[0].password_hash).not.toBe(password); expect(rows[0].password_hash).not.toBe(rows[1].password_hash);
+    expect(rows[0].password_salt).not.toBe(rows[1].password_salt);
+    for (const row of rows) {
+      expect(row.password_iterations).toBe(10000); expect(row.pepper_version).toBe('v1');
+      expect(await passwords.verifyPassword(password, row, passwordConfig(bindings).peppers)).toBe(true);
+      expect(await passwords.verifyPassword(newPassword, row, passwordConfig(bindings).peppers)).toBe(false);
+    }
+  });
+  it('concurrent login/recovery idempotency commits one session and conflicts on changed payload', async () => {
+    const auth = await register(); const headers = { 'Idempotency-Key': crypto.randomUUID() };
+    const logins = await Promise.all([request('/auth/login', registerPayload(), headers), request('/auth/login', registerPayload(), headers)]);
+    expect(logins.map(r => r.status)).toEqual([200, 200]); expect(await logins[0].text()).toBe(await logins[1].text());
+    expect(await env.DB.prepare('SELECT count(*) n FROM sessions').first('n')).toBe(2);
+    expect((await request('/auth/login', { ...registerPayload(), device_name: 'Another' }, headers)).status).toBe(409);
+    const recoverHeaders = { 'Idempotency-Key': crypto.randomUUID() };
+    const payload = { username: 'alice', recovery_code: auth.recovery_codes![0], new_password: newPassword, device_name: 'Recovered' };
+    const first = await request('/auth/recover', payload, recoverHeaders); expect(first.status).toBe(200); const text = await first.text();
+    const retry = await request('/auth/recover', payload, recoverHeaders); expect(retry.status).toBe(200); expect(await retry.text()).toBe(text);
+    expect((await request('/auth/recover', { ...payload, recovery_code: auth.recovery_codes![1] }, recoverHeaders)).status).toBe(409);
+    expect(await env.DB.prepare('SELECT count(*) n FROM sessions WHERE revoked_at IS NULL').first('n')).toBe(1);
+  });
+  it('DELETE own session and logout idempotent retries return empty 204 after revocation', async () => {
+    const auth = await register(), headers = { ...bearer(auth.access_token), 'Idempotency-Key': crypto.randomUUID() };
+    for (let i = 0; i < 2; i++) { const response = await request(`/auth/sessions/${auth.session_id}`, undefined, headers, 'DELETE'); expect(response.status).toBe(204); expect(await response.text()).toBe(''); }
+    const logoutHeaders = { 'Idempotency-Key': crypto.randomUUID() };
+    for (let i = 0; i < 2; i++) { const response = await request('/auth/logout', { refresh_token: auth.refresh_token }, logoutHeaders); expect(response.status).toBe(204); expect(await response.text()).toBe(''); }
+  });
+  it('JWT owner/version and refresh idle/absolute expiration are enforced', async () => {
+    const alice = await register(), bob = await register('bob');
+    const forgedOwner = await jwt.signAccessToken({ sub: bob.user.id, sid: alice.session_id, av: 1 }, jwtConfig(bindings));
+    expect((await request('/auth/session', undefined, bearer(forgedOwner))).status).toBe(401);
+    const token = (await lookupRefresh(env.DB, alice.refresh_token))!;
+    await env.DB.prepare('UPDATE refresh_tokens SET created_at=?,expires_at=? WHERE id=?').bind(1, Math.floor(Date.now() / 1000) - 1, token.id).run();
+    expect((await refresh(alice.refresh_token)).status).toBe(401);
+    await env.DB.prepare('UPDATE sessions SET created_at=1,last_refreshed_at=1,expires_at=? WHERE id=?').bind(Math.floor(Date.now() / 1000) - 1, bob.session_id).run();
+    await assertInvalidated(bob);
+  });
+  it('refresh racing with logout cannot consume token or commit a child', async () => {
+    const auth = await register(); const original = jwt.signAccessToken;
+    let release!: () => void, started!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; }), ready = new Promise<void>(resolve => { started = resolve; });
+    vi.spyOn(jwt, 'signAccessToken').mockImplementationOnce(async (...args) => { const token = await original(...args); started(); await gate; return token; });
+    const refreshing = refresh(auth.refresh_token); await ready;
+    expect((await request('/auth/logout', { refresh_token: auth.refresh_token })).status).toBe(204);
+    release(); expect((await refreshing).status).toBe(401);
+    expect(await env.DB.prepare('SELECT count(*) n FROM refresh_tokens').first('n')).toBe(1);
+    expect((await lookupRefresh(env.DB, auth.refresh_token))!.consumed_at).toBeNull();
+    expect(await env.DB.prepare('SELECT count(*) n FROM refresh_rotation_results').first('n')).toBe(0);
+  });
+  it('IP hour/minute, registration day/hour and recovery hour limits enforce exact configured budgets', async () => {
+    const now = Math.floor(Date.now() / 1000), ip = '203.0.113.10';
+    for (const [prefix, scope, duration, attempts] of [
+      ['login_ip', 'login_ip', 60, 10], ['login_ip', 'login_ip', 3600, 30],
+      ['register_ip', 'register_ip', 3600, 3], ['register_ip', 'register_ip', 86400, 5],
+      ['recovery_ip', 'recovery_ip', 3600, 10], ['recovery_account', 'recovery_account', 3600, 3],
+    ] as const) {
+      await env.DB.prepare('DELETE FROM auth_rate_limits').run();
+      const start = Math.floor(now / duration) * duration;
+      const hash = await privateHash(bindings, `${prefix}:${duration}:${scope === 'recovery_account' ? 'alice' : ip}`);
+      await env.DB.prepare('INSERT INTO auth_rate_limits VALUES (?,?,?, ?,?)').bind(scope, hash, start, attempts, start + duration).run();
+      const spy = vi.spyOn(passwords, 'verifyPassword');
+      const response = scope.startsWith('login') ? await request('/auth/login', registerPayload(), { 'CF-Connecting-IP': ip })
+        : scope.startsWith('register') ? await request('/auth/register', registerPayload(), { 'CF-Connecting-IP': ip })
+        : await request('/auth/recover', { username: 'alice', recovery_code: 'invalid', new_password: newPassword, device_name: 'Recovery' }, { 'CF-Connecting-IP': ip });
+      expect(response.status).toBe(429); expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0); expect(spy).not.toHaveBeenCalled(); spy.mockRestore();
+    }
+  });
+  it('fifth failure racing with a verified login prevents session creation', async () => {
+    await register(); const key = await failureKey(bindings, 'alice');
+    await env.DB.prepare("INSERT INTO auth_rate_limits VALUES ('login_account',?,0,4,?)").bind(key, Math.floor(Date.now() / 1000) + 3600).run();
+    const original = passwords.verifyPassword; let release!: () => void, started!: () => void;
+    const gate = new Promise<void>(resolve => { release = resolve; }), ready = new Promise<void>(resolve => { started = resolve; });
+    vi.spyOn(passwords, 'verifyPassword').mockImplementationOnce(async (...args) => { const result = await original(...args); started(); await gate; return result; });
+    const login = request('/auth/login', registerPayload()); await ready;
+    expect((await request('/auth/login', { ...registerPayload(), password: 'wrong password' })).status).toBe(401);
+    release(); expect((await login).status).toBe(429);
+    expect(await env.DB.prepare('SELECT count(*) n FROM sessions').first('n')).toBe(1);
+  });
+  it('revoked sessions and expired auth idempotency windows cannot reveal cached credentials', async () => {
+    const headers = { 'Idempotency-Key': crypto.randomUUID() }, first = await request('/auth/register', registerPayload(), headers);
+    const auth = (await first.json() as { data: AuthResult }).data;
+    await request('/auth/logout', { refresh_token: auth.refresh_token });
+    expect((await request('/auth/register', registerPayload(), headers)).status).toBe(401);
+    await env.DB.prepare('UPDATE idempotency_keys SET created_at=1,expires_at=2').run();
+    expect((await request('/auth/register', registerPayload(), headers)).status).toBe(409);
+  });
+  it('successful login upgrades an old pepper with hash CAS in the session batch', async () => {
+    await register(); const options = passwordConfig(bindings);
+    const old = await passwords.hashPassword(password, { ...options, pepperVersion: 'old' });
+    await env.DB.prepare('UPDATE users SET password_hash=?,password_salt=?,pepper_version=?').bind(old.password_hash, old.password_salt, 'old').run();
+    expect((await request('/auth/login', registerPayload())).status).toBe(200);
+    expect(await env.DB.prepare('SELECT pepper_version FROM users').first('pepper_version')).toBe('v1');
+    expect(await env.DB.prepare('SELECT password_hash FROM users').first('password_hash')).not.toBe(old.password_hash);
+    expect(await env.DB.prepare('SELECT count(*) n FROM mutation_guards').first('n')).toBe(0);
+  });
+
 });
