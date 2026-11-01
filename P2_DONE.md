@@ -17,9 +17,12 @@
 
 ## 验证状态
 
-已验证：GitHub Actions [run 41278723068](https://github.com/vampuke/dining-log/actions/runs/41278723068)，commit `1dfb58d`，backend、android、API 26/35 instrumentation 全绿；当时 28 个 auth 用例全部通过，Android 构建/JVM/lint 与两组 7 个模拟器用例通过。
+已验证：GitHub Actions [run 41279089880](https://github.com/vampuke/dining-log/actions/runs/41279089880)，代码 commit `8f34f61`，backend、android、API 26/35 instrumentation 四个任务全部成功。
 
-新增第 29 个 janitor 用例、同秒冻结时钟断言及最后收尾改动：待最终 CI 复验。PR [#1](https://github.com/vampuke/dining-log/pull/1) 合并状态待最终 CI 确认后更新。不能把已写用例当作已验证。
+- 后端 `tsc`/ESLint、103 个测试（含下列 29 个 auth 用例）全部通过；SQLite 迁移检查与原有两组容量场景通过，未降低任何阈值。
+- Android debug APK、`:core:test`（下列 12 个 auth JVM 用例）、app unit test task 和 lint 通过。JVM 测试报告位于 `android-build` artifact。
+- API 26 与 API 35 模拟器分别执行下列 7 个 instrumentation 用例；Keystore 往返/损坏/缺 key，以及浅深主题、滚动大字体、持续 429 提示与密码显隐通过。报告位于 `android-auth-api-26`/`android-auth-api-35` artifacts。
+- 交付 PR：[#1](https://github.com/vampuke/dining-log/pull/1)。合并 commit 和合并后 master CI 可从该 PR 与 [Actions](https://github.com/vampuke/dining-log/actions/workflows/ci.yml) 复核。
 
 全部构建/测试仅在 GitHub Actions 执行。本机未运行 npm install/npm ci、Gradle、Docker 或 Vitest。未部署 Cloudflare、未建真实 D1、未写真实 secret。`design/PLAN.md`、`backend/migrations/0001_initial.sql`、P1 `password.ts`/`jwt.ts` 未修改。
 
@@ -27,14 +30,14 @@
 
 | 场景 | 文件与用例名 | 验证边界 |
 | --- | --- | --- |
-| 1 同名注册/规范化 | `backend/tests/auth/auth.test.ts`：`S1 concurrent NFKC/case registrations create exactly one account`；`S1 username validation and strong Unicode password policy are shared` | GitHub Actions Workers 本地 D1 pool；等待最终 CI |
+| 1 同名注册/规范化 | `backend/tests/auth/auth.test.ts`：`S1 concurrent NFKC/case registrations create exactly one account`；`S1 username validation and strong Unicode password policy are shared` | 已验证：GitHub Actions Workers 本地 D1 pool |
 | 2 登录稳定错误/限流 | 同上：`S2 success, wrong password and unknown username consume all login windows with identical errors`；`S2 minute limits run before PBKDF2 and carry Retry-After`；`S2 fifth consecutive failure locks known and unknown users for exactly fifteen minutes`；其他 S2 用例与 exact configured budgets 用例 | 断言相同 code/message/field_errors、dummy KDF 被调用、窗口/锁定参数；没有宣称真实边缘时序统计通过 |
 | 3 refresh 轮换/同 ID 重试 | 同上：`S3 same request-id lost-response retry returns byte-identical encrypted rotation result`；`S3 concurrent same request-id rotations create one child and replay the winner` | 包含同 ID 并发、唯一子 token、加密存储断言 |
 | 4 并发 401/跨 ID 重用 | 后端同上：`S4 cross request-id old-token reuse revokes the entire session immediately`；`S4 expired replay window revokes session even with the original request-id`。Android `AuthTest.kt`：`concurrent401OperationsRefreshOnceAndReplayEachRequestOnce`、`concurrentNetworkFailuresAreCoalescedAndKeepEncryptedRetryState` | 客户端单飞在 JVM 测试；后端重用撤销在 Workers/D1 测试 |
 | 5 改密码/恢复即时失效 | 后端同上：`S5 password change invalidates all old access/refresh within the same second and creates current session`；`S5 recovery invalidates every old session/token and stores only recovery hashes`；`S5 password-change racing with slow login cannot create an old-version session` | 同秒 token 与旧会话失效、并发登录 CAS；新会话可用 |
 | 6 一次性恢复码 CAS | 同上：`S6 recovery CAS race commits exactly one new password/session/code set` | 该测试通过 test-only spy 放行 1/min 限流，以真正竞争恢复事务；生产无 bypass。独立测试仍严格验证恢复限流。只有一个消费/新会话/新码集合；全部旧码失效 |
-| 7 A→退出→B 无残留 | `android/core/.../auth/AuthTest.kt`：`switchingAccountsClearsListsDraftsNavigationAndOwnerJobs`、`accountSwitchDuringRefreshCannotPublishPreviousAccount` | 生命周期与内存状态单测；完整业务页面、真机账号切换未验证，见 P2_BLOCKERS |
-| 8 重启/损坏/重装 | 同上：`simulatedProcessRestartRecoversPendingRotationWithoutPersistingAccess`、`damagedCiphertextClearsSessionAndReturnsLogin`、`missingKeyNeverFallsBackToPlaintext`、`expiredPendingRetryRequiresLoginWithoutSendingOldToken`；`android/app/src/androidTest/.../auth/AndroidAuthTest.kt`：`realAndroidKeystoreRoundTripCorruptionAndMissingKeyReturnLogin` | JVM 进程模拟 + API 26/35 模拟器 Keystore 检查；真实杀进程、卸载重装、备份恢复与厂商迁移未验证 |
+| 7 A→退出→B 无残留 | `android/core/.../auth/AuthTest.kt`：`switchingAccountsClearsListsDraftsNavigationAndOwnerJobs`、`accountSwitchDuringRefreshCannotPublishPreviousAccount` | 已验证：生命周期与内存状态单测；未验证：完整业务页面、真机账号切换，见 P2_BLOCKERS |
+| 8 重启/损坏/重装 | 同上：`simulatedProcessRestartRecoversPendingRotationWithoutPersistingAccess`、`damagedCiphertextClearsSessionAndReturnsLogin`、`missingKeyNeverFallsBackToPlaintext`、`expiredPendingRetryRequiresLoginWithoutSendingOldToken`；`android/app/src/androidTest/.../auth/AndroidAuthTest.kt`：`realAndroidKeystoreRoundTripCorruptionAndMissingKeyReturnLogin` | 已验证：JVM 进程模拟 + API 26/35 模拟器 Keystore 检查；未验证：真实杀进程、卸载重装、备份恢复与厂商迁移未验证 |
 
 ## 后端 auth 用例清单
 
