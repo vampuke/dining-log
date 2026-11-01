@@ -7,6 +7,9 @@ export default defineWorkersConfig(async () => ({
     testTimeout: 600_000,
     hookTimeout: 60_000,
     poolOptions: { workers: {
+      // Each scenario runs in its own process via test:capacity. Avoid cloning / rolling
+      // back ~200 MB D1 snapshots in the pool's per-test stacked-storage mechanism.
+      isolatedStorage: false,
       wrangler: { configPath: './wrangler.toml' },
       miniflare: { compatibilityDate: '2025-06-17', bindings: {
         TEST_MIGRATIONS: await readD1Migrations('./migrations'),

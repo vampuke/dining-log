@@ -11,7 +11,7 @@
     "check": "tsc --noEmit && eslint .",
     "test": "node tests/password-vectors.mjs && vitest run",
     "db:verify": "vitest run tests/migrations.test.ts",
-    "test:capacity": "vitest run --config vitest.capacity.config.ts"
+    "test:capacity": "vitest run --config vitest.capacity.config.ts -t p1-4500 && vitest run --config vitest.capacity.config.ts -t plan-6000"
   },
   "dependencies": {
     "@noble/hashes": "1.8.0",

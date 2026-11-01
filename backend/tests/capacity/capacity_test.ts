@@ -182,7 +182,7 @@ async function seed(scenario: typeof SCENARIOS[number]) {
   let rowsRead = 0;
   let statements = 0;
   let batches = 0;
-  const start = performance.now();
+  const start = Date.now();
   const write = async (items: Statement[]) => {
     // Bound memory and batch size, including the long-text history variants.
     for (let offset = 0; offset < items.length; offset += 40) {
@@ -210,7 +210,7 @@ async function seed(scenario: typeof SCENARIOS[number]) {
   }
   return { summaries, metadata: { seed: SEED, seedHex: '0x51a71c', fixedTimeUtc: new Date(BASE_TIME).toISOString(),
     fixtureSha256: Array.from(digest.digest(), (byte) => byte.toString(16).padStart(2, '0')).join(''),
-    rowsWritten, rowsRead, statements, batches, wallMs: performance.now() - start, textCounts } };
+    rowsWritten, rowsRead, statements, batches, wallMs: Date.now() - start, textCounts } };
 }
 
 async function tableCounts() {
@@ -261,9 +261,9 @@ async function measure(query: Query) {
   const samples: { wallMs: number; sqlMs: number; rowsRead: number; rowsWritten: number; returnedRows: number[] }[] = [];
   for (let repetition = 0; repetition < REPETITIONS; repetition++) {
     const prepared = query.statements.map(bind);
-    const start = performance.now();
+    const start = Date.now();
     const results = prepared.length === 1 ? [await prepared[0].all<{ id: string }>()] : await env.DB.batch<{ id: string }>(prepared);
-    const wallMs = performance.now() - start;
+    const wallMs = Date.now() - start;
     for (let index = 0; index < results.length; index++) {
       expect(results[index].success).toBe(true);
       expect(results[index].results.map((row) => row.id).sort()).toEqual([...query.expectedIds[index]].sort());
@@ -313,9 +313,10 @@ async function completeWrite() {
   const data = cluster(500, 5, 2, 1, mulberry32(SEED ^ 0xabc123), true);
   const before = await tableCounts();
   const prepared = data.statements.map(bind);
-  const start = performance.now();
+  const start = Date.now();
   const results = await env.DB.batch(prepared);
-  const wallMs = performance.now() - start;
+  const wallMs = Date.now() - start;
+  expect(wallMs, 'A complete batch must have a measurable wall duration').toBeGreaterThan(0);
   const after = await tableCounts();
   for (const result of results) expect(result.success).toBe(true);
   const expectedChanges: Record<string, number> = { restaurants: 1, dishes: 5, visits: 3, revisions: 10, change_sets: 1, restaurant_search: 1 };
@@ -336,7 +337,11 @@ beforeAll(async () => { await applyD1Migrations(env.DB, env.TEST_MIGRATIONS); })
 
 describe('deterministic capacity in the local Cloudflare Workers D1 pool (GitHub Actions only)', () => {
   it.each(SCENARIOS)('$name: exact corpus, measured SQL, atomic complete write, p95 <= 100ms', async (scenario) => {
+    // The npm script selects one scenario per fresh Workers-pool process.
+    // Fail rather than accidentally benchmarking a reused account / database.
+    for (const [table, count] of Object.entries(await tableCounts())) expect(count, `${table} starts empty`).toBe(0);
     const seeded = await seed(scenario);
+    expect(seeded.metadata.wallMs, 'The large seed must have a measurable wall duration').toBeGreaterThan(0);
     const counts = await tableCounts();
     expect(counts.users).toBe(1);
     expect(counts.restaurants).toBe(scenario.restaurants);
@@ -379,7 +384,8 @@ describe('deterministic capacity in the local Cloudflare Workers D1 pool (GitHub
     const overLimit = measuredQueries.filter((query) => query.wallMs.p95 > P95_LIMIT_MS || query.sqlMs.p95 > P95_LIMIT_MS).map((query) => query.id);
     // Emit raw samples before the performance assertions, including evidence on failures.
     console.log('CAPACITY_RESULT ' + JSON.stringify({ schemaVersion: 1, scenario, runtime,
-      repetitions: REPETITIONS, p95LimitMs: P95_LIMIT_MS, seed: seeded.metadata, rowCounts: counts,
+      repetitions: REPETITIONS, p95LimitMs: P95_LIMIT_MS, wallClock: 'Date.now (1 ms resolution; Workers performance.now is not used)',
+      seed: seeded.metadata, rowCounts: counts,
       restaurantRevisionRange: revisionRange, storage: measuredStorage, queries: measuredQueries, write,
       integrity: { foreignKeyViolations: 0, quickCheck: 'ok' }, overLimit }));
     for (const query of measuredQueries) {
