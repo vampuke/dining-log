@@ -218,4 +218,18 @@ class ProductVisualTest {
         compose.onNodeWithTag("confirm-merge").assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, confirmations) }
     }
+    @Test fun selectingDefaultRatingSetsAnUnratedRecordAndEveryStepIsOneTenth() {
+        var value by mutableStateOf<String?>(null)
+        compose.setContent { QuietGridTheme(true) { RatingEditor(value, { value = it }, true) } }
+        compose.onNodeWithText("未评分").assertExists()
+        compose.onNodeWithTag("rating").performSemanticsAction(SemanticsActions.SetProgress) { it(4.0f) }
+        compose.onNodeWithText("★ 4.0").assertExists()
+        compose.onNodeWithTag("rating:plus").performClick()
+        compose.onNodeWithText("★ 4.1").assertExists()
+        compose.onNodeWithTag("rating:minus").performClick()
+        compose.onNodeWithText("★ 4.0").assertExists()
+        compose.onNodeWithTag("rating").performSemanticsAction(SemanticsActions.SetProgress) { it(4.3f) }
+        compose.onNodeWithText("★ 4.3").assertExists()
+        compose.runOnIdle { assertEquals("43", value) }
+    }
 }

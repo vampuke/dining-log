@@ -246,6 +246,18 @@ class ProductEndToEndTest {
             waitFor { account.session.value != null && ::vm.isInitialized && vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
             compose.onNodeWithTag("screen:restaurant:list").assertExists()
             compose.onNodeWithTag("screen:edit").assertDoesNotExist(); compose.onNodeWithTag("screen:history").assertDoesNotExist()
+        } catch (failure: Throwable) {
+            val folder = context.getExternalFilesDir("p4-screenshots")!!
+            folder.mkdirs()
+            val screenshot = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+            if (screenshot != null) File(folder, "e2e-failure-api${android.os.Build.VERSION.SDK_INT}.png").outputStream().use {
+                screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+            }
+            if (::vm.isInitialized) println("P4 E2E diagnostic: query=${vm.list.value.query}, listError=${vm.list.value.error}, " +
+                "detail=${vm.detail.value.cached.snapshot?.ref}, detailError=${vm.detail.value.error}, " +
+                "draft=${vm.editor.value.draft?.ref}, draftStatus=${vm.editor.value.draft?.status}, " +
+                "saving=${vm.editor.value.saving}, message=${vm.editor.value.message}, fields=${vm.editor.value.errors}")
+            throw failure
         } finally {
             online.value = true
             runBlocking { account.clear() }

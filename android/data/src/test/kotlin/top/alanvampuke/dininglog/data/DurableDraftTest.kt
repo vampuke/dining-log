@@ -1,6 +1,7 @@
 package top.alanvampuke.dininglog.data
 
 import android.content.Context
+import java.io.IOException
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import java.util.concurrent.TimeUnit
@@ -8,6 +9,9 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.*
 import kotlinx.serialization.encodeToString
+import okhttp3.Call
+import okhttp3.EventListener
+import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -43,9 +47,14 @@ class DurableDraftTest {
             override suspend fun logout(token: String) { }
         }
         val server = MockWebServer().apply { start() }
+        val failures = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(false).eventListener(object : EventListener() {
+                override fun callFailed(call: Call, ioe: IOException) { failures += "${ioe.javaClass.simpleName}: ${ioe.message}" }
+            }).build()
         val online = MutableStateFlow(true)
         var now = 1000L
-        val repository = ProductRepositoryImpl(db, owner, account, ProductRemote.create(server.url("/api/v1/").toString(), RefreshCoordinator(store, account, gateway)), online) { now }
+        val repository = ProductRepositoryImpl(db, owner, account, ProductRemote.create(server.url("/api/v1/").toString(), RefreshCoordinator(store, account, gateway), client), online) { now }
         init { runBlocking { account.install(AuthSession("A", "alice", "S", "access-A", "refresh-A")) } }
         override fun close() { runBlocking { account.clear() }; db.close(); server.shutdown() }
     }
@@ -73,7 +82,8 @@ class DurableDraftTest {
             val restored = f.repository.findDraft("A", draft().id)!!
             assertEquals(failed.draft.original, restored.original)
             f.server.enqueue(mutation()); f.server.enqueue(detail())
-            assertIs<SaveOutcome.Saved>(f.repository.submit(restored))
+            val retryOutcome = f.repository.submit(restored)
+            assertIs<SaveOutcome.Saved>(retryOutcome, "Manual retry outcome=$retryOutcome, transport failures=${f.failures}, requests=${f.server.requestCount}")
             val retry = f.server.takeRequest(5, TimeUnit.SECONDS)!!
             assertEquals(first.getHeader("Idempotency-Key"), retry.getHeader("Idempotency-Key"), "Manual retry must keep the original key")
             assertEquals(first.body.readUtf8(), retry.body.readUtf8(), "Manual retry must keep the original payload")

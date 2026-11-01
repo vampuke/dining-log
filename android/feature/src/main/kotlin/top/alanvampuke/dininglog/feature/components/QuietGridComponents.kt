@@ -97,7 +97,15 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
         GridText("评分", style = MaterialTheme.typography.titleMedium)
         Score(value, meter = true)
         Slider(value = (value?.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
-            enabled = enabled, valueRange = 1f..5f, steps = 39, modifier = Modifier.fillMaxWidth().testTag(tag).semantics { contentDescription = "评分，0.1 步进" })
+            enabled = enabled, valueRange = 1f..5f, steps = 39, modifier = Modifier.fillMaxWidth().testTag(tag).semantics {
+                contentDescription = "评分，0.1 步进"
+                // Selecting the displayed default must also turn an unrated
+                // record into an explicitly rated one, including accessibility.
+                if (enabled) setProgress { selected ->
+                    onChange((selected * 10).roundToInt().coerceIn(10, 50).toString())
+                    true
+                }
+            })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = { onChange(((value?.toInt() ?: 40) - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:minus")) { Text("− 0.1") }
             TextButton(onClick = { onChange(((value?.toInt() ?: 40) + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:plus")) { Text("+ 0.1") }
