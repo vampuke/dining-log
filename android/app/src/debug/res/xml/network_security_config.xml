@@ -1,4 +1,10 @@
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
-    <domain-config cleartextTrafficPermitted="true"><domain>10.0.2.2</domain></domain-config>
+    <!-- 仅 debug 构建：允许访问宿主机 localhost（模拟器 10.0.2.2），不包含子域。 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
 </network-security-config>
