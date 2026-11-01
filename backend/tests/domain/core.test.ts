@@ -29,6 +29,21 @@ describe('P3 atomic mutations and server history', () => {
     expect((await counts()).revisions).toBe(before.revisions); expect((await counts()).change_sets).toBe(before.change_sets);
     await error(await request(`/restaurants/${r.entity.id}`, a.access_token, { expected_version: 2, review: 'Line one\n  Line two' }, 'PATCH'), 409, 'VERSION_CONFLICT');
   });
+  it('normalization precedes text length validation within the 64 KiB envelope', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t, { cuisine: '川菜', review: 'Line one\n  Line two', note: null }), before = await counts();
+    const payload = {
+      expected_version: 1,
+      name: ' '.repeat(2000) + r.entity.name + ' '.repeat(2000),
+      cuisine: ' '.repeat(2000) + '川菜' + ' '.repeat(2000),
+      address: ' '.repeat(4000) + r.entity.address + ' '.repeat(4000),
+      review: ' \r\nLine one\r\n  Line two\r\n ',
+      note: ' '.repeat(18000),
+    };
+    expect(new TextEncoder().encode(JSON.stringify(payload)).length).toBeLessThanOrEqual(65536);
+    const result = await data<Mutation>(await request(`/restaurants/${r.entity.id}`, t, payload, 'PATCH'));
+    expect(result).toMatchObject({ changed: false, change_set_id: null, revisions: [], entity: { version: 1, updated_at: r.entity.updated_at, name: r.entity.name, address: r.entity.address, review: 'Line one\n  Line two', note: null } });
+    expect(await counts()).toMatchObject({ revisions: before.revisions, change_sets: before.change_sets, idempotency_keys: before.idempotency_keys! + 1, mutation_guards: 0 });
+  });
   it('S5 same key retries create restaurant first visit and history once', async () => {
     const a = await account(), key = crypto.randomUUID(), input = restaurantInput({ first_visit: { id: crypto.randomUUID(), dining_date: '2024-02-29' } });
     const first = await request('/restaurants', a.access_token, input, 'POST', key); expect(first.status).toBe(201); const original = await first.json();
