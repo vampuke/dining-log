@@ -32,14 +32,18 @@ describe('P3 acceptance CRUD ownership and history', () => {
     const a = await account(), t = a.access_token, r = await restaurant(t), d = await makeChild(t, r.entity.id, 'dishes'), live = await makeChild(t, r.entity.id, 'dishes'), v = await makeChild(t, r.entity.id, 'visits');
     await data(await request(`/dishes/${d.entity.id}`, t, { expected_version: 1 }, 'DELETE'));
     const deleted = await data<Mutation>(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1 }, 'DELETE'));
-    const delRev = await data<Revision>(await request(`/revisions/${deleted.revisions[0].id}`, t)); expect(delRev.diff).toEqual([{ field: 'deleted_at', before: null, after: expect.any(Number) }]);
+    const delRev = await data<Revision>(await request(`/revisions/${deleted.revisions[0].id}`, t)); expect(delRev.diff).toEqual([{ field: 'deleted_at', before: null, after: deleted.entity.deleted_at }]);
+    const storedDelete = await env.DB.prepare('SELECT diff_json FROM revisions WHERE id=?').bind(delRev.id).first<string>('diff_json');
+    expect(JSON.parse(storedDelete!)).toEqual([{ field: 'deleted_at', before: null, after: Date.parse(deleted.entity.deleted_at!) }]);
     expect((await data<{ restaurants: unknown[] }>(await request('/search?q=Bistro', t))).restaurants).toEqual([]);
     for (const kind of ['dishes', 'visits'] as const) {
       const id = kind === 'dishes' ? live.entity.id : v.entity.id;
       for (const [path, payload, method] of [[`/restaurants/${r.entity.id}/${kind}`, undefined, 'GET'], [`/restaurants/${r.entity.id}/${kind}`, { id: crypto.randomUUID(), ...(kind === 'dishes' ? { name: 'blocked' } : { dining_date: '2024-02-29' }) }, 'POST'], [`/${kind}/${id}`, undefined, 'GET'], [`/${kind}/${id}`, { expected_version: 1, ...(kind === 'dishes' ? { name: 'blocked' } : { note: 'blocked' }) }, 'PATCH'], [`/${kind}/${id}`, { expected_version: 1 }, 'DELETE'], [`/${kind}/${id}/restore`, { expected_version: 1 }, 'POST']] as const) await error(await request(path, t, payload, method), 404, 'PARENT_UNAVAILABLE');
     }
     const restored = await data<Mutation>(await request(`/restaurants/${r.entity.id}/restore`, t, { expected_version: 2 })); expect(restored.entity.version).toBe(3);
-    const restoreRev = await data<Revision>(await request(`/revisions/${restored.revisions[0].id}`, t)); expect(restoreRev.diff).toEqual([{ field: 'deleted_at', before: expect.any(Number), after: null }]);
+    const restoreRev = await data<Revision>(await request(`/revisions/${restored.revisions[0].id}`, t)); expect(restoreRev.diff).toEqual([{ field: 'deleted_at', before: deleted.entity.deleted_at, after: null }]);
+    const storedRestore = await env.DB.prepare('SELECT diff_json FROM revisions WHERE id=?').bind(restoreRev.id).first<string>('diff_json');
+    expect(JSON.parse(storedRestore!)).toEqual([{ field: 'deleted_at', before: Date.parse(deleted.entity.deleted_at!), after: null }]);
     expect((await data<Page<Entity>>(await request(`/restaurants/${r.entity.id}/dishes`, t))).items.map(d => d.id)).toEqual([live.entity.id]);
     await error(await request(`/dishes/${d.entity.id}`, t), 404, 'NOT_FOUND');
     expect((await data<Page<Entity>>(await request(`/restaurants/${r.entity.id}/dishes?deleted=only`, t))).items.map(d => d.id)).toEqual([d.entity.id]);

@@ -70,6 +70,34 @@ describe('P3 atomic mutations and server history', () => {
     expect(await counts()).toEqual(before); expect((await data<Mutation['entity']>(await request(`/restaurants/${r.entity.id}`, a.access_token))).version).toBe(1);
     const sql = await env.DB.prepare('SELECT content FROM restaurant_search WHERE restaurant_id=?').bind(r.entity.id).first<string>('content'); expect(sql).not.toContain('roll back');
   });
+  it('late batch failure rolls back rebuilt search and successful idempotency response', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t), before = await counts(), key = crypto.randomUUID();
+    const searchBefore = await env.DB.prepare('SELECT content FROM restaurant_search WHERE restaurant_id=?').bind(r.entity.id).first<string>('content');
+    const db = batchDB(statements => env.DB.batch([...statements, env.DB.prepare("INSERT INTO mutation_guards VALUES ('late-injected',0)")]));
+    const payload = { expected_version: 1, review: 'late rollback marker' };
+    await error(await request(`/restaurants/${r.entity.id}`, t, payload, 'PATCH', key, db), 500, 'INTERNAL_ERROR');
+    expect(await counts()).toEqual(before);
+    expect(await env.DB.prepare('SELECT content FROM restaurant_search WHERE restaurant_id=?').bind(r.entity.id).first<string>('content')).toBe(searchBefore);
+    expect(await data<Mutation['entity']>(await request(`/restaurants/${r.entity.id}`, t))).toMatchObject({ version: 1, review: null });
+    const retry = await data<Mutation>(await request(`/restaurants/${r.entity.id}`, t, payload, 'PATCH', key));
+    expect(retry).toMatchObject({ changed: true, entity: { version: 2, review: payload.review } });
+    expect(await counts()).toMatchObject({ revisions: before.revisions! + 1, change_sets: before.change_sets! + 1, idempotency_keys: before.idempotency_keys! + 1, mutation_guards: 0 });
+  });
+  it('success response is cached before transactional guard cleanup', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t);
+    // A test-only trigger makes the prescribed response/cleanup ordering observable.
+    await env.DB.prepare(`CREATE TRIGGER p3_response_guard BEFORE INSERT ON idempotency_keys
+      WHEN NEW.method='PATCH'
+      BEGIN
+        SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM mutation_guards
+          WHERE operation_id=NEW.idempotency_key || ':restaurant:' || json_extract(NEW.response_json,'$.data.entity.id')
+          AND affected_rows=1)
+          THEN RAISE(ABORT,'guard cleared before successful response') END;
+      END`).run();
+    const result = await data<Mutation>(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, review: 'cached atomically' }, 'PATCH'));
+    expect(result.entity.version).toBe(2);
+    expect(await counts()).toMatchObject({ revisions: 2, change_sets: 2, idempotency_keys: 2, mutation_guards: 0 });
+  });
   it('first visit late constraint failure also rolls back the restaurant', async () => {
     const a = await account(), r = await restaurant(a.access_token), v = await data<Mutation>(await request(`/restaurants/${r.entity.id}/visits`, a.access_token, { id: crypto.randomUUID(), dining_date: '2024-02-29' }), 201), before = await counts();
     await error(await request('/restaurants', a.access_token, restaurantInput({ first_visit: { id: v.entity.id, dining_date: '2024-02-29' } })), 409, 'ID_CONFLICT'); expect(await counts()).toEqual(before);
