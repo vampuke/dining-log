@@ -162,7 +162,8 @@ class ProductEndToEndTest {
             type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
             tap("filters"); choose("咖啡馆")
             waitFor { vm.list.value.query.filters.category == "cafe" && !vm.list.value.isRefreshing && vm.list.value.items.isEmpty() }
-            compose.onNodeWithText("没有符合条件的结果").assertExists()
+            compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasText("没有符合条件的结果"))
+            compose.onNodeWithText("没有符合条件的结果").assertIsDisplayed()
             tap("filter-clear"); type("field:filter-cuisine", "川菜")
             waitFor { vm.list.value.query.filters.cuisine == "川菜" && !vm.list.value.isRefreshing && vm.list.value.items.singleOrNull()?.ref?.id == restaurantId }
             tap("filter-clear"); tap("filter-rating-range"); progress("filter-min", 4.5f)
