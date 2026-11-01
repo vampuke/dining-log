@@ -1,10 +1,10 @@
 import { AuthError, guard } from '../auth/config';
-import { cached, commit } from '../auth/routes';
+import { commit } from '../auth/routes';
 import { type BusinessIdempotency } from '../auth/idempotency';
 import { owned, parent, checkVersion, classify } from '../repositories/domain';
 import { entity, diff, fields, tables, toStorage, type Kind, type Row, type Diff, type Value } from './model';
 import { normalizeSearch, parse, patches } from './schemas';
-import { notFound, type C } from './http';
+import { notFound, withIdempotency, type C } from './http';
 import { rebuild } from './search-index';
 import { revisionDetail, revisionSummary } from '../repositories/history';
 export type Action = 'create' | 'update' | 'delete' | 'restore';
@@ -31,7 +31,7 @@ function history(db: D1Database, kind: Kind, row: Row, changes: Diff[], action: 
   return { rev, statement: db.prepare(`INSERT INTO revisions (${keys.join(',')}) VALUES (${keys.map(() => '?').join(',')})`).bind(...keys.map(k => rev[k])) };
 }
 export async function create(c: C, kind: Kind, payload: Record<string, unknown>, idem: BusinessIdempotency, restaurantId?: string) {
-  const replay = await cached(c, idem); if (replay) return replay;
+  return withIdempotency(c, idem, async () => {
   const db = c.env.DB, userId = c.get('userId'), now = Date.now();
   const parentRow = kind !== 'restaurant' ? await parent(db, userId, restaurantId!) : null;
   const row = storageRow(kind, payload, userId, now, restaurantId);
@@ -55,9 +55,10 @@ export async function create(c: C, kind: Kind, payload: Record<string, unknown>,
     }
     throw new Error('Creation batch failed');
   }, true, cleanup);
+  });
 }
 export async function mutate(c: C, kind: Kind, id: string, payload: Record<string, unknown>, action: Exclude<Action, 'create'>, idem: BusinessIdempotency, source: string | null = null) {
-  const replay = await cached(c, idem); if (replay) return replay;
+  return withIdempotency(c, idem, async () => {
   const db = c.env.DB, userId = c.get('userId'), expected = Number(payload.expected_version);
   const before = await owned(db, userId, kind, id, action === 'restore'); checkVersion(kind, before, expected);
   const now = Math.max(Date.now(), before.updated_at);
@@ -85,6 +86,7 @@ export async function mutate(c: C, kind: Kind, id: string, payload: Record<strin
     if (action === 'restore' && current.deleted_at !== null && Date.now() >= current.deleted_at + 30 * 86400000) throw new AuthError(410, 'RESTORE_WINDOW_EXPIRED', 'Restore window has expired.');
     return classify(db, userId, kind, id, expected, action === 'restore');
   }, true, [clear]);
+  });
 }
 export async function apply(c: C, sourceRow: Record<string, Value>, fieldsToApply: string[], side: 'before' | 'after', expected: number, idem: BusinessIdempotency) {
   const kind = sourceRow.entity_type as Kind;

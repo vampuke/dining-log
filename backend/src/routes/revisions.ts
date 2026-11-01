@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { cached, json, envelope } from '../auth/routes';
-import { router, input, idempotency, pathId } from '../domain/http';
+import { json, envelope } from '../auth/routes';
+import { router, input, idempotency, pathId, withIdempotency } from '../domain/http';
 import { applyBody, metadataBody, metadataPatch } from '../domain/schemas';
 import { apply } from '../domain/mutations';
 import { mutateMetadata } from '../domain/revision-metadata';
@@ -9,9 +9,11 @@ import { owned } from '../repositories/domain';
 import { historyOwned, revisionDetail } from '../repositories/history';
 export const revisions = router();
 revisions.post('/revisions', async c => {
-  const p = await input(c, applyBody), idem = await idempotency(c, p); const replay = await cached(c, idem); if (replay) return replay;
-  const source = await historyOwned(c.env.DB, c.get('userId'), p.source_revision_id, true);
-  return apply(c, source, p.fields, p.side, p.expected_version, idem);
+  const p = await input(c, applyBody), idem = await idempotency(c, p);
+  return withIdempotency(c, idem, async () => {
+    const source = await historyOwned(c.env.DB, c.get('userId'), p.source_revision_id, true);
+    return apply(c, source, p.fields, p.side, p.expected_version, idem);
+  });
 });
 revisions.get('/revisions', c => list(c, 'revision') as Promise<Response>);
 revisions.get('/restaurants/:restaurant_id/revisions', async c => { const id = pathId(c, 'restaurant_id'); await owned(c.env.DB, c.get('userId'), 'restaurant', id, true); const q = validateQuery(c, revisionQuery.omit({ restaurant_id: true })); return list(c, 'revision', id, q) as Promise<Response>; });
