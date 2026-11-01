@@ -115,6 +115,8 @@ Windows 可执行 `Get-FileHash .\app-release.apk -Algorithm SHA256` 并与 chec
 
 首次初始化顺序为：**先用已通过 CI 的 bundle 建立 Worker → stdin 写入四个既有 Worker secrets → 再 deploy → 记录 D1 Time Travel → 迁移 → 验证 14 张应用表 / migration / foreign_key_check / quick_check → 绑定 Custom Domain → health → 独立 smoke**。每一步失败即停止。GitHub `production` environment 只允许 master，保存四个 Android 签名 secrets 与 `CLOUDFLARE_API_TOKEN`；Worker 密钥不放入 GitHub。
 
+SHA 格式、HEAD 和 master 祖先关系由 workflow 内的命令先检查，通过后才执行所选提交中的脚本；不能让尚未确认来源的代码自行决定是否可以使用生产 secrets。
+
 日常发布从 `master` 手动触发 [release.yml](.github/workflows/release.yml)，明确输入已审查的 40 位 SHA 和 `vX.Y.Z` tag，例如：
 
 ```sh

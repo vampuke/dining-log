@@ -38,6 +38,17 @@ jobs:
           ref: ${{ inputs.commit_sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: Validate checkout before executing any candidate scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = vampuke/dining-log
+          test "$GITHUB_REF" = refs/heads/master
+          [[ "$RELEASE_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]]
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          test "$(git rev-parse HEAD)" = "${RELEASE_COMMIT,,}"
+          git fetch origin master --no-tags
+          git merge-base --is-ancestor "${RELEASE_COMMIT,,}" origin/master
       - name: Validate source, unused tag and successful master/API 26/35 candidate
         env:
           GH_TOKEN: ${{ github.token }}

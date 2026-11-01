@@ -22,6 +22,8 @@ GitHub 环境配置为 custom deployment branch policy，只允许名称 `master
 
 ## 首次 Worker 初始化
 
+生产 Worker、四个 secrets、D1 迁移和 Custom Domain 已在 2026-11-01 完成初始化；真实证据见 [P5_DONE.md](../P5_DONE.md)。以下步骤用于解释首次初始化顺序，现有生产环境应使用日常 release 流程，不能重复创建资源或覆盖密钥。
+
 本 VPS 不安装 backend 依赖。先从**相同 master SHA、全部通过的 CI run** 下载 `worker-candidate` artifact，核对 `SOURCE_COMMIT` 与 `SHA256SUMS`；它由 lock 中 Wrangler 的真实 `deploy --dry-run --outdir build/worker` 生成。已缓存 Wrangler 4.23.0 可直接调用 `node /root/.npm/_npx/14ed28167b94b12b/node_modules/wrangler/bin/wrangler.js`；缓存路径改变时查 package.json 的版本，不能换浮动版本。
 
 准备外部临时目录，设置 `DINING_WORKER_BUNDLE` 为验证后的 `index.js` 绝对路径、`DINING_OPS_TEMP` 为仓库外的 0700 临时目录、`DINING_WRANGLER_SCRIPT` 为上述已核实版本入口。凭据仅导出到本次进程环境：
