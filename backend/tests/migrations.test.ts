@@ -1,5 +1,4 @@
-import { applyD1Migrations, env } from 'cloudflare:test';
-import type { D1Migration } from '@cloudflare/vitest-pool-workers';
+import { applyD1Migrations, env, type D1Migration } from 'cloudflare:test';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import fixtureSql from './sql/fixtures.sql?raw';
 

@@ -21,20 +21,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      # One-time P1 bootstrap runs exclusively on Actions and is removed once
-      # these independently generated files have been committed.
-      - name: Bootstrap dependency lock and password vectors on CI
-        if: ${{ hashFiles('backend/package-lock.json') == '' }}
-        run: |
-          npm install --package-lock-only --ignore-scripts
-          node tests/password-vectors.mjs --write
-      - uses: actions/upload-artifact@v4
-        with:
-          name: backend-bootstrap
-          path: |
-            backend/package-lock.json
-            backend/tests/password-vectors.json
-          retention-days: 1
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run check
       - run: npm test
@@ -50,6 +38,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - uses: actions/cache@v4
         with:
           path: |
