@@ -26,12 +26,12 @@ API_BODY_MAX_BYTES = "65536"
 REVISION_MAX_BYTES = "131072"
 SOFT_DELETE_RETENTION_DAYS = "30"
 # Advertise only an actually published APK; replace all six values at release.
-APP_VERSION_CODE = "5"
-APP_VERSION_NAME = "0.5.0"
-APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.5.0/app-release.apk"
-APP_APK_SHA256 = "d77da09cd64b914076693d0bcfc03916a655d6b8cc5a24ce59b73a3e1d43d678"
-APP_RELEASE_NOTES = "正式签名版本，支持餐厅、菜品与到店记录。"
-APP_RELEASED_AT = "1793544038"
+APP_VERSION_CODE = "6"
+APP_VERSION_NAME = "0.6.0"
+APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.6.0/app-release.apk"
+APP_APK_SHA256 = "6d53e959b12594984928b52bab8ee81f8e13e4ab2c6bc4e821dfb3b5db0c634e"
+APP_RELEASE_NOTES = "补全账号管理；地址等非必填；新增应用图标与页面切换动效；优化首屏布局；修复重复点击闪烁。"
+APP_RELEASED_AT = "1793561546"
 
 [[d1_databases]]
 binding = "DB"
