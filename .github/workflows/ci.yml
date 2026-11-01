@@ -77,9 +77,10 @@ jobs:
         run: |
           set -euo pipefail
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging app-debug.apk > APK_BADGING.txt
+          cat APK_BADGING.txt
           grep -E "^package: name='top\.alanvampuke\.dininglog' " APK_BADGING.txt
-          grep -E "^sdkVersion:'26'$" APK_BADGING.txt
-          grep -E "^targetSdkVersion:'35'$" APK_BADGING.txt
+          python3 "$GITHUB_WORKSPACE/android/tools/verify_apk.py" app-debug.apk > APK_MANIFEST.json
+          cat APK_MANIFEST.json
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app-debug.apk > APK_SIGNATURE.txt
           sha256sum app-debug.apk > SHA256SUMS
           md5sum app-debug.apk > MD5SUMS
