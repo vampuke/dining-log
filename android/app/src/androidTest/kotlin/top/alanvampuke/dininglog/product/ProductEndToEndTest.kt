@@ -121,7 +121,11 @@ class ProductEndToEndTest {
             assertEquals(8, copied.size); assertEquals(8, copied.toSet().size)
             compose.onNodeWithText("我已安全保存").performScrollTo().performClick()
             waitFor { ::vm.isInitialized && !vm.list.value.isRefreshing && !vm.list.value.localScope }
-            compose.onNodeWithTag("empty-state").assertExists()
+            // Server data can be ready while registration IME resizing still
+            // leaves this lazy item outside the viewport on API 26.
+            scroll("empty-state")
+            compose.onNodeWithTag("empty-state").assertExists().assertIsDisplayed()
+                .assertTextEquals("还没有餐厅，记下第一家吧")
 
             // New restaurant + first visit is an atomic create, no visit binding on dishes.
             phase = "create restaurant and first visit"

@@ -5,6 +5,7 @@
 - 正式 APK 使用固定 release keystore；versionCode=5、versionName=0.5.0，缺少任一签名变量即失败。
 - debug 包名为 `top.alanvampuke.dininglog.debug`；应用内版本读取构建信息，模拟器测试与 APK 身份检查同步更新。
 - 实现受 production environment 和单一 concurrency group 保护的手动发布；仅接受 master 已通过 CI 与 API 26/35 检查的完整提交 SHA。
+- workflow 自身先验证 SHA、HEAD 和 master 祖先关系，再执行所选提交中的校验脚本；未合并分支的代码不能先运行并绕过发布检查。
 - 发布前构建、验签、检查版本和 SHA-256，并验证 API 26/35 安装；记录 Worker / D1 checkpoint 后依次迁移、完整性检查、部署、health、独立业务 smoke，全部成功才创建 GitHub Release。
 - 补充部署、日志、Cron、Time Travel、回滚与验收记录；真实验证及仍未验证事项见 P5_DONE.md。
 
