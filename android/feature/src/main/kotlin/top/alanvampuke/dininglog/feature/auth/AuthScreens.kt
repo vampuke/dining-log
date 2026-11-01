@@ -59,6 +59,9 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
         catch (_: Exception) { message = "安全存储不可用，请重新登录。" }
         finally { loading = false }
     }
+    // A later session revocation must return to login even when this session
+    // originally entered through registration or account recovery.
+    LaunchedEffect(session?.sessionId) { if (session != null) page = AuthPage.LOGIN }
     val authenticated = session
     if (authenticated != null && (authenticated.recoveryCodes.isEmpty() || acknowledgedFor == authenticated.sessionId) && onAuthenticated != null) {
         key(authenticated.userId) { onAuthenticated(authenticated) { launchAction { message = onLogout(); page = AuthPage.LOGIN } } }

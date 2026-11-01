@@ -131,7 +131,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                         if (visit != null) {
                             FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, state.errors["first_visit"], label = "首访日期", supporting = "YYYY-MM-DD")
                             ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, visit.meal, { onFirstVisit(visit.copy(meal = it)) }, enabled)
-                            FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, label = "首访备注", minLines = 2)
+                            FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, state.errors["first_visit_note"], label = "首访备注", minLines = 2)
                         }
                     }
                 }

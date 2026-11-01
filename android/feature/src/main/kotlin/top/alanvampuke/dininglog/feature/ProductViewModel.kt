@@ -130,15 +130,16 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         }
     }
     private fun filterKey(name: String) = "$scopeKey:$name"
-    fun activateList(kind: RecordKind, restaurantId: String? = null, deleted: DeletedFilter = DeletedFilter.EXCLUDE) {
-        val nextKey = "${kind.name}:${restaurantId ?: ""}:${deleted.name}"
-        if (hasActiveList && scopeKey == nextKey && _query.value.kind == kind && _query.value.restaurantId == restaurantId && _query.value.deleted == deleted) return
+    fun activateList(kind: RecordKind, restaurantId: String? = null, deleted: DeletedFilter = DeletedFilter.EXCLUDE,
+        historyEntityKind: RecordKind? = null, historyEntityId: String? = null) {
+        val nextKey = "${kind.name}:${restaurantId ?: ""}:${deleted.name}:${historyEntityKind?.name ?: ""}:${historyEntityId ?: ""}"
+        if (hasActiveList && scopeKey == nextKey) return
         hasActiveList = true
         scopeKey = nextKey
         _search.value = saved[filterKey("q")] ?: ""
         _filters.value = ListFilters(saved[filterKey("category")], saved[filterKey("cuisine")] ?: "", saved[filterKey("min")], saved[filterKey("max")], saved[filterKey("unrated")] ?: false,
             saved[filterKey("visited")], saved[filterKey("from")] ?: "", saved[filterKey("to")] ?: "", saved[filterKey("sort")] ?: "updated_desc")
-        _query.value = ListQuery(kind, restaurantId, deleted = deleted)
+        _query.value = ListQuery(kind, restaurantId, deleted = deleted, historyEntityKind = historyEntityKind, historyEntityId = historyEntityId)
     }
     fun setSearch(value: String) { _search.value = value; saved[filterKey("q")] = value }
     fun setFilters(value: ListFilters) {
@@ -376,6 +377,7 @@ fun validateDraft(draft: SavedDraft): Map<String, String> = buildMap {
     draft.localFields["rating_tenths"]?.let { if (it.toIntOrNull() !in 10..50) put("rating_tenths", "评分需 ★ 1.0 至 ★ 5.0") }
     if (kind == RecordKind.VISIT && !validDate(draft.localFields["dining_date"] ?: "")) put("dining_date", "请输入有效日期 YYYY-MM-DD（1900–2100）")
     draft.firstVisit?.let { if (!validDate(it.date)) put("first_visit", "请输入有效首访日期 YYYY-MM-DD（1900–2100）") }
+    draft.firstVisit?.note?.let { if (it.codePointCount(0, it.length) > 2000 || '\u0000' in it) put("first_visit_note", "首访备注最多 2000 个字符，不能含空字符") }
 }
 fun isOffline(error: Exception) = error is ProductFailure && error.offline || error is AuthFailure && error.code == "NETWORK_ERROR"
 fun errorText(error: Exception): String = when (error) {

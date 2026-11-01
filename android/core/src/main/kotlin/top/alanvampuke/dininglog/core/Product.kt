@@ -35,10 +35,11 @@ import java.time.LocalDate
 @Serializable data class ListQuery(
     val kind: RecordKind = RecordKind.RESTAURANT, val restaurantId: String? = null,
     val query: String = "", val filters: ListFilters = ListFilters(), val deleted: DeletedFilter = DeletedFilter.EXCLUDE,
+    val historyEntityKind: RecordKind? = null, val historyEntityId: String? = null,
 ) {
     val fingerprint: String get() = listOf(kind.name, restaurantId, query.trim(), filters.category,
         filters.cuisine.trim(), filters.minRating, filters.maxRating, filters.unrated, filters.visited,
-        filters.from, filters.to, filters.sort, deleted.name).joinToString("\u001f")
+        filters.from, filters.to, filters.sort, deleted.name, historyEntityKind?.name, historyEntityId).joinToString("\u001f")
 }
 data class CachedPage(val items: List<RecordSummary> = emptyList(), val nextCursor: String? = null,
     val hasMore: Boolean = false, val fetchedAt: Long? = null, val localScope: Boolean = true)

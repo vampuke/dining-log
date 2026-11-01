@@ -26,10 +26,15 @@ class RoomCacheTest {
         assertEquals("A private", dao.observeSummaries("A").first().single().payload)
         assertEquals("B private", dao.observeSummaries("B").first().single().payload)
         dao.putDraft(DraftRow("A", "draft", "RESTAURANT", "same-id", 1, "base", "draft-content", "fixed-key", "result_unknown", 1, "original-request"))
+        dao.cacheDetail(DetailRow("A", "RESTAURANT", "same-id", 1, "A complete", 1))
+        dao.putQuery(QueryRow("A", "query", "cursor", true, 1))
+        dao.putMembers(listOf(PageMember("A", "query", "RESTAURANT", "same-id", 0)))
         assertTrue(dao.observeDrafts("B").first().isEmpty())
         OwnerCache(db).clear()
         assertTrue(dao.observeSummaries("A").first().isEmpty()); assertTrue(dao.observeSummaries("B").first().isEmpty())
         assertTrue(dao.observeDrafts("A").first().isEmpty())
+        assertTrue(dao.observeDetails("A").first().isEmpty())
+        assertNull(dao.query("A", "query")); assertTrue(dao.members("A", "query").isEmpty())
     }
     @Test fun summariesNeverTruncateDetailAndHigherVersionsMarkItStale() = runBlocking {
         val dao = db.products()

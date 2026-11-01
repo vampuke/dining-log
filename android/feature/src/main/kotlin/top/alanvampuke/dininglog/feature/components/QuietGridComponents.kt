@@ -65,7 +65,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (onBack != null) TextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
         GridText("食记 / QUIET GRID", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-        GridText(title, Modifier.testTag("page-title"), style = MaterialTheme.typography.headlineMedium)
+        GridText(title, Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineMedium)
         if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
     }
 }

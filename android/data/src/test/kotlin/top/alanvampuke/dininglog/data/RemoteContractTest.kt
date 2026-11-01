@@ -64,6 +64,11 @@ class RemoteContractTest {
         val applyBody = Json.parseToJsonElement(apply.original!!.payload).jsonObject
         assertEquals("revisions", apply.original!!.path); assertEquals("2", applyBody["expected_version"]!!.jsonPrimitive.content)
         assertEquals(listOf("rating_tenths"), applyBody["fields"]!!.jsonArray.map { it.jsonPrimitive.content })
+        val scopedHistory = ListQuery(RecordKind.REVISION, "parent", historyEntityKind = RecordKind.DISH, historyEntityId = "dish")
+        assertEquals("dish", queryParameters(scopedHistory)["entity_type"])
+        assertEquals("dish", queryParameters(scopedHistory)["entity_id"])
+        assertEquals("parent", queryParameters(scopedHistory)["restaurant_id"])
+        assertNotEquals(scopedHistory.fingerprint, scopedHistory.copy(historyEntityId = "other-dish").fingerprint)
     }
     @Test fun getRetriesAtMostTwiceWithJitterAndHonorsRetryAfter() = runBlocking {
         val server = MockWebServer(); server.start()

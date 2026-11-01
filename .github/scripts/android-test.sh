@@ -18,6 +18,6 @@ done
 wait "$gradle_pid"
 test_status=$?
 adb pull /sdcard/Android/data/top.alanvampuke.dininglog/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1
-adb logcat -d -s AndroidRuntime:E > app/build/outputs/p4-screenshots/android-runtime.log
+adb logcat -d -s AndroidRuntime:E DiningP4:I System.out:I > app/build/outputs/p4-screenshots/android-runtime.log
 set -e
 exit "$test_status"

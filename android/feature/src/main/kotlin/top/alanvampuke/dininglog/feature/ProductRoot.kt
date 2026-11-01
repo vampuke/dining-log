@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -14,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
+import androidx.navigation.hasRoute
 import kotlinx.serialization.Serializable
 import java.util.UUID
 import top.alanvampuke.dininglog.core.*
@@ -28,7 +30,8 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Serializable data object SettingsRoute
 @Serializable data class DetailRoute(val kind: String, val id: String, val restaurantId: String? = null)
 @Serializable data class EditRoute(val kind: String, val id: String, val restaurantId: String? = null, val create: Boolean = false, val draftId: String? = null)
-@Serializable data class NestedListRoute(val kind: String, val restaurantId: String? = null, val deleted: Boolean = false)
+@Serializable data class NestedListRoute(val kind: String, val restaurantId: String? = null, val deleted: Boolean = false,
+    val historyEntityKind: String? = null, val historyEntityId: String? = null)
 @Serializable data class ChooseRestaurantRoute(val purpose: String)
 
 @Composable fun ProductRoot(vm: ProductViewModel, username: String, theme: ThemeChoice, onTheme: (ThemeChoice) -> Unit,
@@ -67,7 +70,11 @@ import top.alanvampuke.dininglog.feature.theme.*
         vm.events.collect { event -> when (event) {
             is ProductEvent.Saved -> if (event.fromEditor) {
                 nav.popBackStack()
-                nav.navigate(DetailRoute(event.ref.kind.name, event.ref.id, event.ref.restaurantId)) { launchSingleTop = true }
+                val target = DetailRoute(event.ref.kind.name, event.ref.id, event.ref.restaurantId)
+                val current = nav.currentBackStackEntry?.takeIf { it.destination.hasRoute<DetailRoute>() }?.toRoute<DetailRoute>()
+                // Restaurant and child details share a destination type. Only
+                // reuse the entry when its actual record IDs also match.
+                if (current != target) nav.navigate(target)
             }
         } }
     }
@@ -100,7 +107,10 @@ import top.alanvampuke.dininglog.feature.theme.*
                 onHide = { vm.mutate(it, WriteAction.DELETE) }, onRestore = { vm.mutate(it, WriteAction.RESTORE) }, onApply = vm::previewApply, bottomBar = tabs)
             else RecordDetailScreen(detail, ::back, vm::refreshDetail,
                 onEdit = { nav.navigate(EditRoute(kind.name, route.id, route.restaurantId)) }, onDelete = { vm.mutate(it, WriteAction.DELETE) }, onRestore = { vm.mutate(it, WriteAction.RESTORE) },
-                onHistory = { record -> nav.navigate(NestedListRoute(RecordKind.REVISION.name, if (record.ref.kind == RecordKind.RESTAURANT) record.ref.id else record.ref.restaurantId)) },
+                onHistory = { record -> nav.navigate(NestedListRoute(RecordKind.REVISION.name,
+                    if (record.ref.kind == RecordKind.RESTAURANT) record.ref.id else record.ref.restaurantId,
+                    historyEntityKind = if (record.ref.kind == RecordKind.RESTAURANT) null else record.ref.kind.name,
+                    historyEntityId = if (record.ref.kind == RecordKind.RESTAURANT) null else record.ref.id)) },
                 dishes = dishes, visits = visits, onChild = ::openRecord,
                 onDishes = if (kind == RecordKind.RESTAURANT) { { nav.navigate(NestedListRoute(RecordKind.DISH.name, route.id)) } } else null,
                 onVisits = if (kind == RecordKind.RESTAURANT) { { nav.navigate(NestedListRoute(RecordKind.VISIT.name, route.id)) } } else null,
@@ -123,7 +133,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         composable<NestedListRoute> { destination ->
             val route = destination.toRoute<NestedListRoute>()
             val kind = RecordKind.valueOf(route.kind)
-            LaunchedEffect(route) { vm.activateList(kind, route.restaurantId, if (route.deleted) DeletedFilter.ONLY else DeletedFilter.EXCLUDE) }
+            LaunchedEffect(route) { vm.activateList(kind, route.restaurantId, if (route.deleted) DeletedFilter.ONLY else DeletedFilter.EXCLUDE,
+                route.historyEntityKind?.let { RecordKind.valueOf(it) }, route.historyEntityId) }
             RecordListScreen(list, search, filters, vm::setSearch, vm::setFilters, ::openRecord, vm::refresh, vm::loadMore,
                 onAdd = if (!route.deleted && kind in setOf(RecordKind.DISH, RecordKind.VISIT) && route.restaurantId != null) { { create(kind, route.restaurantId) } } else null,
                 onTrash = if (!route.deleted) { { nav.navigate(route.copy(deleted = true)) } } else null, onBack = ::back, bottomBar = tabs)
@@ -149,7 +160,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         containerColor = LocalQuietGridColors.current.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
         listOf(Triple("restaurants", "餐厅", "≡"), Triple("visits", "到店", "◷"), Triple("settings", "我的", "○")).forEach { (id, title, icon) ->
             NavigationBarItem(selected = selectedRoute?.contains(when (id) { "restaurants" -> "RestaurantsRoute"; "visits" -> "VisitsRoute"; else -> "SettingsRoute" }) == true,
-                onClick = { onSelect(id) }, icon = { Text(icon) }, label = { Text(title) }, modifier = Modifier.testTag("tab:$id"))
+                onClick = { onSelect(id) }, icon = { Text(icon) }, label = { Text(title, Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }, modifier = Modifier.testTag("tab:$id"))
         }
     }
 }

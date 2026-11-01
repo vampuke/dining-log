@@ -97,4 +97,11 @@ class ProductRulesTest {
         assertEquals(listOf("history"), localSearch(ListQuery(RecordKind.REVISION, ref.id), listOf(parent, history, dish), emptyList()).map { it.ref.id })
         assertTrue(localSearch(ListQuery(RecordKind.DISH, ref.id), listOf(parent, history, dish), emptyList()).isEmpty())
     }
+    @Test fun aDishHistoryQueryOnlyIncludesThatDishInTheCache() {
+        val dishHistory = summary().copy(ref = RecordRef(RecordKind.REVISION, "dish-history", ref.id), fields = mapOf("entity_type" to "dish", "entity_id" to "dish-one"))
+        val sibling = dishHistory.copy(ref = dishHistory.ref.copy(id = "sibling-history"), fields = mapOf("entity_type" to "dish", "entity_id" to "dish-two"))
+        val restaurantHistory = dishHistory.copy(ref = dishHistory.ref.copy(id = "restaurant-history"), fields = mapOf("entity_type" to "restaurant", "entity_id" to ref.id))
+        val query = ListQuery(RecordKind.REVISION, ref.id, historyEntityKind = RecordKind.DISH, historyEntityId = "dish-one")
+        assertEquals(listOf("dish-history"), localSearch(query, listOf(dishHistory, sibling, restaurantHistory), emptyList()).map { it.ref.id })
+    }
 }

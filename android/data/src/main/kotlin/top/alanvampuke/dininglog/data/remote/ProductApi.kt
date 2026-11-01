@@ -116,6 +116,10 @@ fun queryParameters(query: ListQuery): Map<String, String> = buildMap {
     put("limit", "20"); put("deleted", if (query.deleted == DeletedFilter.ONLY) "only" else "exclude")
     if (query.query.isNotBlank()) put("q", query.query.trim())
     if (query.restaurantId != null && query.kind in setOf(RecordKind.VISIT, RecordKind.REVISION)) put("restaurant_id", requireNotNull(query.restaurantId))
+    if (query.kind == RecordKind.REVISION) {
+        query.historyEntityKind?.let { put("entity_type", it.name.lowercase()) }
+        query.historyEntityId?.let { put("entity_id", it) }
+    }
     val f = query.filters
     if (query.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
         put("sort", f.sort)

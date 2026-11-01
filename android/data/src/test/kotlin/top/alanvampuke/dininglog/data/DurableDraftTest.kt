@@ -48,6 +48,9 @@ class DurableDraftTest {
             override suspend fun logout(token: String) { }
         }
         val server = MockWebServer().apply { start() }
+        // MockWebServer listens on IPv4 here. After a disconnect, OkHttp can
+        // select localhost's unbound IPv6 route; that tests DNS, not replay.
+        val baseUrl = server.url("/api/v1/").newBuilder().host("127.0.0.1").build().toString()
         val failures = java.util.concurrent.CopyOnWriteArrayList<String>()
         val client = OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS)
             .retryOnConnectionFailure(false).eventListener(object : EventListener() {
@@ -55,7 +58,7 @@ class DurableDraftTest {
             }).build()
         val online = MutableStateFlow(true)
         var now = 1000L
-        val repository = ProductRepositoryImpl(db, owner, account, ProductRemote.create(server.url("/api/v1/").toString(), RefreshCoordinator(store, account, gateway), client), online) { now }
+        val repository = ProductRepositoryImpl(db, owner, account, ProductRemote.create(baseUrl, RefreshCoordinator(store, account, gateway), client), online) { now }
         init { runBlocking { account.install(AuthSession("A", "alice", "S", "access-A", "refresh-A")) } }
         override fun close() { runBlocking { account.clear() }; db.close(); server.shutdown() }
     }
@@ -181,6 +184,56 @@ class DurableDraftTest {
             f.repository.refreshList("A", query)
             assertTrue(historySummary(f.repository.observeList("A", query).first().items.single(), null).contains("★ 4.0 → ★ 4.3"))
             assertEquals(3, f.server.requestCount, "Opening history should not download all full diff details")
+        }
+    }
+    @Test fun closingRoomAndCreatingANewRepositoryPreservesTheExactUnknownRequest() = runBlocking {
+        Fixture().use { f ->
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            val name = "p4-draft-${java.util.UUID.randomUUID()}.db"
+            fun open() = Room.databaseBuilder(context, ProductDatabase::class.java, name).build()
+            fun repository(db: ProductDatabase) = ProductRepositoryImpl(db, OwnerCache(db), f.account,
+                ProductRemote.create(f.baseUrl, RefreshCoordinator(f.store, f.account, f.gateway), f.client), f.online) { f.now }
+            var disk = open()
+            try {
+                val original = requestFor(draft(), f.now).copy(status = DraftStatus.RESULT_UNKNOWN)
+                repository(disk).storeDraft(original)
+                disk.close()
+                disk = open()
+                val restarted = repository(disk)
+                val restored = restarted.findDraft("A", original.id)!!
+                assertEquals(original, restored)
+                assertEquals(0, f.server.requestCount, "Opening Room must not upload a draft")
+                f.server.enqueue(mutation()); f.server.enqueue(detail())
+                assertIs<SaveOutcome.Saved>(restarted.submit(restored))
+                val request = f.server.takeRequest()
+                assertEquals(original.original!!.key, request.getHeader("Idempotency-Key"))
+                assertEquals(original.original!!.payload, request.body.readUtf8())
+                assertNull(restarted.findDraft("A", original.id))
+            } finally { disk.close(); context.deleteDatabase(name) }
+        }
+    }
+    @Test fun roomPaginationAppendsDistinctIdsAndFirstPageRefreshReplacesMembership() = runBlocking {
+        Fixture().use { f ->
+            val secondId = "10000000-0000-4000-8000-000000000002"
+            val second = JsonObject(Json.parseToJsonElement(entity(1)).jsonObject + ("id" to JsonPrimitive(secondId)) + ("name" to JsonPrimitive("第二家")))
+            fun page(items: List<JsonElement>, cursor: String? = null) = MockResponse().setBody(buildJsonObject {
+                put("data", buildJsonObject { put("items", JsonArray(items)) })
+                put("meta", buildJsonObject { put("has_more", cursor != null); put("next_cursor", cursor?.let(::JsonPrimitive) ?: JsonNull) })
+            }.toString())
+            f.server.enqueue(page(listOf(Json.parseToJsonElement(entity(1))), "opaque-cursor"))
+            f.repository.refreshList("A", ListQuery())
+            assertTrue(f.repository.observeList("A", ListQuery()).first().hasMore)
+            assertNull(f.server.takeRequest().requestUrl!!.queryParameter("cursor"))
+            f.server.enqueue(page(listOf(Json.parseToJsonElement(entity(2)), second)))
+            f.repository.refreshList("A", ListQuery(), loadMore = true)
+            assertEquals("opaque-cursor", f.server.takeRequest().requestUrl!!.queryParameter("cursor"))
+            val appended = f.repository.observeList("A", ListQuery()).first()
+            assertEquals(listOf(ref.id, secondId), appended.items.map { it.ref.id })
+            assertEquals(2, appended.items.first().version)
+            assertFalse(appended.hasMore)
+            f.server.enqueue(page(listOf(second)))
+            f.repository.refreshList("A", ListQuery())
+            assertEquals(listOf(secondId), f.repository.observeList("A", ListQuery()).first().items.map { it.ref.id })
         }
     }
     @Test fun lateAHttpResultCannotRepopulateCacheAfterLoginB() = runBlocking {

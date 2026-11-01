@@ -173,10 +173,18 @@ class ProductVisualTest {
         }
         for (night in listOf(false, true)) for (screen in listOf("list", "detail", "history", "settings")) {
             compose.runOnIdle { dark = night; page = screen }
+            val folder = ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir("p4-screenshots")!!
+            folder.mkdirs()
+            val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            File(folder, "${if (night) "dark" else "light"}-$screen-font200-tabs-api${android.os.Build.VERSION.SDK_INT}.png").outputStream().use {
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
             compose.onNodeWithTag("page-title").assertIsDisplayed()
             val titleLayouts = mutableListOf<TextLayoutResult>()
             compose.onNodeWithTag("page-title").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayouts) }
-            assertTrue(titleLayouts.isNotEmpty()); titleLayouts.forEach { assertFalse(it.hasVisualOverflow) }
+            assertTrue(titleLayouts.isNotEmpty()); titleLayouts.forEach {
+                assertFalse("200% $screen title ${it.layoutInput.text}: size=${it.size}, widthOverflow=${it.didOverflowWidth}, heightOverflow=${it.didOverflowHeight}", it.hasVisualOverflow)
+            }
             for ((id, label) in listOf("restaurants" to "餐厅", "visits" to "到店", "settings" to "我的")) {
                 compose.onNodeWithTag("tab:$id").assertIsDisplayed()
                 val layouts = mutableListOf<TextLayoutResult>()
@@ -243,6 +251,12 @@ class ProductVisualTest {
         compose.runOnIdle { state = state.copy(isRefreshing = true) }
         compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasTestTag("title:${ref.id}"))
         compose.onNodeWithTag("title:${ref.id}", useUnmergedTree = true).assertIsDisplayed()
+        compose.runOnIdle { state = state.copy(isRefreshing = false, error = "连接失败，缓存保留") }
+        compose.onNodeWithTag("load-error").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { state = ListUiState(isOffline = true, localScope = true, query = ListQuery(query = "未缓存")) }
+        compose.onNodeWithTag("cache-empty").assertExists()
+        compose.onNodeWithText("已缓存内容中没有匹配；服务器范围未确认").assertExists()
+        compose.onNodeWithTag("no-results").assertDoesNotExist()
     }
     @Test fun sameFieldConflictSaveIsDisabledUntilExplicitChoice() {
         var confirmations = 0

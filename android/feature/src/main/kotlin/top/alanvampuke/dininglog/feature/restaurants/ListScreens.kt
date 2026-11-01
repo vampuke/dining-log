@@ -43,10 +43,10 @@ import top.alanvampuke.dininglog.feature.theme.*
                     if (onAdd != null) Button(onClick = onAdd, modifier = Modifier.fillMaxWidth().testTag("add")) { Text(when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" }) }
                     TextButton(onClick = onRefresh, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh")) { Text(if (state.isRefreshing) "正在刷新…" else "刷新第一页") }
                     if (kind != RecordKind.REVISION) TextButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) { Text(if (expandedFilters) "收起筛选" else "筛选与排序") }
-                    if (onChooseRestaurant != null) TextButton(onClick = onChooseRestaurant) { Text("按餐厅筛选") }
+                    if (onChooseRestaurant != null) TextButton(onClick = onChooseRestaurant, modifier = Modifier.testTag("choose-restaurant")) { Text("按餐厅筛选") }
                     if (onClearRestaurant != null) {
                         GridText("当前只显示所选餐厅的到店记录", color = LocalQuietGridColors.current.secondary)
-                        TextButton(onClick = onClearRestaurant) { Text("显示全部餐厅") }
+                        TextButton(onClick = onClearRestaurant, modifier = Modifier.testTag("clear-restaurant")) { Text("显示全部餐厅") }
                     }
                     if (onTrash != null) TextButton(onClick = onTrash, modifier = Modifier.testTag("trash")) { Text(if (kind == RecordKind.REVISION) "管理隐藏历史" else "打开回收站") }
                 }
@@ -99,7 +99,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         RecordKind.VISIT -> "${fields["restaurant_name"] ?: "餐厅"} · ${mealLabel(fields["meal"])}\n${fields["note_excerpt"] ?: ""}"
         RecordKind.REVISION -> "${fields["entity_label"] ?: "记录"}\n${historySummary(record, null)}${fields["note"]?.let { "\n$it" } ?: ""}"
     }
-    GridText(secondary, color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodySmall)
+    GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodySmall)
     if (record.ref.kind == RecordKind.REVISION) {
         TextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time:${record.ref.id}")) {
             Text(if (absolute) "收起绝对时间" else "显示绝对时间")

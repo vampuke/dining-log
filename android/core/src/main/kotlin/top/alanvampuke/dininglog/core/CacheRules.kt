@@ -13,6 +13,8 @@ fun localSearch(query: ListQuery, summaries: List<RecordSummary>, details: List<
     val tokens = normalizedSearch(query.query).split(' ').filter(String::isNotEmpty)
     val filtered = summaries.filter { s ->
         s.ref.kind == query.kind && s.deleted == (query.deleted == DeletedFilter.ONLY) &&
+            (query.historyEntityKind == null || s.fields["entity_type"] == query.historyEntityKind.name.lowercase()) &&
+            (query.historyEntityId == null || s.fields["entity_id"] == query.historyEntityId) &&
             (query.restaurantId == null || s.ref.restaurantId == query.restaurantId) &&
             (s.ref.kind !in setOf(RecordKind.DISH, RecordKind.VISIT) || s.ref.restaurantId !in deletedParents)
     }.mapNotNull { s ->
