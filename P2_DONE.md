@@ -22,7 +22,7 @@
 - 后端 `tsc`/ESLint、103 个测试（含下列 29 个 auth 用例）全部通过；SQLite 迁移检查与原有两组容量场景通过，未降低任何阈值。
 - Android debug APK、`:core:test`（该 run 的 12 个 auth JVM 用例）、app unit test task 和 lint 通过。JVM 测试报告位于 `android-build` artifact。
 - API 26 与 API 35 模拟器分别执行下列 7 个 instrumentation 用例；Keystore 往返/损坏/缺 key，以及浅深主题、滚动大字体、持续 429 提示与密码显隐通过。报告位于 `android-auth-api-26`/`android-auth-api-35` artifacts。
-- 交付主 PR：[#1](https://github.com/vampuke/dining-log/pull/1)。跨线程收尾修复与最终 14 个 JVM 用例的 CI 见追加 PR（合并记录与检查位于 GitHub）；合并 commit 和合并后 master CI 可从 PR 与 [Actions](https://github.com/vampuke/dining-log/actions/workflows/ci.yml) 复核。
+- 交付主 PR：[#1](https://github.com/vampuke/dining-log/pull/1)。跨线程收尾修复与最终 14 个 JVM 用例的 CI 见追加 [PR #2](https://github.com/vampuke/dining-log/pull/2) 的 Actions 检查；合并 commit 和合并后 master CI 可从 PR 与 [Actions](https://github.com/vampuke/dining-log/actions/workflows/ci.yml) 复核。
 
 全部构建/测试仅在 GitHub Actions 执行。本机未运行 npm install/npm ci、Gradle、Docker 或 Vitest。未部署 Cloudflare、未建真实 D1、未写真实 secret。`design/PLAN.md`、`backend/migrations/0001_initial.sql`、P1 `password.ts`/`jwt.ts` 未修改。
 
