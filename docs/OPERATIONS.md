@@ -127,7 +127,7 @@ Cloudflare 自动管理目标 DNS / TLS，不手工创建 A / AAAA 或假源站�
 
 按 [README](../README.md#生产部署与发布) 从 master dispatch release。禁止并行执行其他部署绕过 `dining-production`；发布只在相同 SHA 的候选 CI 与两级模拟器全部成功后进行。
 
-`release-evidence` 保存部署前 Worker deployment/version IDs、有效 Time Travel bookmark（空库仅接受 provider 明确报告无历史）、域名冲突检查、应用后的 SQL 完整性、health、固定 smoke 步骤标签、APK 公开 package / SDK badging、签名 / 元数据 / SHA-256。不保存 DB export、auth 响应、keystore 或合成账号资料。
+`release-evidence` 保存部署前 Worker deployment/version IDs、有效 Time Travel bookmark（空库仅接受 provider 明确报告无历史）、域名冲突检查、应用后的 SQL 完整性、health、固定 smoke 步骤标签、APK 公开 package / SDK badging、签名 / 元数据 / SHA-256，以及未登录的全新模拟器上的启动结果与 AndroidRuntime 错误。安装检查读取运行日志；API 26 的 `logcat -c` 可能无法清理 main buffer，不能用该准备命令阻断尚未开始的安装。安装 / 启动 / 存活 / 崩溃 / 重装任何检查失败仍停止发布，失败时尽量保留运行日志。不保存 DB export、auth 响应、keystore 或合成账号资料。
 
 ## 日志、Cron 与监控
 

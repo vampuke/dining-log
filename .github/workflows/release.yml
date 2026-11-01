@@ -64,7 +64,7 @@ jobs:
           set -euo pipefail
           npm ci
           node --test ../.github/scripts/release-guards.test.mjs
-          python3 -B -m unittest discover -s ../.github/scripts -p 'test_apk_metadata.py'
+          python3 -B -m unittest discover -s ../.github/scripts -p 'test_*.py'
           npm run check
           node tests/contracts.mjs
           npm test
@@ -207,6 +207,7 @@ jobs:
             ${{ runner.temp }}/dining-health.json
             ${{ runner.temp }}/dining-production-smoke.txt
             ${{ runner.temp }}/dining-release-launch-api-*.txt
+            ${{ runner.temp }}/dining-release-runtime-api-*.txt
             android/app/build/outputs/apk/release/app-release.apk.sha256
           if-no-files-found: warn
           retention-days: 30

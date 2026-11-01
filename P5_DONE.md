@@ -2,7 +2,7 @@
 
 依据：完整阅读的 [P5_TASK.md](design/P5_TASK.md) 与只读 [PLAN 10.5、11.1～11.5](design/PLAN.md)。只将真实执行或复核通过的事项列为 verified；源码实现、模拟器和生产验证分别记录。
 
-P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并；来源检查、生产证据与 API 26 空态测试修正经 [PR #6](https://github.com/vampuke/dining-log/pull/6) 合并。首次正式发布候选为 PR #6 的合并提交 `e03d675568c6ce90f261bf2bc10198386f52f8ec`；SDK 字段解析修正分支为 `p5/fix-release-sdk-check-0.5.0`，须经新的 PR / CI 才能作为下一候选。沿用全部既有生产资源与密钥。
+P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并；来源检查、生产证据与 API 26 空态测试修正经 [PR #6](https://github.com/vampuke/dining-log/pull/6) 合并；SDK 字段解析修正经 [PR #7](https://github.com/vampuke/dining-log/pull/7) 合并。第二次发布候选为 `fb1bf5ec451dc653afb435782e6a9c25c775af6e`，该发布因 API 26 日志清理准备命令失败；修正分支为 `p5/fix-api26-release-logcat-0.5.0`，须经新的 PR / CI 才能发布。沿用全部既有生产资源与密钥；每次失败与成功结果分别记录。
 
 ## PLAN 10.5 逐条映射
 
@@ -19,7 +19,10 @@ P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并；来�
 
 - [P5 PR CI](https://github.com/vampuke/dining-log/actions/runs/41306167734) 与 [合并后 master CI](https://github.com/vampuke/dining-log/actions/runs/41307015620) 均 completed / success；backend、android、android-auth-instrumentation (26)、android-auth-instrumentation (35) 四个必需 job 均 success。backend 的 `npm ci → check → test → db:verify → wrangler deploy --dry-run` 实际执行通过。
 - [PR #6 修正提交 CI](https://github.com/vampuke/dining-log/actions/runs/41310736332) 的源码 `49a0cb881873783b28321b4f90b5cb22fa205952`，四个必需 job 均 completed / success；2026-11-01 经 PR 合并为 `e03d675568c6ce90f261bf2bc10198386f52f8ec`。合并依据为源码复核与完整 CI；GitHub reviews 没有独立人类 approve 记录，不将代理复核称为人类批准。
-- 发布候选 [master CI 41311292752](https://github.com/vampuke/dining-log/actions/runs/41311292752) 的 head_sha 精确为 `e03d675568c6ce90f261bf2bc10198386f52f8ec`，event=push、head_branch=master；四个必需 job 均 completed / success。正式 release 使用这一提交，未用其他 SHA 的成功 run 代替。
+- 首次失败发布使用 [master CI 41311292752](https://github.com/vampuke/dining-log/actions/runs/41311292752) 验证的 `e03d675568c6ce90f261bf2bc10198386f52f8ec`，event=push、head_branch=master；四个必需 job 均 completed / success。该发布在 SDK 解析阶段失败，下方保留失败与阻断证据。
+- [SDK 修正 PR CI 41312989155](https://github.com/vampuke/dining-log/actions/runs/41312989155) 的源码 `b909bf15a6accdac7c5152b7578bc901e8c7bf1a`，四个必需 job 均 completed / success；已通过 PR #7 合并为 `fb1bf5ec451dc653afb435782e6a9c25c775af6e`。七个 SDK 解析 unittest 在 Actions 实际通过，生产签名 / SDK 26/35 / 版本 / 性能断言保留。
+- SDK 修正后候选 [master CI 41313553349](https://github.com/vampuke/dining-log/actions/runs/41313553349) 的 head_sha 精确为 `fb1bf5ec451dc653afb435782e6a9c25c775af6e`，event=push、head_branch=master；backend、android、API 26、API 35 四个必需 job 均 completed / success。第二次发布使用这一 SHA；两次失败 run 均未重跑。
+- 第二次发布实际完成 signed `assembleRelease`、JVM / lint、固定证书 apksigner v2 验签、package / versionCode=5 / versionName=0.5.0 / SDK 26/35 与 SHA-256 检查。API 26 在安装前的日志清理失败，正式安装及后续生产 / Release 步骤未通过，详见下方失败证据。
 - Gradle 读取四个 `DINING_SIGNING_*` 变量，release 绑定固定签名并保留 R8 / ProGuard；Actions 分别移除每个变量，四次均按预期报 `Release signing requires environment variables: <NAME>`。debug package 已验证为 `top.alanvampuke.dininglog.debug`，versionCode=5 / versionName=0.5.0，模拟器包名引用已同步。
 - 发布 workflow 自身先检查仓库、dispatch master、40 位 SHA、tag、HEAD、master 祖先，再执行候选脚本；生产 secrets 仅注入 release job 的必要步骤。七个轻量 guards 测试通过，真实临时 Git 仓库覆盖未合并分支 / 错误 HEAD / 非法输入 / fork / 非 master 的拒绝，跳过候选检查不能通过。actionlint 与 `git diff --check` 通过。
 - 初次 Worker 初始化已有成功操作日志：建立 Worker → stdin 写入四个既有 secrets → 二次 deploy → D1 checkpoint / 迁移 / 完整性 → 无冲突 Domain changeset → 正式域名 deploy。所有阶段完成，无 failed stage；本次只读复核，不重复初始化。
@@ -45,7 +48,7 @@ P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并；来�
 
 [run 41309979156](https://github.com/vampuke/dining-log/actions/runs/41309979156) 的 API 26 产品测试在注册后的 `empty-state` 断言失败，backend / android job 成功。此 run 未用于合并或发布，未触发新的生产写入。失败截图显示列表视口只容纳前面的输入与按钮，空态属于后续 LazyColumn item。数据就绪不保证视口外的 lazy item 已被组合，注册键盘关闭的窗口调整使该缺口在 API 26 暴露。
 
-修正同一用例：保留原数据等待条件，然后滚动至空态；保留原 assertExists，增加 assertIsDisplayed 与精确正文断言。45 秒超时保持，未删除用例、未 skip、未降低任何断言或性能阈值。修正后的新提交须由完整 Actions 验证，不能将失败 run 重标为成功。
+修正同一用例：保留原数据等待条件，然后滚动至空态；保留原 assertExists，增加 assertIsDisplayed 与精确正文断言。45 秒超时保持，未删除用例、未 skip、未降低任何断言或性能阈值。修正后的完整 PR / master CI 已通过，旧失败 run 保留。
 
 ### 首次 release 的 SDK 解析失败记录
 
@@ -59,7 +62,21 @@ minSdkVersion:'26'
 targetSdkVersion:'35'
 ```
 
-修正只接受两种明确的 min SDK 字段名，仍严格要求单一 min SDK=26、target SDK=35；缺失、错误值、重复或冲突字段全部失败。固定证书 / v2 / package / version / tag 断言保留。新增七个轻量 unittest，包含这份真实输出与拒绝案例，并接入无生产凭据的 CI 和 release 后端候选阶段；未来失败会保留公开 package / SDK badging。未重跑旧 run、未降阈值；修正后的 PR / 候选 CI 和正式发布须另取真实结果。
+修正只接受两种明确的 min SDK 字段名，仍严格要求单一 min SDK=26、target SDK=35；缺失、错误值、重复或冲突字段全部失败。固定证书 / v2 / package / version / tag 断言保留。新增七个轻量 unittest，包含这份真实输出与拒绝案例，并接入无生产凭据的 CI 和 release 后端候选阶段；未来失败会保留公开 package / SDK badging。未重跑旧 run、未降阈值；PR #7 的完整 CI 已成功，后续候选和发布必须使用修正后的新 SHA。
+
+### 第二次 release 的 API 26 日志清理失败记录
+
+[release 41314095287](https://github.com/vampuke/dining-log/actions/runs/41314095287) 使用 `fb1bf5ec451dc653afb435782e6a9c25c775af6e`。实际构建和验签日志：
+
+```text
+BUILD SUCCESSFUL in 4m 40s
+Verified using v2 scheme (APK Signature Scheme v2): true
+Signer #1 certificate SHA-256 digest: a81806dbcdd4c5a212915f8a6f767b371c96d66cc61b1393d016b77db9ce7093
+```
+
+API 26 模拟器成功启动后，`release-install.sh` 在 `adb logcat -c` 报 `failed to clear the 'main' log`，exit=1；APK 的 install / launch 命令尚未执行。API 35、checkpoint、迁移、deploy、health、smoke、Release 创建全部 skipped。Cloudflare 再次只读确认 deployment 仍为 `5f36eb85-ead0-4a09-8d58-f5f8c1aef7ea`，GitHub tag / Release 均不存在；失败未写入生产，未覆盖产物。
+
+修正安装检查直接读取全新、未登录模拟器的 AndroidRuntime 日志，保持启动 Status: ok、三秒观察、进程存活、无 FATAL EXCEPTION 和 reinstall 的所有断言；安装 / 启动早期失败时也保存运行日志。新增轻量脚本测试覆盖两个 SDK、旧版本安装与升级顺序、安装 / 启动 / 进程 / 崩溃 / 日志读取 / 重装失败，以及无法清理日志的 API 26 准备场景；不使用本机 Android SDK 或模拟器。实际 signed APK 的安装仍须由新的发布 run 验证，不能用这些合成测试代替。
 
 ### 公网 health
 

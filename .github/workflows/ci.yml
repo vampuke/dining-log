@@ -28,7 +28,7 @@ jobs:
         run: |
           set -euo pipefail
           node --test ../.github/scripts/release-guards.test.mjs
-          python3 -B -m unittest discover -s ../.github/scripts -p 'test_apk_metadata.py'
+          python3 -B -m unittest discover -s ../.github/scripts -p 'test_*.py'
       - run: npm run check
       - name: Verify final v1 OpenAPI contract
         run: node tests/contracts.mjs
