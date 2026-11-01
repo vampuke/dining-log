@@ -39,6 +39,12 @@ P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并，mast
 
 以下是实际 curl、SQL、Cloudflare / GitHub 的非敏感结果；不收录密码、token、恢复码、keystore、账号资料或 DB export。
 
+### 验收分支首次 CI 失败记录
+
+[run 41309979156](https://github.com/vampuke/dining-log/actions/runs/41309979156) 的 API 26 产品测试在注册后的 `empty-state` 断言失败，backend / android job 成功。此 run 未用于合并或发布，未触发新的生产写入。失败截图显示列表视口只容纳前面的输入与按钮，空态属于后续 LazyColumn item。数据就绪不保证视口外的 lazy item 已被组合，注册键盘关闭的窗口调整使该缺口在 API 26 暴露。
+
+修正同一用例：保留原数据等待条件，然后滚动至空态；保留原 assertExists，增加 assertIsDisplayed 与精确正文断言。45 秒超时保持，未删除用例、未 skip、未降低任何断言或性能阈值。修正后的新提交须由完整 Actions 验证，不能将失败 run 重标为成功。
+
 ### 公网 health
 
 2026-11-01 再次执行：
