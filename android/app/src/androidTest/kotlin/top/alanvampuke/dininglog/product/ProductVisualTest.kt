@@ -281,4 +281,37 @@ class ProductVisualTest {
         compose.onNodeWithText("★ 4.3").assertExists()
         compose.runOnIdle { assertEquals("43", value) }
     }
+
+    @Test fun longReviewsAndHistoryValuesCanBeReadInFullInBothThemesAt200Percent() {
+        var dark by mutableStateOf(false)
+        var history by mutableStateOf(false)
+        val oldText = "原评价：花椒香，鸡块酥脆，服务周到。".repeat(50)
+        val newText = "新评价：再次到店，口味稳定，想再和朋友一起来。".repeat(50)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
+                QuietGridTheme(dark) {
+                    if (history) RevisionDetailScreen(DetailUiState(CachedDetail(revision.copy(
+                        diff = listOf(Change("review", oldText, newText))))), {}, {}, {}, {}, {}, {})
+                    else RecordDetailScreen(DetailUiState(CachedDetail(snapshot.copy(
+                        fields = snapshot.fields + ("review" to newText)))), {}, {}, {}, {}, {}, {})
+                }
+            }
+        }
+        for (night in listOf(false, true)) {
+            compose.runOnIdle { dark = night; history = false }
+            compose.onNodeWithTag("detail-scroll", useUnmergedTree = true).performScrollToNode(hasTestTag("expand:detail:review"))
+            compose.onNodeWithTag("expand:detail:review").performClick()
+            compose.onNodeWithTag("detail:review").assertTextEquals(newText)
+            compose.onNodeWithTag("detail-scroll", useUnmergedTree = true).performScrollToNode(hasTestTag("edit"))
+            compose.onNodeWithTag("edit").assertIsDisplayed().assertIsEnabled()
+            compose.runOnIdle { history = true }
+            for ((tag, full) in listOf("before:review" to oldText, "after:review" to newText)) {
+                compose.onNodeWithTag("history-scroll", useUnmergedTree = true).performScrollToNode(hasTestTag("expand:$tag"))
+                compose.onNodeWithTag("expand:$tag").performClick()
+                compose.onNodeWithTag(tag).assertTextEquals(full)
+            }
+            compose.onNodeWithTag("history-scroll", useUnmergedTree = true).performScrollToNode(hasTestTag("reapply"))
+            compose.onNodeWithTag("reapply").assertIsDisplayed().assertIsEnabled()
+        }
+    }
 }
