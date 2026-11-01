@@ -2,13 +2,13 @@
 
 依据：完整阅读的 [P5_TASK.md](design/P5_TASK.md) 与只读 [PLAN 10.5、11.1～11.5](design/PLAN.md)。只将真实执行或复核通过的事项列为 verified；源码实现、模拟器和生产验证分别记录。
 
-P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并，master 为 `dc8a40a4deeeec49c4be0a464b5b5ba2a267541d`。后续验收分支为 `p5/production-acceptance-0.5.0`：补上 workflow 自身的来源检查，保留现场已有改动并补齐生产证据，不重建 D1、不重新生成或覆盖既有密钥。
+P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并；来源检查、生产证据与 API 26 空态测试修正经 [PR #6](https://github.com/vampuke/dining-log/pull/6) 合并。首次正式发布候选为 PR #6 的合并提交 `e03d675568c6ce90f261bf2bc10198386f52f8ec`；SDK 字段解析修正分支为 `p5/fix-release-sdk-check-0.5.0`，须经新的 PR / CI 才能作为下一候选。沿用全部既有生产资源与密钥。
 
 ## PLAN 10.5 逐条映射
 
 | PLAN 10.5 交付条目 | 对应交付 | verified | unverified |
 | --- | --- | --- | --- |
-| public repo 完整实现、MIT、README、架构 ADR、OpenAPI、迁移与运行说明 | [public repo](https://github.com/vampuke/dining-log)、LICENSE、README、ADR、OpenAPI、migrations、OPERATIONS.md | public / master 经 API 确认；P5 PR #5 已合并，PR 和 master CI 全部成功；29 领域 +9 auth 实现与既有验收保留 | 本次验收分支的 PR / CI / 合并待追加 |
+| public repo 完整实现、MIT、README、架构 ADR、OpenAPI、迁移与运行说明 | [public repo](https://github.com/vampuke/dining-log)、LICENSE、README、ADR、OpenAPI、migrations、OPERATIONS.md | public / master 经 API 确认；P5 PR #5 / #6 已合并；PR #6 与发布候选 master 四个必需 job 全成功；29 领域 +9 auth 实现与既有验收保留 | 最终文档 PR 待追加 |
 | 唯一生产 API | https://dining.alanvampuke.top/api/v1；workers.dev / preview_urls=false | 公网 HTTPS health HTTP 200、正文精确匹配；真实完整 smoke；唯一该 Worker 的 Custom Domain | 三网 / 跨地域性能与长期可用性观察 |
 | 可安装 signed release APK、SHA-256、版本号、更新说明、GitHub Release | versionCode=5 / versionName=0.5.0、固定签名、release.yml、CHANGELOG 0.5.0 | 签名配置、四种缺变量失败、debug `.debug` 与 API 26/35 产品测试已由 Actions 验证；发布与验签脚本已复核 | 实际 signed APK、正式验签 / API 26/35 安装 / GitHub Release 待 release Actions；debug 成功不代替这些事项 |
 | 正式 Cloudflare 配置、secret 名称、日志 / Cron / Time Travel | wrangler.toml、production environment、OPERATIONS.md、生产检查脚本 | 四个 Worker secrets；五个环境 secrets 与 master policy；Cron、observability 配置；有效 bookmark；D1 14 应用表 / migration / 完整性 | 实际 Cron 清理成本、告警、Worker rollback / D1 restore、离线备份恢复 |
@@ -18,6 +18,8 @@ P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并，mast
 ## verified
 
 - [P5 PR CI](https://github.com/vampuke/dining-log/actions/runs/41306167734) 与 [合并后 master CI](https://github.com/vampuke/dining-log/actions/runs/41307015620) 均 completed / success；backend、android、android-auth-instrumentation (26)、android-auth-instrumentation (35) 四个必需 job 均 success。backend 的 `npm ci → check → test → db:verify → wrangler deploy --dry-run` 实际执行通过。
+- [PR #6 修正提交 CI](https://github.com/vampuke/dining-log/actions/runs/41310736332) 的源码 `49a0cb881873783b28321b4f90b5cb22fa205952`，四个必需 job 均 completed / success；2026-11-01 经 PR 合并为 `e03d675568c6ce90f261bf2bc10198386f52f8ec`。合并依据为源码复核与完整 CI；GitHub reviews 没有独立人类 approve 记录，不将代理复核称为人类批准。
+- 发布候选 [master CI 41311292752](https://github.com/vampuke/dining-log/actions/runs/41311292752) 的 head_sha 精确为 `e03d675568c6ce90f261bf2bc10198386f52f8ec`，event=push、head_branch=master；四个必需 job 均 completed / success。正式 release 使用这一提交，未用其他 SHA 的成功 run 代替。
 - Gradle 读取四个 `DINING_SIGNING_*` 变量，release 绑定固定签名并保留 R8 / ProGuard；Actions 分别移除每个变量，四次均按预期报 `Release signing requires environment variables: <NAME>`。debug package 已验证为 `top.alanvampuke.dininglog.debug`，versionCode=5 / versionName=0.5.0，模拟器包名引用已同步。
 - 发布 workflow 自身先检查仓库、dispatch master、40 位 SHA、tag、HEAD、master 祖先，再执行候选脚本；生产 secrets 仅注入 release job 的必要步骤。七个轻量 guards 测试通过，真实临时 Git 仓库覆盖未合并分支 / 错误 HEAD / 非法输入 / fork / 非 master 的拒绝，跳过候选检查不能通过。actionlint 与 `git diff --check` 通过。
 - 初次 Worker 初始化已有成功操作日志：建立 Worker → stdin 写入四个既有 secrets → 二次 deploy → D1 checkpoint / 迁移 / 完整性 → 无冲突 Domain changeset → 正式域名 deploy。所有阶段完成，无 failed stage；本次只读复核，不重复初始化。
@@ -29,7 +31,7 @@ P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并，mast
 
 ## unverified
 
-- 本次验收分支的 PR / CI / 合并；实际 release workflow、signed APK 验签、API 26/35 安装与 GitHub Release，等待真实结果再更新。
+- 实际 release workflow、signed APK 验签、API 26/35 安装与 GitHub Release，以及最终文档 PR；等待真实结果再更新。
 - Worker rollback 与 D1 Time Travel restore 演练、真实 Cron 清理 CPU / 扫描成本、告警、离线加密备份与恢复。Time Travel info 成功不能称 restore 通过。
 - 生产免费 Worker 密码 CPU 冷 / 热每场景 ≥30 样本、6,000 / 18,000 数据集的真实 D1 / 公网 p95、跨地域限流、共享额度与实际告警。
 - P4 真机弱网 / 切网、三网、TalkBack、真实进程终止、厂商 Keystore、系统大字体 / 输入法；首次发布没有历史 signed APK 可做真实版本升级。
@@ -44,6 +46,20 @@ P5 实现经 [PR #5](https://github.com/vampuke/dining-log/pull/5) 合并，mast
 [run 41309979156](https://github.com/vampuke/dining-log/actions/runs/41309979156) 的 API 26 产品测试在注册后的 `empty-state` 断言失败，backend / android job 成功。此 run 未用于合并或发布，未触发新的生产写入。失败截图显示列表视口只容纳前面的输入与按钮，空态属于后续 LazyColumn item。数据就绪不保证视口外的 lazy item 已被组合，注册键盘关闭的窗口调整使该缺口在 API 26 暴露。
 
 修正同一用例：保留原数据等待条件，然后滚动至空态；保留原 assertExists，增加 assertIsDisplayed 与精确正文断言。45 秒超时保持，未删除用例、未 skip、未降低任何断言或性能阈值。修正后的新提交须由完整 Actions 验证，不能将失败 run 重标为成功。
+
+### 首次 release 的 SDK 解析失败记录
+
+[release 41311895560](https://github.com/vampuke/dining-log/actions/runs/41311895560) 在 `identity(apk)` 报 `APK SDK levels differ from the reviewed configuration`。`assembleRelease`、JVM 与 debug/release lint 已实际成功，日志为 `BUILD SUCCESSFUL in 4m 45s`；但 apksigner、checksum、API 26/35 安装、checkpoint、迁移、deploy、health、smoke 与 Release 创建均因该失败阻断，不能标为通过。此次没有新的生产写入，也没有已发布 tag / APK 被覆盖。
+
+源码检查定位为字段名误识别：脚本仅识别 `sdkVersion:'26'`，相同 build-tools 35 的 [master Android job](https://github.com/vampuke/dining-log/actions/runs/41311292752/job/124862054474) 实际输出为：
+
+```text
+package: name='top.alanvampuke.dininglog.debug' versionCode='5' versionName='0.5.0' platformBuildVersionName='15' platformBuildVersionCode='35' compileSdkVersion='35' compileSdkVersionCodename='15'
+minSdkVersion:'26'
+targetSdkVersion:'35'
+```
+
+修正只接受两种明确的 min SDK 字段名，仍严格要求单一 min SDK=26、target SDK=35；缺失、错误值、重复或冲突字段全部失败。固定证书 / v2 / package / version / tag 断言保留。新增七个轻量 unittest，包含这份真实输出与拒绝案例，并接入无生产凭据的 CI 和 release 后端候选阶段；未来失败会保留公开 package / SDK badging。未重跑旧 run、未降阈值；修正后的 PR / 候选 CI 和正式发布须另取真实结果。
 
 ### 公网 health
 

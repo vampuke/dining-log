@@ -64,6 +64,7 @@ jobs:
           set -euo pipefail
           npm ci
           node --test ../.github/scripts/release-guards.test.mjs
+          python3 -B -m unittest discover -s ../.github/scripts -p 'test_apk_metadata.py'
           npm run check
           node tests/contracts.mjs
           npm test
@@ -197,6 +198,7 @@ jobs:
           name: release-evidence
           path: |
             ${{ runner.temp }}/dining-release-selection.json
+            ${{ runner.temp }}/dining-apk-badging.txt
             ${{ runner.temp }}/dining-apk-signature.txt
             ${{ runner.temp }}/dining-apk-metadata.json
             ${{ runner.temp }}/dining-production-checkpoint.json
