@@ -58,10 +58,13 @@ export async function list(c: C, kind: Kind | 'revision', scopedId?: string, pro
     columns = `${restaurantColumns},${matches(tokens, params)}`; from = 'FROM restaurants r LEFT JOIN restaurant_search s ON s.restaurant_id=r.id AND s.user_id=r.user_id'; alias = 'r';
     params.push(user); where = 'r.user_id=?' + deletion('r', q) + ratingWhere('r', q, params);
     for (const [field, col] of [['category', 'category'], ['cuisine', 'cuisine_normalized']] as const) if (q[field] !== undefined) { where += ` AND r.${col}=?`; params.push(String(q[field])); }
-    if (q.visited !== undefined || q.visited_from || q.visited_to) {
-      let visit = 'SELECT 1 FROM visits v WHERE v.user_id=r.user_id AND v.restaurant_id=r.id AND v.deleted_at IS NULL';
-      if (q.visited_from) { visit += ' AND v.dining_date>=?'; params.push(String(q.visited_from)); } if (q.visited_to) { visit += ' AND v.dining_date<=?'; params.push(String(q.visited_to)); }
-      where += ` AND ${q.visited === false ? 'NOT ' : ''}EXISTS (${visit})`;
+    const validVisits = 'SELECT 1 FROM visits v WHERE v.user_id=r.user_id AND v.restaurant_id=r.id AND v.deleted_at IS NULL';
+    if (q.visited !== undefined) where += ` AND ${q.visited ? '' : 'NOT '}EXISTS (${validVisits})`;
+    if (q.visited_from || q.visited_to) {
+      let inRange = validVisits;
+      if (q.visited_from) { inRange += ' AND v.dining_date>=?'; params.push(String(q.visited_from)); }
+      if (q.visited_to) { inRange += ' AND v.dining_date<=?'; params.push(String(q.visited_to)); }
+      where += ` AND EXISTS (${inRange})`;
     }
     where += literal("json_extract(s.content,'$.text')", tokens, params); column = sort === 'rating_desc' ? 'r.rating_tenths' : 'r.updated_at';
   } else if (kind === 'dish') {
@@ -74,7 +77,7 @@ export async function list(c: C, kind: Kind | 'revision', scopedId?: string, pro
     from = 'FROM visits v JOIN restaurants r ON r.id=v.restaurant_id AND r.user_id=v.user_id LEFT JOIN restaurant_search s ON s.restaurant_id=r.id AND s.user_id=r.user_id'; alias = 'v'; params.push(user); where = 'v.user_id=? AND r.deleted_at IS NULL' + deletion('v', q);
     if (q.restaurant_id) { where += ' AND v.restaurant_id=?'; params.push(String(q.restaurant_id)); }
     for (const [field, col, op] of [['from', 'dining_date', '>='], ['to', 'dining_date', '<='], ['meal', 'meal', '=']] as const) if (q[field]) { where += ` AND v.${col}${op}?`; params.push(String(q[field])); }
-    where += literal(`(v.search_text || ' ' || coalesce(json_extract(s.content,'$.parts."restaurant:' || r.id || '".restaurant'),''))`, tokens, params); column = 'v.dining_date';
+    where += literal(`(v.search_text || ' ' || coalesce(json_extract(s.content,'$.parts."restaurant:' || r.id || '".name'),''))`, tokens, params); column = 'v.dining_date';
   } else {
     columns = historyColumns; from = historyJoin; alias = 'h'; params.push(user); where = 'h.user_id=?' + deletion('h', q);
     if (asSearch) where += " AND r.deleted_at IS NULL AND (h.entity_type='restaurant' OR (h.entity_type='dish' AND d.deleted_at IS NULL) OR (h.entity_type='visit' AND v.deleted_at IS NULL))";

@@ -1,8 +1,8 @@
 import { normalizeSearch } from './schemas';
 import type { Kind, Row } from './model';
-type Fragment = { active: number; restaurant?: string; dish?: string; review?: string; note?: string };
+type Fragment = { active: number; restaurant?: string; dish?: string; review?: string; note?: string; name?: string };
 export function fragment(kind: Kind, row: Row): Fragment {
-  if (kind === 'restaurant') return { active: row.deleted_at === null ? 1 : 0, restaurant: normalizeSearch([row.name, row.category, row.cuisine, row.address].filter(v => v !== null).join(' ')), review: normalizeSearch(String(row.review ?? '')), note: normalizeSearch(String(row.note ?? '')) };
+  if (kind === 'restaurant') return { active: row.deleted_at === null ? 1 : 0, name: normalizeSearch(String(row.name)), restaurant: normalizeSearch([row.name, row.category, row.cuisine, row.address].filter(v => v !== null).join(' ')), review: normalizeSearch(String(row.review ?? '')), note: normalizeSearch(String(row.note ?? '')) };
   return { active: row.deleted_at === null ? 1 : 0, dish: normalizeSearch(String(row.name)), review: normalizeSearch(String(row.review ?? '')) };
 }
 // The existing TEXT content stores atomic per-entity fragments plus rebuilt text.

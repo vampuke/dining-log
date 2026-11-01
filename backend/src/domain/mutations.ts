@@ -21,7 +21,7 @@ function storageRow(kind: Kind, payload: Record<string, unknown>, userId: string
 }
 function shadows(kind: Kind, row: Row) {
   if (kind === 'restaurant') row.cuisine_normalized = row.cuisine === null ? null : normalizeSearch(String(row.cuisine));
-  if (kind === 'visit') row.search_text = normalizeSearch([row.dining_date, row.meal, row.note].filter(v => v !== null).join(' '));
+  if (kind === 'visit') row.search_text = normalizeSearch(String(row.note ?? ''));
 }
 function history(db: D1Database, kind: Kind, row: Row, changes: Diff[], action: Action, setId: string, now: number, source: string | null) {
   const serialized = JSON.stringify(changes);
