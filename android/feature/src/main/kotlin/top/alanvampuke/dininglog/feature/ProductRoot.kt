@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -144,7 +145,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     if (operationVisible && conflict == null && expired == null) OperationDialog(editor, vm::saveEditor, vm::dismissOperation)
 }
 @Composable fun BottomTabs(selectedRoute: String?, onSelect: (String) -> Unit) {
-    NavigationBar(containerColor = LocalQuietGridColors.current.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
+    NavigationBar(modifier = Modifier.heightIn(min = if (LocalDensity.current.fontScale > 1.3f) 112.dp else 80.dp),
+        containerColor = LocalQuietGridColors.current.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
         listOf(Triple("restaurants", "餐厅", "≡"), Triple("visits", "到店", "◷"), Triple("settings", "我的", "○")).forEach { (id, title, icon) ->
             NavigationBarItem(selected = selectedRoute?.contains(when (id) { "restaurants" -> "RestaurantsRoute"; "visits" -> "VisitsRoute"; else -> "SettingsRoute" }) == true,
                 onClick = { onSelect(id) }, icon = { Text(icon) }, label = { Text(title) }, modifier = Modifier.testTag("tab:$id"))

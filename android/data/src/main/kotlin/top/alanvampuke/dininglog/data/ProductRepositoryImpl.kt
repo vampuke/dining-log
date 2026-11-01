@@ -29,11 +29,12 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         fun previews(rows: List<RecordSummary>) = rows.map { row ->
             if (row.ref.kind == RecordKind.REVISION) row.copy(cachedDiff = snapshots.firstOrNull {
                 it.ref.kind == RecordKind.REVISION && it.ref.id == row.ref.id
-            }?.diff ?: emptyList()) else row
+            }?.diff ?: row.cachedDiff) else row
         }
         if (cached != null) {
             val parents = summaries.filter { it.ref.kind == RecordKind.RESTAURANT && it.deleted }.map { it.ref.id }.toSet()
-            val rows = page.map { ProductJson.decodeFromString<RecordSummary>(it.payload) }.filter {
+            val rows = page.map { ProductJson.decodeFromString<RecordSummary>(it.summary.payload).copy(
+                matches = ProductJson.decodeFromString<List<MatchType>>(it.matchesPayload)) }.filter {
                 it.deleted == (query.deleted == DeletedFilter.ONLY) &&
                     (it.ref.kind !in setOf(RecordKind.DISH, RecordKind.VISIT) || it.ref.restaurantId !in parents)
             }
@@ -52,7 +53,8 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             if (!loadMore) dao.removeMembers(accountId, query.fingerprint)
             items.forEach { cacheSummary(accountId, it) }
             val ids = (previous.map { it.entityId } + items.map { it.ref.id }).distinct()
-            dao.putMembers(ids.mapIndexed { position, id -> PageMember(accountId, query.fingerprint, query.kind.name, id, position) })
+            val hits = previous.associate { it.entityId to it.matchesPayload } + items.associate { it.ref.id to ProductJson.encodeToString(it.matches) }
+            dao.putMembers(ids.mapIndexed { position, id -> PageMember(accountId, query.fingerprint, query.kind.name, id, position, hits[id] ?: "[]") })
             dao.putQuery(QueryRow(accountId, query.fingerprint, meta.nextCursor, meta.hasMore, now()))
         }
     }
@@ -87,12 +89,17 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             storeDraft(pending)
             return@withLock SaveOutcome.Kept(pending, "已保留草稿，联网后再保存")
         }
+        val waitMs = (pending.retryNotBefore ?: 0) - now()
+        if (waitMs > 0) {
+            storeDraft(pending)
+            return@withLock SaveOutcome.Kept(pending, "请求过于频繁，请在 ${(waitMs + 999) / 1000} 秒后再保存；草稿已保留")
+        }
         if (DraftRules.needsReview(pending, now()) || pending.status == DraftStatus.EXPIRED_REVIEW) {
             return@withLock reviewExpired(pending)
         }
         pending = requestFor(pending, now())
         owner.write(account, pending.accountId, generation) { putDraft(pending) }
-        try {
+        val saved = try {
             val data = remote.write(pending)
             val raw = (data["entity"] as? JsonObject) ?: data
             val partial = snapshot(pending.ref.kind, raw, pending.ref.restaurantId)
@@ -102,20 +109,19 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             owner.write(account, pending.accountId, generation) {
                 cacheSnapshot(pending.accountId, saved)
                 (data["first_visit"] as? JsonObject)?.let { cacheSnapshot(pending.accountId, snapshot(RecordKind.VISIT, it, saved.ref.id)) }
-                (data["revisions"] as? JsonArray)?.forEach { cacheSummary(pending.accountId, summary(RecordKind.REVISION, it.jsonObject)) }
+                (data["revisions"] as? JsonArray)?.forEach {
+                    val revision = summary(RecordKind.REVISION, it.jsonObject)
+                    // The acknowledged entity values let this device summarize
+                    // its own score change without fetching every history diff.
+                    val score = if (revision.fields["action"] == "update" && "rating_tenths" in revision.changedFields &&
+                        revision.fields["entity_id"] == saved.ref.id) listOf(Change("rating_tenths", pending.baseSnapshot?.fields?.get("rating_tenths"), saved.fields["rating_tenths"])) else emptyList()
+                    cacheSummary(pending.accountId, revision.copy(cachedDiff = score))
+                }
                 (data["revision"] as? JsonObject)?.let { cacheSnapshot(pending.accountId, snapshot(RecordKind.REVISION, it)) }
                 dao.deleteDraft(pending.accountId, pending.id)
                 dao.invalidateQueries(pending.accountId); dao.invalidateMembers(pending.accountId)
             }
-            // Child writes don't increment restaurant.version; stats must be re-read.
-            val parent = if (pending.ref.kind == RecordKind.RESTAURANT) pending.ref.id else pending.ref.restaurantId
-            if (parent != null && saved.deletedAt == null && pending.ref.kind != RecordKind.REVISION) {
-                try { refreshDetail(pending.accountId, RecordRef(RecordKind.RESTAURANT, parent)) }
-                catch (e: CancellationException) { throw e }
-                catch (e: AuthFailure) { throw e }
-                catch (_: ProductFailure) { /* Primary write is committed; keep the cache and allow manual refresh. */ }
-            }
-            SaveOutcome.Saved(saved)
+            saved
         } catch (e: CancellationException) {
             withContext(NonCancellable) { runCatching { owner.write(account, pending.accountId, generation) { putDraft(pending.copy(status = DraftStatus.RESULT_UNKNOWN)) } } }
             throw e
@@ -123,11 +129,13 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             if (e.code == "VERSION_CONFLICT" && e.current != null) {
                 val preserved = pending.copy(status = DraftStatus.EDITING, original = null)
                 storeDraft(preserved)
-                SaveOutcome.Conflict(preserved, compareConflict(preserved, requireNotNull(e.current).copy(ref = pending.ref)))
+                return@withLock SaveOutcome.Conflict(preserved, compareConflict(preserved, requireNotNull(e.current).copy(ref = pending.ref)))
             } else {
                 val unknown = e.offline || e.status >= 500
+                val rateLimited = e.status == 429
                 val kept = pending.copy(status = if (unknown) DraftStatus.RESULT_UNKNOWN else DraftStatus.EDITING,
-                    original = if (unknown) pending.original else null)
+                    original = if (unknown || rateLimited) pending.original else null,
+                    retryNotBefore = if (rateLimited) now() + (e.retryAfterSeconds ?: 60).coerceAtLeast(0) * 1000 else pending.retryNotBefore)
                 storeDraft(kept)
                 val message = when {
                     unknown -> "保存结果未知；草稿已保留，请用原请求重试确认结果"
@@ -136,14 +144,24 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
                     e.fieldErrors.isNotEmpty() -> "请检查输入：${e.fieldErrors.keys.joinToString("、", transform = ::fieldLabel)}；草稿已保留"
                     else -> "保存失败（${e.code}）；草稿已保留"
                 }
-                SaveOutcome.Kept(kept, message)
+                return@withLock SaveOutcome.Kept(kept, message)
             }
         } catch (e: AuthFailure) {
             if (e.code in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE", "RATE_LIMITED")) {
                 val kept = pending.copy(status = DraftStatus.RESULT_UNKNOWN)
-                storeDraft(kept); SaveOutcome.Kept(kept, "保存结果未知；请联网后用原请求重试")
+                storeDraft(kept); return@withLock SaveOutcome.Kept(kept, "保存结果未知；请联网后用原请求重试")
             } else throw e
         }
+        // A failed statistics GET cannot turn an acknowledged write into an
+        // unknown result or reinsert a successfully deleted draft.
+        val parent = if (pending.ref.kind == RecordKind.RESTAURANT) pending.ref.id else pending.ref.restaurantId
+        if (parent != null && saved.deletedAt == null && pending.ref.kind != RecordKind.REVISION) {
+            try { refreshDetail(pending.accountId, RecordRef(RecordKind.RESTAURANT, parent)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: AuthFailure) { if (e.code !in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE", "RATE_LIMITED")) throw e }
+            catch (_: ProductFailure) { /* Keep the acknowledged write; the parent can be refreshed manually. */ }
+        }
+        SaveOutcome.Saved(saved)
     }
     private suspend fun reviewExpired(draft: SavedDraft): SaveOutcome {
         val current = try { refreshDetail(draft.accountId, draft.ref) } catch (e: ProductFailure) {
@@ -169,7 +187,9 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         return submit(next)
     }
     private suspend fun cacheSummary(accountId: String, record: RecordSummary) {
-        dao.cacheSummary(SummaryRow(accountId, record.ref.kind.name, record.ref.id, record.version, ProductJson.encodeToString(record), now()))
+        val previous = dao.summary(accountId, record.ref.kind.name, record.ref.id)?.let { ProductJson.decodeFromString<RecordSummary>(it.payload) }
+        val brief = record.copy(matches = emptyList(), cachedDiff = record.cachedDiff.ifEmpty { previous?.cachedDiff ?: emptyList() })
+        dao.cacheSummary(SummaryRow(accountId, record.ref.kind.name, record.ref.id, record.version, ProductJson.encodeToString(brief), now()))
     }
     private suspend fun cacheSnapshot(accountId: String, record: RecordSnapshot) {
         val old = dao.summary(accountId, record.ref.kind.name, record.ref.id)?.let { ProductJson.decodeFromString<RecordSummary>(it.payload) }

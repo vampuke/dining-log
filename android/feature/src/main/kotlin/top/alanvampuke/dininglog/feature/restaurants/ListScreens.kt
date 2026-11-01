@@ -42,7 +42,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (onAdd != null) Button(onClick = onAdd, modifier = Modifier.fillMaxWidth().testTag("add")) { Text(when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" }) }
                     TextButton(onClick = onRefresh, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh")) { Text(if (state.isRefreshing) "正在刷新…" else "刷新第一页") }
-                    if (kind != RecordKind.REVISION) TextButton(onClick = { expandedFilters = !expandedFilters }) { Text(if (expandedFilters) "收起筛选" else "筛选与排序") }
+                    if (kind != RecordKind.REVISION) TextButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) { Text(if (expandedFilters) "收起筛选" else "筛选与排序") }
                     if (onChooseRestaurant != null) TextButton(onClick = onChooseRestaurant) { Text("按餐厅筛选") }
                     if (onClearRestaurant != null) {
                         GridText("当前只显示所选餐厅的到店记录", color = LocalQuietGridColors.current.secondary)
@@ -118,8 +118,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
         if (kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
             ChoiceChips(listOf("updated_desc" to "最近更新", "rating_desc" to "评分高到低"), filters.sort, { onChange(filters.copy(sort = it ?: "updated_desc")) })
-            Row { Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }); GridText("只看未评分", Modifier.padding(top = 12.dp)) }
-            Row { Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }); GridText("限定评分区间", Modifier.padding(top = 12.dp)) }
+            Row { Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }, modifier = Modifier.testTag("filter-unrated")); GridText("只看未评分", Modifier.padding(top = 12.dp)) }
+            Row { Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }, modifier = Modifier.testTag("filter-rating-range")); GridText("限定评分区间", Modifier.padding(top = 12.dp)) }
             if (filters.minRating != null || filters.maxRating != null) {
                 GridText("最低评分"); RatingEditor((filters.minRating ?: 10).toString(), { onChange(filters.copy(minRating = it?.toInt() ?: 10)) }, true, "filter-min")
                 GridText("最高评分"); RatingEditor((filters.maxRating ?: 50).toString(), { onChange(filters.copy(maxRating = it?.toInt() ?: 50)) }, true, "filter-max")
@@ -129,6 +129,6 @@ import top.alanvampuke.dininglog.feature.theme.*
             FormField("filter-from", filters.from, { onChange(filters.copy(from = it)) }, label = "到店起始日期", supporting = "YYYY-MM-DD，可留空")
             FormField("filter-to", filters.to, { onChange(filters.copy(to = it)) }, label = "到店截止日期", supporting = "YYYY-MM-DD，可留空")
         }
-        TextButton(onClick = { onChange(ListFilters()) }) { Text("清除筛选") }
+        TextButton(onClick = { onChange(ListFilters()) }, modifier = Modifier.testTag("filter-clear")) { Text("清除筛选") }
     }
 }

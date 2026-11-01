@@ -22,7 +22,10 @@ data class QueryRow(@ColumnInfo(name = "account_id") val accountId: String, val 
     @ColumnInfo(name = "fetched_at") val fetchedAt: Long)
 @Entity(tableName = "page_members", primaryKeys = ["account_id", "fingerprint", "kind", "entity_id"])
 data class PageMember(@ColumnInfo(name = "account_id") val accountId: String, val fingerprint: String,
-    val kind: String, @ColumnInfo(name = "entity_id") val entityId: String, val position: Int)
+    val kind: String, @ColumnInfo(name = "entity_id") val entityId: String, val position: Int,
+    @ColumnInfo(name = "matches_payload") val matchesPayload: String = "[]")
+data class PageEntry(@Embedded val summary: SummaryRow,
+    @ColumnInfo(name = "matches_payload") val matchesPayload: String)
 @Entity(tableName = "saved_drafts", primaryKeys = ["account_id", "draft_id"])
 data class DraftRow(@ColumnInfo(name = "account_id") val accountId: String,
     @ColumnInfo(name = "draft_id") val draftId: String, val kind: String,
@@ -43,8 +46,8 @@ data class DraftRow(@ColumnInfo(name = "account_id") val accountId: String,
     abstract fun observeQuery(accountId: String, fingerprint: String): Flow<QueryRow?>
     @Query("SELECT * FROM cached_queries WHERE account_id=:accountId AND fingerprint=:fingerprint")
     abstract suspend fun query(accountId: String, fingerprint: String): QueryRow?
-    @Query("SELECT s.* FROM cached_summaries s JOIN page_members p ON s.account_id=p.account_id AND s.kind=p.kind AND s.entity_id=p.entity_id WHERE p.account_id=:accountId AND p.fingerprint=:fingerprint ORDER BY p.position")
-    abstract fun observePage(accountId: String, fingerprint: String): Flow<List<SummaryRow>>
+    @Query("SELECT s.*,p.matches_payload FROM cached_summaries s JOIN page_members p ON s.account_id=p.account_id AND s.kind=p.kind AND s.entity_id=p.entity_id WHERE p.account_id=:accountId AND p.fingerprint=:fingerprint ORDER BY p.position")
+    abstract fun observePage(accountId: String, fingerprint: String): Flow<List<PageEntry>>
     @Query("SELECT * FROM page_members WHERE account_id=:accountId AND fingerprint=:fingerprint ORDER BY position")
     abstract suspend fun members(accountId: String, fingerprint: String): List<PageMember>
     @Query("SELECT * FROM cached_details WHERE account_id=:accountId AND kind=:kind AND entity_id=:id")

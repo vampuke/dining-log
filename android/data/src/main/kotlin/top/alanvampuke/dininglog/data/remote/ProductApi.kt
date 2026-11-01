@@ -73,9 +73,10 @@ class ProductRemote(private val api: ProductApi, private val refresh: RefreshCoo
         error("unreachable")
     }
     companion object {
-        fun create(baseUrl: String, refresh: RefreshCoordinator, client: OkHttpClient = OkHttpClient.Builder()
+        fun create(baseUrl: String, refresh: RefreshCoordinator): ProductRemote = create(baseUrl, refresh, OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(false).build()): ProductRemote = ProductRemote(
+            .retryOnConnectionFailure(false).build())
+        fun create(baseUrl: String, refresh: RefreshCoordinator, client: OkHttpClient): ProductRemote = ProductRemote(
             Retrofit.Builder().baseUrl(baseUrl).client(client)
                 .addConverterFactory(ProductJson.asConverterFactory("application/json".toMediaType()))
                 .build().create(ProductApi::class.java), refresh)

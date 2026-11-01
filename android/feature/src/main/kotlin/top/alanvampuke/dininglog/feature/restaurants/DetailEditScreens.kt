@@ -141,7 +141,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                         if (draft.baseSnapshot == null) GridText("保存餐厅后即可在这里新增、编辑、删除菜品", color = LocalQuietGridColors.current.secondary)
                         else {
                             if (onAddDish != null) Button(onClick = onAddDish, enabled = !state.saving, modifier = Modifier.fillMaxWidth().testTag("edit-add-dish")) { Text("新增菜品") }
-                            if (onManageDishes != null) TextButton(onClick = onManageDishes, enabled = !state.saving) { Text("菜品列表与回收站") }
+                            if (onManageDishes != null) TextButton(onClick = onManageDishes, enabled = !state.saving, modifier = Modifier.testTag("edit-manage-dishes")) { Text("菜品列表与回收站") }
                         }
                     }
                     items(dishes, key = { "edit-dish:${it.ref.id}" }) { RecordRow(it, onDish) }

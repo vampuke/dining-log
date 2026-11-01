@@ -122,13 +122,13 @@ class ProductVisualTest {
         val a = luminance(foreground); val b = luminance(background)
         return (maxOf(a, b) + 0.05) / (minOf(a, b) + 0.05)
     }
-    private fun largeForm(dark: Boolean) {
+    private fun largeForm(dark: Boolean, message: String? = null) {
         compose.activityRule.scenario.onActivity { it.enableEdgeToEdge(); it.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 QuietGridTheme(dark) {
                     SideEffect { applySystemBarTheme(compose.activity.window, dark) }
-                    EditScreen(EditorUiState(draft), { _, _ -> }, {}, { saveTaps++ }, {}, {})
+                    EditScreen(EditorUiState(draft, message = message), { _, _ -> }, {}, { saveTaps++ }, {}, {})
                 }
             }
         }
@@ -151,6 +151,41 @@ class ProductVisualTest {
     }
     @Test fun lightKeyboardLeavesSaveAboveActualIme() { largeForm(false); assertKeyboard("light") }
     @Test fun darkKeyboardAt200PercentLeavesSaveAboveActualIme() { largeForm(true); assertKeyboard("dark") }
+    @Test fun darkKeyboardAt200PercentWithLongSaveMessageKeepsButtonReachable() {
+        largeForm(true, "保存结果未知；草稿已保留，请用原请求重试确认结果。".repeat(4))
+        assertKeyboard("dark")
+    }
+    @Test fun allThreeTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes() {
+        var dark by mutableStateOf(false)
+        var page by mutableStateOf("list")
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
+                QuietGridTheme(dark) {
+                    val tabs: @Composable () -> Unit = { BottomTabs("RestaurantsRoute") {} }
+                    when (page) {
+                        "list" -> RecordListScreen(ListUiState(items = listOf(summary), localScope = false), "", ListFilters(), {}, {}, {}, {}, {}, bottomBar = tabs)
+                        "detail" -> RecordDetailScreen(DetailUiState(CachedDetail(snapshot)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
+                        "history" -> RevisionDetailScreen(DetailUiState(CachedDetail(revision)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
+                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.SYSTEM, "0.4.0", {}, {}, { _, _ -> }, {}, {}, {}, tabs)
+                    }
+                }
+            }
+        }
+        for (night in listOf(false, true)) for (screen in listOf("list", "detail", "history", "settings")) {
+            compose.runOnIdle { dark = night; page = screen }
+            compose.onNodeWithTag("page-title").assertIsDisplayed()
+            val titleLayouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithTag("page-title").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayouts) }
+            assertTrue(titleLayouts.isNotEmpty()); titleLayouts.forEach { assertFalse(it.hasVisualOverflow) }
+            for ((id, label) in listOf("restaurants" to "餐厅", "visits" to "到店", "settings" to "我的")) {
+                compose.onNodeWithTag("tab:$id").assertIsDisplayed()
+                val layouts = mutableListOf<TextLayoutResult>()
+                compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("tab:$id")), useUnmergedTree = true)
+                    .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                assertTrue(layouts.isNotEmpty()); layouts.forEach { assertFalse("200% tab label $label must not clip", it.hasVisualOverflow) }
+            }
+        }
+    }
     private fun assertKeyboard(name: String) {
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val service = requireNotNull(automation.serviceInfo)

@@ -9,6 +9,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.test.*
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import okhttp3.Call
 import okhttp3.EventListener
 import okhttp3.OkHttpClient
@@ -121,6 +122,65 @@ class DurableDraftTest {
             val unavailable = f.repository.submit(child) as SaveOutcome.Kept
             assertEquals(child.localFields, unavailable.draft.localFields); assertTrue(unavailable.message.contains("先恢复或刷新"))
             assertEquals(2, f.server.requestCount)
+        }
+    }
+    @Test fun manualWriteHonorsRetryAfterWithoutTransportReplayAndKeepsOriginalKey() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(MockResponse().setResponseCode(429).setHeader("Retry-After", "2").setBody("{\"error\":{\"code\":\"RATE_LIMITED\"}}"))
+            val limited = f.repository.submit(draft()) as SaveOutcome.Kept
+            val first = f.server.takeRequest()
+            assertEquals(3000L, limited.draft.retryNotBefore)
+            assertNotNull(limited.draft.original)
+            f.now = 2999
+            assertIs<SaveOutcome.Kept>(f.repository.submit(limited.draft))
+            assertEquals(1, f.server.requestCount, "Retry-After must prevent another write before its deadline")
+            f.now = 3000
+            f.server.enqueue(mutation()); f.server.enqueue(detail())
+            assertIs<SaveOutcome.Saved>(f.repository.submit(limited.draft))
+            val retry = f.server.takeRequest()
+            assertEquals(first.getHeader("Idempotency-Key"), retry.getHeader("Idempotency-Key"))
+            assertEquals(first.body.readUtf8(), retry.body.readUtf8())
+        }
+    }
+    @Test fun acknowledgedSaveDoesNotBecomeUnknownWhenParentStatisticsGetFails() = runBlocking {
+        Fixture().use { f ->
+            f.server.enqueue(mutation())
+            repeat(3) { f.server.enqueue(MockResponse().setResponseCode(503).setBody("{\"error\":{\"code\":\"TEMPORARILY_UNAVAILABLE\"}}")) }
+            assertIs<SaveOutcome.Saved>(f.repository.submit(draft()))
+            assertNull(f.repository.findDraft("A", draft().id))
+            assertEquals("43", f.repository.observeDetail("A", ref).first().snapshot!!.fields["rating_tenths"])
+            assertEquals(4, f.server.requestCount)
+        }
+    }
+    @Test fun cachedSearchPagesKeepTheirOwnHitTypesForTheSameRestaurant() = runBlocking {
+        Fixture().use { f ->
+            fun searchPage(match: String) = MockResponse().setBody(buildJsonObject {
+                put("data", buildJsonObject { put("items", JsonArray(listOf(Json.parseToJsonElement(entity()).jsonObject +
+                    ("matched_fields" to JsonArray(listOf(JsonPrimitive(match))))).map(::JsonObject))) })
+                put("meta", buildJsonObject { put("has_more", false); put("next_cursor", JsonNull) })
+            }.toString())
+            val dishQuery = ListQuery(query = "辣子鸡")
+            val reviewQuery = ListQuery(query = "花椒香")
+            f.server.enqueue(searchPage("dish")); f.repository.refreshList("A", dishQuery)
+            f.server.enqueue(searchPage("review")); f.repository.refreshList("A", reviewQuery)
+            assertEquals(listOf(MatchType.DISH), f.repository.observeList("A", dishQuery).first().items.single().matches)
+            assertEquals(listOf(MatchType.REVIEW), f.repository.observeList("A", reviewQuery).first().items.single().matches)
+            assertFalse(f.repository.observeList("A", dishQuery).first().localScope)
+        }
+    }
+    @Test fun scoreHistorySummarySurvivesARefreshWithoutFetchingEveryDiff() = runBlocking {
+        Fixture().use { f ->
+            val revision = "{\"id\":\"history\",\"restaurant_id\":\"${ref.id}\",\"entity_type\":\"restaurant\",\"entity_id\":\"${ref.id}\",\"entity_label\":\"兰记\",\"action\":\"update\",\"changed_fields\":[\"rating_tenths\"],\"metadata_version\":1,\"created_at\":\"2026-11-01T00:00:01.000Z\"}"
+            f.server.enqueue(MockResponse().setBody("{\"data\":{\"entity\":${entity()},\"changed\":true,\"revisions\":[$revision]}}"))
+            f.server.enqueue(detail())
+            assertIs<SaveOutcome.Saved>(f.repository.submit(draft()))
+            val query = ListQuery(RecordKind.REVISION, ref.id)
+            val before = f.repository.observeList("A", query).first().items.single()
+            assertTrue(historySummary(before, null).contains("★ 4.0 → ★ 4.3"))
+            f.server.enqueue(MockResponse().setBody("{\"data\":{\"items\":[$revision]},\"meta\":{\"has_more\":false,\"next_cursor\":null}}"))
+            f.repository.refreshList("A", query)
+            assertTrue(historySummary(f.repository.observeList("A", query).first().items.single(), null).contains("★ 4.0 → ★ 4.3"))
+            assertEquals(3, f.server.requestCount, "Opening history should not download all full diff details")
         }
     }
     @Test fun lateAHttpResultCannotRepopulateCacheAfterLoginB() = runBlocking {

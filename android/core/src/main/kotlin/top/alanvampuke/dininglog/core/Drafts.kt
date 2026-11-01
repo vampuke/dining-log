@@ -23,6 +23,7 @@ import java.util.UUID
     val applySide: String = "before", val applyFields: List<String> = emptyList(),
     val status: DraftStatus = DraftStatus.EDITING, val original: OriginalRequest? = null,
     val updatedAt: Long = System.currentTimeMillis(),
+    val retryNotBefore: Long? = null,
 ) {
     val baseVersion: Int? get() = baseSnapshot?.version
     val locked: Boolean get() = status != DraftStatus.EDITING
