@@ -15,7 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
-import androidx.navigation.hasRoute
+import androidx.navigation.NavDestination.Companion.hasRoute
 import kotlinx.serialization.Serializable
 import java.util.UUID
 import top.alanvampuke.dininglog.core.*
