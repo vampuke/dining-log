@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Rect
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
+import android.accessibilityservice.AccessibilityServiceInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
@@ -21,6 +23,7 @@ import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.core.view.WindowInsetsControllerCompat
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,7 +35,9 @@ import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.*
 import top.alanvampuke.dininglog.feature.restaurants.*
 import top.alanvampuke.dininglog.feature.revisions.*
+import top.alanvampuke.dininglog.feature.settings.*
 import top.alanvampuke.dininglog.feature.theme.*
+import top.alanvampuke.dininglog.applySystemBarTheme
 
 @RunWith(AndroidJUnit4::class)
 class ProductVisualTest {
@@ -44,25 +49,38 @@ class ProductVisualTest {
     private val revision = RecordSnapshot(RecordRef(RecordKind.REVISION, "visual-revision", ref.id), 1,
         mapOf("entity_label" to snapshot.title, "entity_type" to "restaurant", "entity_id" to ref.id, "entity_version_before" to "1", "entity_version_after" to "2", "created_at" to snapshot.updatedAt, "note" to "再次到店后改分"), snapshot.updatedAt,
         diff = listOf(Change("rating_tenths", "40", "43"), Change("review", "原来的评价", "新评价，花椒香")))
+    private var saveTaps = 0
 
     @Test fun lightAndDarkListDetailEditSearchHistoryAndConflictRenderActualApprovedColors() {
         var dark by mutableStateOf(false)
         var screen by mutableStateOf("list")
+        compose.activityRule.scenario.onActivity { it.enableEdgeToEdge() }
         compose.setContent { QuietGridTheme(dark) {
+            SideEffect { applySystemBarTheme(compose.activity.window, dark) }
             when (screen) {
                 "list" -> listScreen(ListUiState(items = listOf(summary), localScope = false))
                 "detail" -> RecordDetailScreen(DetailUiState(CachedDetail(snapshot)), {}, {}, {}, {}, {}, {})
                 "edit" -> EditScreen(EditorUiState(draft), { _, _ -> }, {}, {}, {}, {})
                 "search" -> listScreen(ListUiState(items = listOf(summary), query = ListQuery(query = "辣子鸡"), localScope = false))
                 "history" -> RevisionDetailScreen(DetailUiState(CachedDetail(revision)), {}, {}, {}, {}, {}, {})
+                "history-list" -> listScreen(ListUiState(items = listOf(RecordSummary(revision.ref, snapshot.title, 1, revision.updatedAt,
+                    revision.fields, changedFields = listOf("rating_tenths"), cachedDiff = revision.diff)), query = ListQuery(RecordKind.REVISION, ref.id), localScope = false))
+                "visits" -> listScreen(ListUiState(items = listOf(RecordSummary(RecordRef(RecordKind.VISIT, "visual-visit", ref.id), "2026-11-01", 1, snapshot.updatedAt,
+                    mapOf("restaurant_name" to snapshot.title, "dining_date" to "2026-11-01", "meal" to "dinner", "note_excerpt" to "同日第二次到店"))), query = ListQuery(RecordKind.VISIT), localScope = false))
+                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.DARK, "0.4.0", {}, {}, { _, _ -> }, {}, {}, {}, {})
                 "conflict" -> ConflictDialog(compareConflict(draft, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, {}, {})
             }
         } }
-        for (night in listOf(false, true)) for (page in listOf("list", "detail", "edit", "search", "history", "conflict")) {
+        for (night in listOf(false, true)) for (page in listOf("list", "detail", "edit", "search", "history", "history-list", "visits", "settings", "conflict")) {
             compose.runOnIdle { dark = night; screen = page }
             compose.waitForIdle()
-            val tag = when (page) { "list" -> "screen:restaurant:list"; else -> "screen:$page" }
+            val tag = when (page) { "list" -> "screen:restaurant:list"; "history-list" -> "screen:revision:list"; "visits" -> "screen:visit:list"; else -> "screen:$page" }
             val c = if (night) QuietGridDark else QuietGridLight
+            compose.activityRule.scenario.onActivity {
+                val controller = WindowInsetsControllerCompat(it.window, it.window.decorView)
+                assertEquals(!night, controller.isAppearanceLightStatusBars)
+                assertEquals(!night, controller.isAppearanceLightNavigationBars)
+            }
             val background = if (page == "conflict") c.surface else c.bg
             val titleTag = if (page == "conflict") "dialog-title" else "page-title"
             compose.onNodeWithTag(titleTag).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.ink.toArgb()))
@@ -108,7 +126,10 @@ class ProductVisualTest {
         compose.activityRule.scenario.onActivity { it.enableEdgeToEdge(); it.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
-                QuietGridTheme(dark) { EditScreen(EditorUiState(draft), { _, _ -> }, {}, {}, {}, {}) }
+                QuietGridTheme(dark) {
+                    SideEffect { applySystemBarTheme(compose.activity.window, dark) }
+                    EditScreen(EditorUiState(draft), { _, _ -> }, {}, { saveTaps++ }, {}, {})
+                }
             }
         }
     }
@@ -123,12 +144,21 @@ class ProductVisualTest {
         val save = compose.onNodeWithTag("save").fetchSemanticsNode().boundsInRoot
         val root = compose.onNodeWithTag("screen:edit").fetchSemanticsNode().boundsInRoot
         assertTrue(save.top >= root.top && save.bottom <= root.bottom)
+        compose.onNodeWithTag("save").performClick()
+        compose.runOnIdle { assertEquals(1, saveTaps) }
         val c = if (name == "dark") QuietGridDark else QuietGridLight
         assertPixels("screen:edit", c.bg.toArgb(), c.ink.toArgb(), "$name-font200")
     }
     @Test fun lightKeyboardLeavesSaveAboveActualIme() { largeForm(false); assertKeyboard("light") }
     @Test fun darkKeyboardAt200PercentLeavesSaveAboveActualIme() { largeForm(true); assertKeyboard("dark") }
     private fun assertKeyboard(name: String) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val service = requireNotNull(automation.serviceInfo)
+        service.flags = service.flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+        automation.serviceInfo = service
+        fun keyboardBounds(): Rect? = automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }?.let {
+            Rect().also(it::getBoundsInScreen).takeIf { rect -> rect.height() > 0 }
+        }
         compose.onNodeWithTag("field:name").performScrollTo().performClick()
         compose.onNodeWithTag("field:name").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
         compose.onNodeWithTag("field:name").assertIsFocused()
@@ -137,7 +167,7 @@ class ProductVisualTest {
             if (focused != null) activity.getSystemService(InputMethodManager::class.java).showSoftInput(focused, InputMethodManager.SHOW_IMPLICIT)
         }
         try {
-            compose.waitUntil(15_000) { compose.onNodeWithTag("screen:edit").fetchSemanticsNode().config[ImeBottomPx] > 0 }
+            compose.waitUntil(15_000) { keyboardBounds() != null && compose.onNodeWithTag("screen:edit").fetchSemanticsNode().config[ImeBottomPx] > 0 }
         } catch (error: Throwable) {
             val folder = ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir("p4-screenshots")!!
             folder.mkdirs()
@@ -156,7 +186,11 @@ class ProductVisualTest {
         val visible = Rect()
         compose.activityRule.scenario.onActivity { it.window.decorView.getWindowVisibleDisplayFrame(visible) }
         assertTrue("save bottom ${save.bottom} above IME top ${visible.bottom}", save.bottom <= visible.bottom)
+        val keyboard = requireNotNull(keyboardBounds())
+        assertTrue("save bottom ${save.bottom} above actual input-method window ${keyboard.top}", save.bottom <= keyboard.top)
         assertTrue(save.top >= visible.top)
+        compose.onNodeWithTag("save").performClick()
+        compose.runOnIdle { assertEquals(1, saveTaps) }
         val c = if (name == "dark") QuietGridDark else QuietGridLight
         assertPixels("screen:edit", c.bg.toArgb(), c.ink.toArgb(), "$name-font200-keyboard")
     }
@@ -169,11 +203,11 @@ class ProductVisualTest {
         compose.runOnIdle { state = ListUiState(items = listOf(summary), isOffline = true, query = ListQuery(query = "辣子鸡"), fetchedAt = 100, localScope = true) }
         compose.onNodeWithTag("offline").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("cache-scope").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("record-list").performScrollToNode(hasTestTag("title:${ref.id}"))
-        compose.onNodeWithTag("title:${ref.id}").assertIsDisplayed()
+        compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasTestTag("title:${ref.id}"))
+        compose.onNodeWithTag("title:${ref.id}", useUnmergedTree = true).assertIsDisplayed()
         compose.runOnIdle { state = state.copy(isRefreshing = true) }
-        compose.onNodeWithTag("record-list").performScrollToNode(hasTestTag("title:${ref.id}"))
-        compose.onNodeWithTag("title:${ref.id}").assertIsDisplayed()
+        compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasTestTag("title:${ref.id}"))
+        compose.onNodeWithTag("title:${ref.id}", useUnmergedTree = true).assertIsDisplayed()
     }
     @Test fun sameFieldConflictSaveIsDisabledUntilExplicitChoice() {
         var confirmations = 0

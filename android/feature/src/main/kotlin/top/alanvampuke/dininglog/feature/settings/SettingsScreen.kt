@@ -22,7 +22,8 @@ import top.alanvampuke.dininglog.feature.theme.*
 
 @Composable fun SettingsScreen(state: SettingsUiState, username: String, drafts: List<SavedDraft>, theme: ThemeChoice,
     version: String, onRefresh: () -> Unit, onRevoke: (String) -> Unit, onPassword: (String, String) -> Unit,
-    onLogout: () -> Unit, onDraft: (SavedDraft) -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit) {
+    onLogout: () -> Unit, onDraft: (SavedDraft) -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit,
+    onPasswordInput: (String, String) -> Unit = { _, _ -> }) {
     var revoke by remember { mutableStateOf<DeviceSession?>(null) }
     var password by remember { mutableStateOf(false) }
     var logout by remember { mutableStateOf(false) }
@@ -72,13 +73,13 @@ import top.alanvampuke.dininglog.feature.theme.*
     val revoking = revoke
     if (revoking != null) ConfirmAction("撤销此会话？", if (revoking.current) "这是当前设备。撤销后会退出，并清理本机缓存与未提交草稿。" else "该设备的旧 access 与 refresh 将不可用。", "确认撤销", { revoke = null; onRevoke(revoking.id) }, { revoke = null })
     if (logout) ConfirmAction("退出登录？", "将清理此账号的本机缓存和 ${drafts.size} 个未提交草稿；结果未知的请求可能已保存，建议先确认。服务器已保存记录仍属于账号。", "确认退出", { logout = false; onLogout() }, { logout = false })
-    if (password) PasswordDialog(state, onPassword) { if (!state.busy) password = false }
+    if (password) PasswordDialog(state, onPassword, onPasswordInput) { if (!state.busy) password = false }
 }
-@Composable private fun PasswordDialog(state: SettingsUiState, onPassword: (String, String) -> Unit, onDismiss: () -> Unit) {
-    // Intentionally remember, never rememberSaveable: secrets do not enter the back stack.
-    var current by remember { mutableStateOf("") }
-    var replacement by remember { mutableStateOf("") }
-    var repeated by remember { mutableStateOf("") }
+@Composable private fun PasswordDialog(state: SettingsUiState, onPassword: (String, String) -> Unit,
+    onInput: (String, String) -> Unit, onDismiss: () -> Unit) {
+    // Kept only in the account-owned ViewModel's memory so an unknown request
+    // can be confirmed after closing/reopening. Never Room or SavedStateHandle.
+    val (current, replacement, repeated) = state.passwordInputs
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
         ScreenFrame("screen:password", bottomBar = {
             Surface(color = LocalQuietGridColors.current.surface) {
@@ -93,7 +94,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 PageHeader("修改密码")
                 GridText("修改成功后其他会话退出。新密码需 12–128 个字符，不能使用常见弱密码。")
                 listOf(Triple("current-password", "当前密码", current), Triple("new-password", "新密码", replacement), Triple("repeat-password", "确认新密码", repeated)).forEach { (tag, label, value) ->
-                    OutlinedTextField(value, { when (tag) { "current-password" -> current = it; "new-password" -> replacement = it; else -> repeated = it } },
+                    OutlinedTextField(value, { onInput(tag, it) },
                         modifier = Modifier.fillMaxWidth().testTag(tag), label = { GridText(label) }, enabled = !state.busy && !state.passwordUnknown,
                         textStyle = QuietGridText.input, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
                 }

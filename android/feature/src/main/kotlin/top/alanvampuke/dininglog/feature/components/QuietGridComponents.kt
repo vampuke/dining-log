@@ -1,5 +1,10 @@
 package top.alanvampuke.dininglog.feature.components
 
+import android.graphics.Rect
+import android.os.Build
+import android.view.ViewTreeObserver
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -10,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
@@ -27,8 +33,31 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
 }
 @Composable fun ScreenFrame(tag: String, bottomBar: @Composable () -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
     val c = LocalQuietGridColors.current
-    val ime = WindowInsets.ime.getBottom(LocalDensity.current)
-    Scaffold(Modifier.fillMaxSize().imePadding().testTag(tag).semantics { this[BackgroundArgb] = c.bg.toArgb(); this[ImeBottomPx] = ime },
+    val density = LocalDensity.current
+    val view = LocalView.current
+    var legacyIme by remember(view) { mutableIntStateOf(0) }
+    DisposableEffect(view) {
+        // Before API 30, edge-to-edge can report zero IME insets while the IME
+        // covers the decor. Measure that actual occlusion instead of guessing a
+        // keyboard height. System bars alone never count as a keyboard.
+        val root = view.rootView
+        val listener = ViewTreeObserver.OnGlobalLayoutListener {
+            if (Build.VERSION.SDK_INT < 30) {
+                val visible = Rect(); root.getWindowVisibleDisplayFrame(visible)
+                val location = IntArray(2); root.getLocationOnScreen(location)
+                val obscured = (location[1] + root.height - visible.bottom).coerceAtLeast(0)
+                val bars = ViewCompat.getRootWindowInsets(root)?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
+                legacyIme = if (obscured > bars) obscured else 0
+            }
+        }
+        root.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        onDispose { if (root.viewTreeObserver.isAlive) root.viewTreeObserver.removeOnGlobalLayoutListener(listener) }
+    }
+    val reportedIme = WindowInsets.ime.getBottom(density)
+    val ime = maxOf(reportedIme, legacyIme)
+    val extra = PaddingValues(bottom = with(density) { (ime - reportedIme).toDp() })
+    Scaffold(Modifier.fillMaxSize().imePadding().padding(extra).consumeWindowInsets(extra)
+        .testTag(tag).semantics { this[BackgroundArgb] = c.bg.toArgb(); this[ImeBottomPx] = ime },
         containerColor = c.bg, contentColor = c.ink,
         contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal), bottomBar = bottomBar, content = content)
 }

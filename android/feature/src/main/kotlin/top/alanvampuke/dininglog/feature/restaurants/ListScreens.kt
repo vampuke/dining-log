@@ -90,6 +90,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     }
 }
 @Composable private fun RowText(record: RecordSummary) {
+    var absolute by remember(record.ref.id) { mutableStateOf(false) }
     GridText(record.title, Modifier.testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium)
     val fields = record.fields
     val secondary = when (record.ref.kind) {
@@ -99,6 +100,12 @@ import top.alanvampuke.dininglog.feature.theme.*
         RecordKind.REVISION -> "${fields["entity_label"] ?: "记录"}\n${historySummary(record, null)}${fields["note"]?.let { "\n$it" } ?: ""}"
     }
     GridText(secondary, color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodySmall)
+    if (record.ref.kind == RecordKind.REVISION) {
+        TextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time:${record.ref.id}")) {
+            Text(if (absolute) "收起绝对时间" else "显示绝对时间")
+        }
+        if (absolute) GridText(record.updatedAt, Modifier.testTag("history-absolute:${record.ref.id}"), style = QuietGridText.date)
+    }
 }
 @Composable fun ListFilterPanel(kind: RecordKind, filters: ListFilters, onChange: (ListFilters) -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {

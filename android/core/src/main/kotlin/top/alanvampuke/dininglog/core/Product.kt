@@ -24,6 +24,7 @@ import java.time.LocalDate
     val ref: RecordRef, val title: String, val version: Int, val updatedAt: String,
     val fields: Map<String, String?> = emptyMap(), val matches: List<MatchType> = emptyList(),
     val changedFields: List<String> = emptyList(), val deleted: Boolean = false,
+    val cachedDiff: List<Change> = emptyList(),
 )
 @Serializable enum class DeletedFilter { EXCLUDE, ONLY }
 @Serializable data class ListFilters(
@@ -86,7 +87,7 @@ fun relativeTime(iso: String, now: Instant = Instant.now()): String {
     return when { seconds < 60 -> "刚刚"; seconds < 3600 -> "${seconds / 60} 分钟前"; seconds < 86400 -> "${seconds / 3600} 小时前"; else -> "${seconds / 86400} 天前" }
 }
 fun historySummary(summary: RecordSummary, detail: RecordSnapshot?): String {
-    val score = detail?.diff?.firstOrNull { it.field == "rating_tenths" }
+    val score = (detail?.diff ?: summary.cachedDiff).firstOrNull { it.field == "rating_tenths" }
     val change = if (score != null) "评分 ${displayValue(score.field, score.before)} → ${displayValue(score.field, score.after)}"
         else when (summary.fields["action"]) {
             "create" -> "新增记录"; "delete" -> "删除记录"; "restore" -> "恢复记录"

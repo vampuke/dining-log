@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.view.WindowManager
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -51,11 +52,7 @@ class MainActivity : ComponentActivity() {
             val choice by preferences.theme.collectAsStateWithLifecycle(ThemeChoice.SYSTEM)
             val dark = when (choice) { ThemeChoice.SYSTEM -> isSystemInDarkTheme(); ThemeChoice.DARK -> true; ThemeChoice.LIGHT -> false }
             val scope = rememberCoroutineScope()
-            SideEffect {
-                WindowInsetsControllerCompat(window, window.decorView).apply {
-                    isAppearanceLightStatusBars = !dark; isAppearanceLightNavigationBars = !dark
-                }
-            }
+            SideEffect { applySystemBarTheme(window, dark) }
             QuietGridTheme(dark) {
                 AuthRoot(account, gateway,
                     onRestore = { withContext(Dispatchers.IO) {
@@ -88,5 +85,18 @@ class MainActivity : ComponentActivity() {
                     })
             }
         }
+    }
+}
+
+@Suppress("DEPRECATION")
+fun applySystemBarTheme(window: Window, dark: Boolean) {
+    // API 26 otherwise keeps the light scrim chosen before an in-app theme
+    // switch. Let the approved Compose background paint both system bars.
+    window.statusBarColor = android.graphics.Color.TRANSPARENT
+    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+    if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
+    WindowInsetsControllerCompat(window, window.decorView).apply {
+        isAppearanceLightStatusBars = !dark
+        isAppearanceLightNavigationBars = !dark
     }
 }

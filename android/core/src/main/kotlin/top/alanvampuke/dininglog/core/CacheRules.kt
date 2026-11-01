@@ -13,17 +13,19 @@ fun localSearch(query: ListQuery, summaries: List<RecordSummary>, details: List<
     val tokens = normalizedSearch(query.query).split(' ').filter(String::isNotEmpty)
     val filtered = summaries.filter { s ->
         s.ref.kind == query.kind && s.deleted == (query.deleted == DeletedFilter.ONLY) &&
-            (query.restaurantId == null || s.ref.restaurantId == query.restaurantId) && s.ref.restaurantId !in deletedParents
+            (query.restaurantId == null || s.ref.restaurantId == query.restaurantId) &&
+            (s.ref.kind !in setOf(RecordKind.DISH, RecordKind.VISIT) || s.ref.restaurantId !in deletedParents)
     }.mapNotNull { s ->
         val snapshot = full[s.ref] ?: details.firstOrNull { it.ref.kind == s.ref.kind && it.ref.id == s.ref.id }
-        val fields = s.fields + (snapshot?.fields ?: emptyMap())
+        val fields = if (snapshot != null && s.version > snapshot.version) snapshot.fields + s.fields
+            else s.fields + (snapshot?.fields ?: emptyMap())
         val groups = if (s.ref.kind == RecordKind.RESTAURANT) {
             val dishes = summaries.filter { it.ref.kind == RecordKind.DISH && it.ref.restaurantId == s.ref.id && !it.deleted }
             val dishDetails = details.filter { it.ref.kind == RecordKind.DISH && it.ref.restaurantId == s.ref.id && it.deletedAt == null }
             mapOf(MatchType.RESTAURANT to listOf(s.title, fields["category"], fields["cuisine"], fields["address"], fields["address_excerpt"]).joinToString(" "),
                 MatchType.DISH to (dishes.map { it.title } + dishDetails.map { it.title }).joinToString(" "),
-                MatchType.REVIEW to (listOf(fields["review"]) + dishes.map { it.fields["review_excerpt"] } + dishDetails.map { it.fields["review"] }).joinToString(" "),
-                MatchType.NOTE to listOf(fields["note"]).joinToString(" "))
+                MatchType.REVIEW to (listOf(fields["review"], fields["review_excerpt"]) + dishes.map { it.fields["review_excerpt"] } + dishDetails.map { it.fields["review"] }).joinToString(" "),
+                MatchType.NOTE to listOf(fields["note"], fields["note_excerpt"]).joinToString(" "))
         } else mapOf(MatchType.RESTAURANT to (listOf(s.title) + fields.values + (snapshot?.diff?.flatMap { listOf(it.before, it.after) } ?: emptyList())).joinToString(" "))
         val normalized = groups.mapValues { normalizedSearch(it.value) }
         if (!tokens.all { token -> normalized.values.any { token in it } }) return@mapNotNull null

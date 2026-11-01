@@ -68,15 +68,15 @@ class DurableDraftTest {
             f.server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST))
             val failed = f.repository.submit(draft()) as SaveOutcome.Kept
             assertEquals(DraftStatus.RESULT_UNKNOWN, failed.draft.status)
-            assertEquals(1, f.server.requestCount)
+            assertEquals(1, f.server.requestCount, "A lost write response must not trigger an automatic transport replay")
             val first = f.server.takeRequest(5, TimeUnit.SECONDS)!!
             val restored = f.repository.findDraft("A", draft().id)!!
             assertEquals(failed.draft.original, restored.original)
             f.server.enqueue(mutation()); f.server.enqueue(detail())
             assertIs<SaveOutcome.Saved>(f.repository.submit(restored))
             val retry = f.server.takeRequest(5, TimeUnit.SECONDS)!!
-            assertEquals(first.getHeader("Idempotency-Key"), retry.getHeader("Idempotency-Key"))
-            assertEquals(first.body.readUtf8(), retry.body.readUtf8())
+            assertEquals(first.getHeader("Idempotency-Key"), retry.getHeader("Idempotency-Key"), "Manual retry must keep the original key")
+            assertEquals(first.body.readUtf8(), retry.body.readUtf8(), "Manual retry must keep the original payload")
             assertNull(f.repository.findDraft("A", restored.id))
             assertEquals("43", f.repository.observeDetail("A", ref).first().snapshot!!.fields["rating_tenths"])
         }

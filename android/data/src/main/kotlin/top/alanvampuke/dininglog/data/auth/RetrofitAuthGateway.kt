@@ -52,7 +52,9 @@ class RetrofitAuthGateway(private val api: AuthApi) : AuthGateway {
     }
     companion object {
         fun create(baseUrl: String = ApiConfiguration.BASE_URL): RetrofitAuthGateway {
-            val json = Json { ignoreUnknownKeys = true }
+            // device_name is required by the auth contract even when the caller
+            // uses LoginBody/RecoveryBody's Android default.
+            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
             return RetrofitAuthGateway(Retrofit.Builder().baseUrl(baseUrl)
                 .client(OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS)
                     .retryOnConnectionFailure(false).build())

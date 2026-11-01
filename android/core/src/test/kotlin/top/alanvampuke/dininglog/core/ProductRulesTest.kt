@@ -85,5 +85,16 @@ class ProductRulesTest {
         assertTrue(validDate("2024-02-29")); assertFalse(validDate("2023-02-29")); assertFalse(validDate("2101-01-01"))
         val detail = snapshot().copy(diff = listOf(Change("rating_tenths", "40", "43")))
         assertTrue(historySummary(summary().copy(changedFields = listOf("rating_tenths")), detail).contains("★ 4.0 → ★ 4.3"))
+        assertTrue(historySummary(summary().copy(cachedDiff = detail.diff), null).contains("★ 4.0 → ★ 4.3"))
+    }
+    @Test fun newerSummaryRatingWinsOverStaleDetailAndDeletedParentKeepsHistoryVisible() {
+        val newer = summary().copy(version = 2, fields = mapOf("rating_tenths" to "46"))
+        assertEquals(listOf(ref.id), localSearch(ListQuery(filters = ListFilters(minRating = 45)), listOf(newer), listOf(snapshot())).map { it.ref.id })
+        assertTrue(localSearch(ListQuery(filters = ListFilters(maxRating = 44)), listOf(newer), listOf(snapshot())).isEmpty())
+        val parent = summary().copy(deleted = true)
+        val history = summary().copy(ref = RecordRef(RecordKind.REVISION, "history", ref.id))
+        val dish = summary().copy(ref = RecordRef(RecordKind.DISH, "dish", ref.id))
+        assertEquals(listOf("history"), localSearch(ListQuery(RecordKind.REVISION, ref.id), listOf(parent, history, dish), emptyList()).map { it.ref.id })
+        assertTrue(localSearch(ListQuery(RecordKind.DISH, ref.id), listOf(parent, history, dish), emptyList()).isEmpty())
     }
 }

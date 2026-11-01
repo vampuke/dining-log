@@ -73,7 +73,7 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Build debug APK and write dependency locks
         working-directory: android
-        run: ./gradlew :app:assembleDebug :app:assembleRelease :core:test :data:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --write-locks --no-daemon
+        run: ./gradlew :app:assembleDebug :app:assembleRelease :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --write-locks --no-daemon
       - name: Verify debug APK identity and checksums
         working-directory: android/app/build/outputs/apk/debug
         run: |
@@ -96,6 +96,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: android-build
           path: |
@@ -105,6 +106,8 @@ jobs:
             android/core/build/reports/tests/test/
             android/data/build/test-results/testDebugUnitTest/
             android/data/build/reports/tests/testDebugUnitTest/
+            android/feature/build/test-results/testDebugUnitTest/
+            android/feature/build/reports/tests/testDebugUnitTest/
             android/data/schemas/
           retention-days: 7
 

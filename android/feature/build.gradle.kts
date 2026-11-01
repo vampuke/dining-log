@@ -18,6 +18,9 @@ android {
     buildFeatures { compose = true }
 }
 kotlin { jvmToolchain(17) }
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    testLogging { exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
+}
 
 dependencies {
     implementation(project(":core"))
@@ -30,4 +33,6 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.coroutines.test)
 }

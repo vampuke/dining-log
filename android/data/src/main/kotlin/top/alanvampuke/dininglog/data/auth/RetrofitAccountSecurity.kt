@@ -3,6 +3,7 @@ package top.alanvampuke.dininglog.data.auth
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.jsonArray
@@ -49,8 +50,8 @@ class RetrofitAccountSecurity(private val api: SecurityApi, private val refresh:
     }
     override suspend fun changePassword(current: String, replacement: String) {
         val body = PasswordBody(current, replacement)
-        val old = pendingPassword
-        if (old != null && old.generation != account.generation) { pendingPassword = null; throw AuthFailure("SESSION_REVOKED") }
+        var old = pendingPassword
+        if (old != null && old.generation != account.generation) { pendingPassword = null; old = null }
         if (old != null && old.body != body) throw ProductFailure("AUTH_RESULT_UNKNOWN")
         if (old != null && now() - old.startedAt >= 120_000) {
             pendingPassword = null
@@ -68,8 +69,18 @@ class RetrofitAccountSecurity(private val api: SecurityApi, private val refresh:
             pendingPassword = null
         } catch (_: IOException) { throw ProductFailure("AUTH_RESULT_UNKNOWN") }
         catch (e: ProductFailure) {
-            if (e.status in 400..499) pendingPassword = null
+            if (e.status >= 500) throw ProductFailure("AUTH_RESULT_UNKNOWN")
+            pendingPassword = null
             throw e
+        } catch (e: CancellationException) { throw e }
+        catch (e: AuthFailure) {
+            if (e.code in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE")) throw ProductFailure("AUTH_RESULT_UNKNOWN")
+            pendingPassword = null
+            throw e
+        } catch (_: Exception) {
+            // A Keystore write can fail after the password has already changed.
+            // Retain the exact request so its encrypted auth replay can recover it.
+            throw ProductFailure("AUTH_RESULT_UNKNOWN")
         }
     }
     private suspend fun <T> read(block: suspend (String) -> T): T = try { refresh.authenticated(block) }

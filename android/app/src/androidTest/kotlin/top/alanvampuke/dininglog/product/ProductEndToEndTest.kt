@@ -145,7 +145,7 @@ class ProductEndToEndTest {
                 waitFor { vm.list.value.query.query == term && !vm.list.value.isRefreshing && vm.list.value.items.any { it.ref.id == restaurantId } }
                 val result = vm.list.value.items.single { it.ref.id == restaurantId }
                 assertEquals(RecordKind.RESTAURANT, result.ref.kind); assertTrue(match in result.matches)
-                scroll("matches:$restaurantId"); compose.onNodeWithTag("matches:$restaurantId").assertTextContains(match.label)
+                scroll("matches:$restaurantId"); compose.onNodeWithTag("matches:$restaurantId", useUnmergedTree = true).assertTextContains(match.label)
             }
             tap("tab:visits"); waitFor { vm.list.value.query.kind == RecordKind.VISIT }
             type("search", "2026-11-01")
@@ -199,7 +199,7 @@ class ProductEndToEndTest {
             val beforeVersion = server(restaurantRef).version
             dropResponse.set(true); tap("save")
             waitFor { vm.editor.value.draft?.status == DraftStatus.RESULT_UNKNOWN }
-            compose.onNodeWithTag("field:note").assertIsNotEnabled()
+            scroll("field:note"); compose.onNodeWithTag("field:note").assertIsNotEnabled()
             val unknown = vm.editor.value.draft!!
             assertEquals(unknown.original, runBlocking { actualRepository.findDraft(account.session.value!!.userId, unknown.id) }!!.original)
             val first = writes.last()
@@ -260,7 +260,7 @@ class ProductEndToEndTest {
         val dialog = listOf("screen:apply", "screen:conflict", "screen:expired", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
         if (dialog) { compose.onNodeWithTag(tag).performScrollTo(); return }
         val lazy = listOf("edit-scroll", "record-list", "detail-scroll", "history-scroll", "settings-scroll").firstOrNull { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
-        if (lazy != null) compose.onNodeWithTag(lazy).performScrollToNode(hasTestTag(tag))
+        if (lazy != null) compose.onNodeWithTag(lazy, useUnmergedTree = true).performScrollToNode(hasTestTag(tag))
     }
     private fun tap(tag: String) { scroll(tag); compose.onNodeWithTag(tag).performClick() }
     private fun type(tag: String, value: String) { scroll(tag); compose.onNodeWithTag(tag).performTextReplacement(value) }

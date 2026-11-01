@@ -8,6 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
@@ -41,7 +44,10 @@ import top.alanvampuke.dininglog.feature.theme.*
     val dishes by vm.relatedDishes.collectAsStateWithLifecycle()
     val visits by vm.relatedVisits.collectAsStateWithLifecycle()
     val apply by vm.apply.collectAsStateWithLifecycle()
+    val operationVisible by vm.operationVisible.collectAsStateWithLifecycle()
     val entry by nav.currentBackStackEntryAsState()
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { vm.setForeground(true) }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { vm.setForeground(false) }
     fun openRecord(record: RecordSummary) { nav.navigate(DetailRoute(record.ref.kind.name, record.ref.id, record.ref.restaurantId)) }
     fun create(kind: RecordKind, parent: String? = null) { nav.navigate(EditRoute(kind.name, UUID.randomUUID().toString(), parent, create = true)) }
     fun back() { nav.popBackStack() }
@@ -50,9 +56,9 @@ import top.alanvampuke.dininglog.feature.theme.*
         BottomTabs(selected) { tab ->
             vm.selectTab(tab)
             when (tab) {
-                "restaurants" -> nav.navigate(RestaurantsRoute) { popUpTo<RestaurantsRoute>(); launchSingleTop = true }
-                "visits" -> nav.navigate(VisitsRoute) { popUpTo<RestaurantsRoute>(); launchSingleTop = true }
-                else -> nav.navigate(SettingsRoute) { popUpTo<RestaurantsRoute>(); launchSingleTop = true }
+                "restaurants" -> nav.navigate(RestaurantsRoute) { popUpTo(nav.graph.findStartDestination().id); launchSingleTop = true }
+                "visits" -> nav.navigate(VisitsRoute) { popUpTo(nav.graph.findStartDestination().id); launchSingleTop = true }
+                else -> nav.navigate(SettingsRoute) { popUpTo(nav.graph.findStartDestination().id); launchSingleTop = true }
             }
         }
     }
@@ -80,7 +86,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         composable<SettingsRoute> {
             LaunchedEffect(Unit) { vm.loadSettings() }
             SettingsScreen(settings, username, drafts, theme, version, vm::loadSettings, vm::revokeSession, vm::changePassword,
-                onLogout, onDraft = { draft -> nav.navigate(EditRoute(draft.ref.kind.name, draft.ref.id, draft.ref.restaurantId, draft.action == WriteAction.CREATE, draft.id)) }, onTheme, tabs)
+                onLogout, onDraft = { draft -> nav.navigate(EditRoute(draft.ref.kind.name, draft.ref.id, draft.ref.restaurantId, draft.action == WriteAction.CREATE, draft.id)) }, onTheme, tabs,
+                onPasswordInput = vm::editPassword)
         }
         composable<DetailRoute> { destination ->
             val route = destination.toRoute<DetailRoute>()
@@ -134,6 +141,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     val expired = editor.expired
     if (expired != null) ExpiredRequestDialog(expired, editor.saving, vm::confirmExpired, vm::acceptServer, vm::dismissComparison)
     if (apply != null) ApplyFieldsDialog(apply!!, vm::applySide, vm::selectApply, vm::submitApply, vm::dismissApply)
+    if (operationVisible && conflict == null && expired == null) OperationDialog(editor, vm::saveEditor, vm::dismissOperation)
 }
 @Composable fun BottomTabs(selectedRoute: String?, onSelect: (String) -> Unit) {
     NavigationBar(containerColor = LocalQuietGridColors.current.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {

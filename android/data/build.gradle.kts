@@ -19,6 +19,9 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
 }
 kotlin { jvmToolchain(17) }
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    testLogging { exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL }
+}
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {

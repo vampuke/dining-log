@@ -91,7 +91,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     onDish: (RecordSummary) -> Unit = {}, onAddDish: (() -> Unit)? = null, onManageDishes: (() -> Unit)? = null) {
     val draft = state.draft
     val kind = draft?.ref?.kind ?: RecordKind.RESTAURANT
-    val enabled = draft != null && !draft.locked && !state.saving && draft.action != WriteAction.APPLY
+    val enabled = draft != null && !draft.locked && !state.saving && draft.action in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)
     var confirmDiscard by remember { mutableStateOf(false) }
     val dirty = draft?.let { it.action in setOf(WriteAction.CREATE, WriteAction.DELETE, WriteAction.RESTORE, WriteAction.APPLY) || it.changedFields.isNotEmpty() } == true
     ScreenFrame("screen:edit", bottomBar = { SaveBar(draft != null && (dirty || draft.locked), state.saving,

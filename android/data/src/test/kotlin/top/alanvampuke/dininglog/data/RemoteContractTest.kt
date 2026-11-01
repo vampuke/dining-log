@@ -13,8 +13,25 @@ import kotlin.test.*
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.core.auth.*
 import top.alanvampuke.dininglog.data.remote.*
+import top.alanvampuke.dininglog.data.auth.RetrofitAuthGateway
 
 class RemoteContractTest {
+    @Test fun authDefaultDeviceNameIsSentForRegistrationLoginAndRecovery() = runBlocking {
+        val server = MockWebServer(); server.start()
+        try {
+            val gateway = RetrofitAuthGateway.create(server.url("/api/v1/").toString())
+            fun enqueue() { server.enqueue(MockResponse().setBody("""{"data":{"user":{"id":"account","username":"alice"},"session_id":"session","access_token":"access","refresh_token":"refresh"}}""")) }
+            enqueue(); gateway.register("alice", "registration-fixture-password")
+            enqueue(); gateway.login("alice", "registration-fixture-password")
+            enqueue(); gateway.recover("alice", "recovery-code", "replacement-fixture-password")
+            for (path in listOf("/api/v1/auth/register", "/api/v1/auth/login", "/api/v1/auth/recover")) {
+                val request = server.takeRequest()
+                assertEquals(path, request.path)
+                assertEquals("Android", Json.parseToJsonElement(request.body.readUtf8()).jsonObject["device_name"]!!.jsonPrimitive.content)
+                assertNotNull(request.getHeader("Idempotency-Key"))
+            }
+        } finally { server.shutdown() }
+    }
     private fun draft(kind: RecordKind = RecordKind.RESTAURANT, action: WriteAction = WriteAction.CREATE): SavedDraft {
         val ref = RecordRef(kind, "10000000-0000-4000-8000-000000000001", if (kind != RecordKind.RESTAURANT) "20000000-0000-4000-8000-000000000001" else null)
         val fields = mapOf("name" to "兰记", "category" to "restaurant", "address" to "愚园路", "rating_tenths" to "43", "review" to "花椒香", "note" to null)

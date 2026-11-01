@@ -15,9 +15,10 @@ data class DetailUiState(val cached: CachedDetail = CachedDetail(), val refreshi
 data class EditorUiState(val draft: SavedDraft? = null, val loading: Boolean = false, val saving: Boolean = false,
     val message: String? = null, val errors: Map<String, String> = emptyMap(),
     val conflict: ConflictComparison? = null, val expired: SaveOutcome.Expired? = null)
+data class PasswordInputs(val current: String = "", val replacement: String = "", val repeated: String = "")
 data class SettingsUiState(val profile: AccountInfo? = null, val sessions: List<DeviceSession> = emptyList(),
     val loading: Boolean = false, val busy: Boolean = false, val message: String? = null,
-    val passwordUnknown: Boolean = false, val passwordRevision: Int = 0)
+    val passwordUnknown: Boolean = false, val passwordRevision: Int = 0, val passwordInputs: PasswordInputs = PasswordInputs())
 data class ApplyUiState(val source: RecordSnapshot, val current: RecordSnapshot, val side: String = "before", val selected: Set<String> = emptySet()) {
     val eligible: List<Change> get() = source.diff.filter { it.field in editableFields(current.ref.kind) }
     fun proposed(change: Change) = if (side == "before") change.before else change.after
@@ -57,6 +58,9 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private var relatedJob: Job? = null
     private val _apply = MutableStateFlow<ApplyUiState?>(null)
     val apply = _apply.asStateFlow()
+    private val _operationVisible = MutableStateFlow(false)
+    val operationVisible = _operationVisible.asStateFlow()
+    private val foreground = MutableStateFlow(false)
     private val eventChannel = Channel<ProductEvent>(Channel.BUFFERED)
     val events = eventChannel.receiveAsFlow()
     private var autosaver: DraftAutosaver? = null
@@ -70,6 +74,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private var actionFromEditor = true
 
     init {
+        job.invokeOnCompletion { _settings.value = SettingsUiState() }
         scope.launch {
             combine(_search.debounce(300), _query, _filters) { text, query, filters -> query.copy(query = text, filters = filters) }
                 .distinctUntilChanged().flatMapLatest { query ->
@@ -90,7 +95,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
                         // The Room subscription is launched before the network request.
                         launch(start = CoroutineStart.UNDISPATCHED) {
                             combine(repository.observeList(accountId, query), flags) { cache, status ->
-                                ListUiState(cache.items, status.refreshing, status.more, status.offline, status.error, query,
+                                ListUiState(deduplicate(cache.items), status.refreshing, status.more, status.offline, status.error, query,
                                     cache.nextCursor, cache.hasMore, cache.fetchedAt, cache.localScope)
                             }.collect { send(it) }
                         }
@@ -117,7 +122,8 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         }
         scope.launch { repository.observeDrafts(accountId).collect { _drafts.value = it } }
         scope.launch {
-            repository.connectivity.distinctUntilChanged().drop(1).filter { it }.collect {
+            combine(repository.connectivity, foreground) { online, active -> online && active }
+                .distinctUntilChanged().filter { it }.collect {
                 // Foreground recovery refreshes only page one and the open detail.
                 refresh(); refreshDetail()
             }
@@ -143,6 +149,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         saved[filterKey("from")] = value.from; saved[filterKey("to")] = value.to; saved[filterKey("sort")] = value.sort
     }
     fun selectTab(tab: String) { saved["tab"] = tab }
+    fun setForeground(active: Boolean) { foreground.value = active }
     fun filterVisits(restaurantId: String?) { visitRestaurantId = restaurantId; saved["visit_restaurant_id"] = restaurantId; activateList(RecordKind.VISIT, restaurantId) }
     fun refresh() { refreshListAction(false) }
     fun loadMore() { if (_list.value.hasMore) refreshListAction(true) }
@@ -169,6 +176,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         scope.launch {
             autosaver?.stopAndFlush(); autosaver = null
             _editor.value = EditorUiState(loading = true); actionFromEditor = true
+            _operationVisible.value = false
             val id = draftId ?: "edit:${ref.kind.name}:${ref.id}"
             try {
                 val cached = repository.findDraft(accountId, id)
@@ -208,7 +216,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     }
     fun editField(field: String, value: String?) {
         val current = _editor.value.draft ?: return
-        if (current.locked || _editor.value.saving || current.action == WriteAction.APPLY) return
+        if (current.locked || _editor.value.saving || current.action !in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)) return
         val next = DraftRules.edit(current, current.localFields + (field to value), System.currentTimeMillis())
         _editor.value = _editor.value.copy(draft = next, message = null, errors = emptyMap())
         autosaver?.schedule(next)
@@ -229,9 +237,11 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         val draft = _editor.value.draft ?: return
         val errors = if (draft.locked) emptyMap() else validateDraft(draft)
         if (errors.isNotEmpty()) { _editor.value = _editor.value.copy(errors = errors, message = "请检查标记的输入"); return }
+        // Lock input synchronously, before the Room flush suspends. The payload
+        // captured below must be the same payload the user sees as submitting.
+        _editor.value = _editor.value.copy(saving = true, message = null)
         scope.launch {
             autosaver?.stopAndFlush(); autosaver = null
-            _editor.value = _editor.value.copy(saving = true, message = null)
             try { handleOutcome(repository.submit(draft)) }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { _editor.value = _editor.value.copy(saving = false, message = errorText(e)) }
@@ -241,6 +251,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         when (outcome) {
             is SaveOutcome.Saved -> {
                 _editor.value = EditorUiState(message = "已保存到服务器")
+                _operationVisible.value = false
                 refresh(); refreshDetail(); _apply.value = null
                 eventChannel.send(ProductEvent.Saved(outcome.snapshot.ref, actionFromEditor))
             }
@@ -258,6 +269,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         if (draft.changedFields.isEmpty()) {
             scope.launch {
                 repository.discardDraft(accountId, draft.id); _editor.value = EditorUiState(message = "已保留服务器值")
+                _operationVisible.value = false
                 refresh(); refreshDetail(); eventChannel.send(ProductEvent.Saved(comparison.serverCurrent.ref, actionFromEditor))
             }
             return
@@ -265,7 +277,12 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         _editor.value = EditorUiState(draft)
         restartAutosaver(draft); saveEditor()
     }
-    fun dismissComparison() { _editor.value = _editor.value.copy(conflict = null, expired = null) }
+    fun dismissComparison() {
+        if (_editor.value.saving) return
+        _editor.value = _editor.value.copy(conflict = null, expired = null)
+        _editor.value.draft?.takeUnless { it.locked }?.let(::restartAutosaver)
+    }
+    fun dismissOperation() { if (!_editor.value.saving) _operationVisible.value = false }
     fun confirmExpired() {
         val review = _editor.value.expired ?: return
         scope.launch { _editor.value = _editor.value.copy(saving = true)
@@ -278,13 +295,15 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         val review = _editor.value.expired ?: return@launch
         repository.discardDraft(accountId, review.draft.id)
         _editor.value = EditorUiState(message = "已保留服务器当前记录")
+        _operationVisible.value = false
         refresh(); refreshDetail()
         review.serverCurrent?.let { eventChannel.send(ProductEvent.Saved(it.ref, actionFromEditor)) }
     } }
     fun mutate(snapshot: RecordSnapshot, action: WriteAction) {
+        if (_editor.value.saving) return
         actionFromEditor = false
         val draft = SavedDraft(accountId, "${action.name}:${snapshot.ref.kind.name}:${snapshot.ref.id}", snapshot.ref, action, snapshot, snapshot.editable)
-        _editor.value = EditorUiState(draft); saveEditor()
+        _editor.value = EditorUiState(draft); _operationVisible.value = true; saveEditor()
     }
     fun previewApply(revision: RecordSnapshot) { scope.launch {
         try {
@@ -292,18 +311,18 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
             val ref = RecordRef(kind, requireNotNull(revision.fields["entity_id"]), if (kind == RecordKind.RESTAURANT) null else revision.ref.restaurantId)
             _apply.value = ApplyUiState(revision, repository.refreshDetail(accountId, ref))
         } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { _editor.value = EditorUiState(message = errorText(e)) }
+        catch (e: Exception) { _editor.value = EditorUiState(message = errorText(e)); _operationVisible.value = true }
     } }
     fun applySide(side: String) { _apply.value = _apply.value?.copy(side = side, selected = emptySet()) }
     fun selectApply(field: String, selected: Boolean) { _apply.value = _apply.value?.let { it.copy(selected = if (selected) it.selected + field else it.selected - field) } }
     fun dismissApply() { _apply.value = null }
     fun submitApply() {
         val preview = _apply.value ?: return
-        if (preview.selected.isEmpty() || preview.current.deletedAt != null) return
+        if (_editor.value.saving || preview.selected.isEmpty() || preview.current.deletedAt != null) return
         val values = preview.current.editable + preview.eligible.filter { it.field in preview.selected }.associate { it.field to preview.proposed(it) }
         val draft = SavedDraft(accountId, "apply:${preview.source.ref.id}", preview.current.ref, WriteAction.APPLY, preview.current, values,
             sourceRevisionId = preview.source.ref.id, applySide = preview.side, applyFields = preview.selected.toList())
-        _apply.value = null; actionFromEditor = false; _editor.value = EditorUiState(draft); saveEditor()
+        _apply.value = null; actionFromEditor = false; _editor.value = EditorUiState(draft); _operationVisible.value = true; saveEditor()
     }
     fun loadSettings() { scope.launch {
         _settings.value = _settings.value.copy(loading = true, message = null)
@@ -319,15 +338,27 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         catch (e: CancellationException) { throw e }
         catch (e: Exception) { _settings.value = _settings.value.copy(busy = false, message = errorText(e)) }
     } }
-    fun changePassword(current: String, replacement: String) { scope.launch {
+    fun editPassword(field: String, value: String) {
+        val state = _settings.value
+        if (state.busy || state.passwordUnknown) return
+        val inputs = state.passwordInputs
+        _settings.value = state.copy(passwordInputs = when (field) {
+            "current-password" -> inputs.copy(current = value)
+            "new-password" -> inputs.copy(replacement = value)
+            else -> inputs.copy(repeated = value)
+        })
+    }
+    fun changePassword(current: String, replacement: String) {
+        if (_settings.value.busy) return
         _settings.value = _settings.value.copy(busy = true, message = null)
+        scope.launch {
         try { security.changePassword(current, replacement)
-            _settings.value = _settings.value.copy(busy = false, passwordUnknown = false, passwordRevision = _settings.value.passwordRevision + 1, message = "密码已修改，其他会话已退出")
+            _settings.value = _settings.value.copy(busy = false, passwordUnknown = false, passwordInputs = PasswordInputs(), passwordRevision = _settings.value.passwordRevision + 1, message = "密码已修改，其他会话已退出")
             loadSettings()
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) { _settings.value = _settings.value.copy(busy = false, passwordUnknown = e is ProductFailure && e.code == "AUTH_RESULT_UNKNOWN", message = errorText(e)) }
     } }
-    override fun onCleared() { autosaver?.cancel(); job.cancel() }
+    override fun onCleared() { autosaver?.cancel(); job.cancel(); _settings.value = SettingsUiState() }
 }
 fun validFilters(filters: ListFilters): Boolean =
     (filters.from.isBlank() || validDate(filters.from)) && (filters.to.isBlank() || validDate(filters.to)) &&

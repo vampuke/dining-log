@@ -161,3 +161,16 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
     }
 }
+
+@Composable fun OperationDialog(state: EditorUiState, onRetry: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(onDismissRequest = { if (!state.saving) onDismiss() },
+        modifier = Modifier.testTag("screen:operation"), containerColor = LocalQuietGridColors.current.surface,
+        title = { GridText(if (state.saving) "正在保存" else "操作未完成", style = MaterialTheme.typography.headlineSmall) },
+        text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            GridText(state.message ?: "正在确认服务器结果…")
+            if (state.draft != null) GridText("请求与草稿已保留在本机，也可在「我的」中查看。", color = LocalQuietGridColors.current.secondary)
+        } },
+        confirmButton = { if (state.draft != null) TextButton(onClick = onRetry, enabled = !state.saving,
+            modifier = Modifier.testTag("retry-operation")) { Text(if (state.draft.status == DraftStatus.RESULT_UNKNOWN) "重试原请求确认结果" else "重试保存") } },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.saving) { Text("关闭") } })
+}

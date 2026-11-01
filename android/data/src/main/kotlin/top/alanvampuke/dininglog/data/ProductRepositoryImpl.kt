@@ -25,13 +25,20 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         dao.observeSummaries(accountId), dao.observeDetails(accountId),
     ) { cached, page, all, details ->
         val summaries = all.map { ProductJson.decodeFromString<RecordSummary>(it.payload) }
+        val snapshots = details.map { ProductJson.decodeFromString<RecordSnapshot>(it.payload) }
+        fun previews(rows: List<RecordSummary>) = rows.map { row ->
+            if (row.ref.kind == RecordKind.REVISION) row.copy(cachedDiff = snapshots.firstOrNull {
+                it.ref.kind == RecordKind.REVISION && it.ref.id == row.ref.id
+            }?.diff ?: emptyList()) else row
+        }
         if (cached != null) {
             val parents = summaries.filter { it.ref.kind == RecordKind.RESTAURANT && it.deleted }.map { it.ref.id }.toSet()
             val rows = page.map { ProductJson.decodeFromString<RecordSummary>(it.payload) }.filter {
-                it.deleted == (query.deleted == DeletedFilter.ONLY) && it.ref.restaurantId !in parents
+                it.deleted == (query.deleted == DeletedFilter.ONLY) &&
+                    (it.ref.kind !in setOf(RecordKind.DISH, RecordKind.VISIT) || it.ref.restaurantId !in parents)
             }
-            CachedPage(deduplicate(rows), cached.cursor, cached.hasMore, cached.fetchedAt, false)
-        } else CachedPage(localSearch(query, summaries, details.map { ProductJson.decodeFromString<RecordSnapshot>(it.payload) }),
+            CachedPage(previews(deduplicate(rows)), cached.cursor, cached.hasMore, cached.fetchedAt, false)
+        } else CachedPage(previews(localSearch(query, summaries, snapshots)),
             fetchedAt = all.maxOfOrNull { it.fetchedAt }, localScope = true)
     }.distinctUntilChanged()
 
