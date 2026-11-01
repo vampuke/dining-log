@@ -1,8 +1,12 @@
 openapi: 3.1.0
 info:
   title: 食记 API
-  version: 0.2.0
-  description: P2 独立账号闭环；其余业务端点仍为 P1 契约骨架。认证成功/错误信封遵循 PLAN 4.1，错误码使用大写。
+  version: 1.0.0
+  description: 'P3 v1 domain contract: owner-scoped restaurant, dish, visit, revision and literal search APIs. JSON
+    bodies <=64 KiB, snake_case, strict input, CAS expected_version and atomic successful idempotency. Domain text
+    lengths count Unicode characters after NFC, CRLF-to-LF and outer trim; internal whitespace is preserved. P2 authentication
+    contracts are retained. Existing logout-all, recovery-codes and /me handlers are outside the P3 domain implementation;
+    their v1 schemas describe the planned account lifecycle.'
 servers:
 - url: https://dining.alanvampuke.top/api/v1
 security:
@@ -133,8 +137,7 @@ paths:
   /auth/refresh:
     post:
       operationId: post_auth_refresh
-      summary: '{refresh_token: string}；X-Refresh-Request-Id 必填 UUID → 200：AuthResult；同
-        key 重试返回同轮换结果'
+      summary: '{refresh_token: string}；X-Refresh-Request-Id 必填 UUID → 200：AuthResult；同 key 重试返回同轮换结果'
       x-auth: Refresh；单独限流
       responses:
         '200':
@@ -195,8 +198,7 @@ paths:
   /auth/logout:
     post:
       operationId: post_auth_logout
-      summary: '{refresh_token: string} → 204；撤销该 refresh 所属会话，已撤销 / 无效 token 也返回
-        204'
+      summary: '{refresh_token: string} → 204；撤销该 refresh 所属会话，已撤销 / 无效 token 也返回 204'
       x-auth: Refresh 作为撤销凭据；不要求未过期 access
       responses:
         '204':
@@ -251,6 +253,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       requestBody:
         required: true
         content:
@@ -260,8 +267,7 @@ paths:
   /auth/password:
     post:
       operationId: post_auth_password
-      summary: '{current_password: string, new_password: string, device_name: string}
-        → 200：新 AuthResult；旧会话全部失效'
+      summary: '{current_password: string, new_password: string, device_name: string} → 200：新 AuthResult；旧会话全部失效'
       x-auth: Reauth
       responses:
         '200':
@@ -321,8 +327,8 @@ paths:
   /auth/recover:
     post:
       operationId: post_auth_recover
-      summary: '{username: string, recovery_code: string, new_password: string, device_name:
-        string} → 200：新 AuthResult + recovery_codes: string[8]；旧码全失效'
+      summary: '{username: string, recovery_code: string, new_password: string, device_name: string} → 200：新 AuthResult
+        + recovery_codes: string[8]；旧码全失效'
       x-auth: Public；有效一次性恢复码与恢复限流
       responses:
         '200':
@@ -391,13 +397,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RecoveryCodeResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       requestBody:
         required: true
         content:
@@ -495,9 +520,8 @@ paths:
       - name: session_id
         in: path
         required: true
-        schema: &id001
-          type: string
-          format: uuid
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/AuthIdempotencyKey'
   /me:
     get:
@@ -510,17 +534,35 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
     patch:
       operationId: patch_me
-      summary: '{expected_version: integer, display_name: string}；Idempotency-Key
-        → 200：User；用户名不允许修改'
+      summary: '{expected_version: integer, display_name: string}；Idempotency-Key → 200：User；用户名不允许修改'
       x-auth: Access
       responses:
         '200':
@@ -528,13 +570,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -545,8 +606,7 @@ paths:
               $ref: '#/components/schemas/UserPatch'
     delete:
       operationId: delete_me
-      summary: '{expected_version: integer, password: string, confirm_username: string}
-        → 202：{deleted_at, purge_after}；立即失效全部会话'
+      summary: '{expected_version: integer, password: string, confirm_username: string} → 202：{deleted_at, purge_after}；立即失效全部会话'
       x-auth: Reauth；不进业务幂等表
       responses:
         '202':
@@ -554,13 +614,32 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AccountDeleteResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       requestBody:
         required: true
         content:
@@ -570,8 +649,7 @@ paths:
   /restaurants:
     post:
       operationId: post_restaurants
-      summary: RestaurantCreate；Idempotency-Key → 201：RestaurantCreateResult；餐厅与可选
-        first_visit 原子创建
+      summary: RestaurantCreate；Idempotency-Key → 201：RestaurantCreateResult；餐厅与可选 first_visit 原子创建
       x-auth: Access
       responses:
         '201':
@@ -579,9 +657,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RestaurantCreateResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -604,18 +763,171 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/RestaurantSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - in: query
+        name: min_rating
+        required: false
+        schema:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.1
+      - in: query
+        name: max_rating
+        required: false
+        schema:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.1
+      - in: query
+        name: unrated
+        required: false
+        schema:
+          type: boolean
+          description: true conflicts with rating bounds.
+      - in: query
+        name: sort
+        required: false
+        schema:
+          type: string
+          enum:
+          - updated_desc
+          - rating_desc
+          default: updated_desc
+      - in: query
+        name: category
+        required: false
+        schema:
+          $ref: '#/components/schemas/Category'
+      - in: query
+        name: cuisine
+        required: false
+        schema:
+          type: string
+          maxLength: 60
+          description: NFKC/lowercase exact match.
+      - in: query
+        name: visited
+        required: false
+        schema:
+          type: boolean
+      - in: query
+        name: visited_from
+        required: false
+        schema:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+      - in: query
+        name: visited_to
+        required: false
+        schema:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /restaurants/{restaurant_id}:
     get:
       operationId: get_restaurants_restaurant_id
-      summary: deleted=exclude\|include，默认 exclude → 200：RestaurantDetail；include
-        可查看自己的软删除对象
+      summary: deleted=exclude\|include，默认 exclude → 200：RestaurantDetail；include 可查看自己的软删除对象
       x-auth: Access
       responses:
         '200':
@@ -623,18 +935,93 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RestaurantDetail'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - include
+          default: exclude
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
     patch:
       operationId: patch_restaurants_restaurant_id
       summary: RestaurantPatch；Idempotency-Key → 200：MutationResult<Restaurant>
@@ -645,9 +1032,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RestaurantMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -656,7 +1124,8 @@ paths:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -674,9 +1143,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TombstoneMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -685,7 +1235,8 @@ paths:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -704,9 +1255,97 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RestaurantMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '410':
+          description: Owned tombstone reaches the 30 day boundary. Restore parent first; never revive independently
+            deleted children.
           content:
             application/json:
               schema:
@@ -715,7 +1354,8 @@ paths:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -734,9 +1374,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DishMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -745,7 +1466,8 @@ paths:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -755,8 +1477,7 @@ paths:
               $ref: '#/components/schemas/DishCreate'
     get:
       operationId: get_restaurants_restaurant_id_dishes
-      summary: q、min_rating、max_rating、unrated、sort=updated_desc\|rating_desc、deleted、cursor、limit
-        → 200：Page<DishSummary>
+      summary: q、min_rating、max_rating、unrated、sort=updated_desc\|rating_desc、deleted、cursor、limit → 200：Page<DishSummary>
       x-auth: Access；父餐厅有效
       responses:
         '200':
@@ -764,18 +1485,139 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/DishSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - in: query
+        name: min_rating
+        required: false
+        schema:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.1
+      - in: query
+        name: max_rating
+        required: false
+        schema:
+          type: number
+          minimum: 1
+          maximum: 5
+          multipleOf: 0.1
+      - in: query
+        name: unrated
+        required: false
+        schema:
+          type: boolean
+          description: true conflicts with rating bounds.
+      - in: query
+        name: sort
+        required: false
+        schema:
+          type: string
+          enum:
+          - updated_desc
+          - rating_desc
+          default: updated_desc
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /dishes/{dish_id}:
     get:
       operationId: get_dishes_dish_id
@@ -787,18 +1629,93 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Dish'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: dish_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - include
+          default: exclude
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
     patch:
       operationId: patch_dishes_dish_id
       summary: DishPatch；Idempotency-Key → 200：MutationResult<Dish>
@@ -809,9 +1726,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DishMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -820,7 +1818,8 @@ paths:
       - name: dish_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -838,9 +1837,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TombstoneMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -849,7 +1929,8 @@ paths:
       - name: dish_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -868,9 +1949,97 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DishMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '410':
+          description: Owned tombstone reaches the 30 day boundary. Restore parent first; never revive independently
+            deleted children.
           content:
             application/json:
               schema:
@@ -879,7 +2048,8 @@ paths:
       - name: dish_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -898,9 +2068,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VisitMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -909,7 +2160,8 @@ paths:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -927,18 +2179,134 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/VisitSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+      - in: query
+        name: meal
+        required: false
+        schema:
+          type: string
+          enum:
+          - breakfast
+          - lunch
+          - dinner
+          - other
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /visits:
     get:
       operationId: get_visits
@@ -950,13 +2318,134 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/VisitSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+      parameters:
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+      - in: query
+        name: meal
+        required: false
+        schema:
+          type: string
+          enum:
+          - breakfast
+          - lunch
+          - dinner
+          - other
+      - in: query
+        name: restaurant_id
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /visits/{visit_id}:
     get:
       operationId: get_visits_visit_id
@@ -968,18 +2457,93 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Visit'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: visit_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - include
+          default: exclude
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
     patch:
       operationId: patch_visits_visit_id
       summary: VisitPatch；Idempotency-Key → 200：MutationResult<Visit>
@@ -990,9 +2554,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VisitMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -1001,7 +2646,8 @@ paths:
       - name: visit_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1019,9 +2665,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/TombstoneMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -1030,7 +2757,8 @@ paths:
       - name: visit_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1049,9 +2777,97 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/VisitMutation'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '410':
+          description: Owned tombstone reaches the 30 day boundary. Restore parent first; never revive independently
+            deleted children.
           content:
             application/json:
               schema:
@@ -1060,7 +2876,8 @@ paths:
       - name: visit_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1071,27 +2888,119 @@ paths:
   /revisions:
     post:
       operationId: post_revisions
-      summary: '{source_revision_id: UUID, side: "before"\|"after", fields: string[],
-        expected_version: integer}；Idempotency-Key → 有效变更 201、无变化 200：RevisionApplyResult；无变化时
-        revision / change_set_id 为 null、changed=false'
+      summary: '{source_revision_id: UUID, side: "before"\|"after", fields: string[], expected_version: integer}；Idempotency-Key
+        → 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id 为 null、changed=false'
       x-auth: Access；来源和目标均属于本人，目标有效
       responses:
         '201':
-          description: 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id
-            为 null、changed=false
+          description: 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id 为 null、changed=false
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RevisionApplyResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         '200':
-          description: 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id
-            为 null、changed=false
+          description: 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id 为 null、changed=false
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RevisionApplyResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -1106,8 +3015,7 @@ paths:
               $ref: '#/components/schemas/RevisionApply'
     get:
       operationId: get_revisions
-      summary: restaurant_id?、entity_type?、entity_id?、action?、field?、q?、from?、to?、deleted、cursor、limit
-        → 200：Page<RevisionSummary>
+      summary: restaurant_id?、entity_type?、entity_id?、action?、field?、q?、from?、to?、deleted、cursor、limit → 200：Page<RevisionSummary>
       x-auth: Access
       responses:
         '200':
@@ -1115,13 +3023,162 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/RevisionSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+      parameters:
+      - in: query
+        name: restaurant_id
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: entity_type
+        required: false
+        schema:
+          type: string
+          enum:
+          - restaurant
+          - dish
+          - visit
+      - in: query
+        name: entity_id
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: action
+        required: false
+        schema:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - restore
+      - in: query
+        name: field
+        required: false
+        schema:
+          type: string
+          enum:
+          - name
+          - category
+          - cuisine
+          - address
+          - rating_tenths
+          - review
+          - note
+          - dining_date
+          - meal
+          - deleted_at
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, inclusive.
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, exclusive.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /restaurants/{restaurant_id}/revisions:
     get:
       operationId: get_restaurants_restaurant_id_revisions
@@ -1133,18 +3190,162 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/RevisionSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: restaurant_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: entity_type
+        required: false
+        schema:
+          type: string
+          enum:
+          - restaurant
+          - dish
+          - visit
+      - in: query
+        name: entity_id
+        required: false
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: action
+        required: false
+        schema:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - restore
+      - in: query
+        name: field
+        required: false
+        schema:
+          type: string
+          enum:
+          - name
+          - category
+          - cuisine
+          - address
+          - rating_tenths
+          - review
+          - note
+          - dining_date
+          - meal
+          - deleted_at
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, inclusive.
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, exclusive.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /dishes/{dish_id}/revisions:
     get:
       operationId: get_dishes_dish_id_revisions
@@ -1156,18 +3357,148 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/RevisionSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: dish_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: action
+        required: false
+        schema:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - restore
+      - in: query
+        name: field
+        required: false
+        schema:
+          type: string
+          enum:
+          - name
+          - category
+          - cuisine
+          - address
+          - rating_tenths
+          - review
+          - note
+          - dining_date
+          - meal
+          - deleted_at
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, inclusive.
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, exclusive.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /visits/{visit_id}/revisions:
     get:
       operationId: get_visits_visit_id_revisions
@@ -1179,18 +3510,148 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PageEnvelope'
+                $ref: '#/components/schemas/RevisionSummaryPage'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: visit_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: action
+        required: false
+        schema:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - restore
+      - in: query
+        name: field
+        required: false
+        schema:
+          type: string
+          enum:
+          - name
+          - category
+          - cuisine
+          - address
+          - rating_tenths
+          - review
+          - note
+          - dining_date
+          - meal
+          - deleted_at
+      - in: query
+        name: q
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+      - in: query
+        name: from
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, inclusive.
+      - in: query
+        name: to
+        required: false
+        schema:
+          type: string
+          format: date-time
+          description: UTC Z instant, exclusive.
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - only
+          - include
+          default: exclude
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+          maxLength: 2048
+          description: Opaque signed keyset cursor; 400 INVALID_CURSOR if malformed or mismatched.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /revisions/{revision_id}:
     get:
       operationId: get_revisions_revision_id
@@ -1202,22 +3663,96 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Revision'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
       parameters:
       - name: revision_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          type: string
+          enum:
+          - exclude
+          - include
+          default: exclude
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
     patch:
       operationId: patch_revisions_revision_id
-      summary: '{expected_metadata_version: integer, note: string\|null}；Idempotency-Key
-        → 200：RevisionMetadataResult'
+      summary: '{expected_metadata_version: integer, note: string\|null}；Idempotency-Key → 200：RevisionMetadataResult'
       x-auth: Access
       responses:
         '200':
@@ -1225,9 +3760,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RevisionMetadataResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -1236,7 +3852,8 @@ paths:
       - name: revision_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1246,8 +3863,7 @@ paths:
               $ref: '#/components/schemas/RevisionMetadataPatch'
     delete:
       operationId: delete_revisions_revision_id
-      summary: RevisionDeleteBody；Idempotency-Key → 200：RevisionMetadataResult；隐藏，metadata_version
-        +1
+      summary: RevisionDeleteBody；Idempotency-Key → 200：RevisionMetadataResult；隐藏，metadata_version +1
       x-auth: Access
       responses:
         '200':
@@ -1255,9 +3871,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RevisionMetadataResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -1266,7 +3963,8 @@ paths:
       - name: revision_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1285,9 +3983,90 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/RevisionMetadataResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '409':
+          description: Version, idempotency fingerprint, or owned ID conflict.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '413':
+          description: Actual JSON body exceeds 64 KiB or diff exceeds 128 KiB.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '415':
+          description: Use application/json.
           content:
             application/json:
               schema:
@@ -1296,7 +4075,8 @@ paths:
       - name: revision_id
         in: path
         required: true
-        schema: *id001
+        schema:
+          $ref: '#/components/schemas/Uuid'
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -1307,24 +4087,115 @@ paths:
   /search:
     get:
       operationId: get_search
-      summary: 'q 必填；groups=restaurants,visits,revisions，默认 restaurants；每组 limit 默认
-        10、最大 20 → 200：{restaurants: RestaurantSearchResult[], visits: VisitSummary[],
-        revisions: RevisionSummary[]}；菜品命中归入所属餐厅结果，不返回全局 dishes 组'
+      summary: 'q 必填；groups=restaurants,visits,revisions，默认 restaurants；每组 limit 默认 10、最大 20 → 200：{restaurants:
+        RestaurantSearchResult[], visits: VisitSummary[], revisions: RevisionSummary[]}；菜品命中归入所属餐厅结果，不返回全局 dishes
+        组'
       x-auth: Access
       responses:
         '200':
-          description: '200：{restaurants: RestaurantSearchResult[], visits: VisitSummary[],
-            revisions: RevisionSummary[]}；菜品命中归入所属餐厅结果，不返回全局 dishes 组'
+          description: '200：{restaurants: RestaurantSearchResult[], visits: VisitSummary[], revisions: RevisionSummary[]}；菜品命中归入所属餐厅结果，不返回全局
+            dishes 组'
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SuccessEnvelope'
+                type: object
+                additionalProperties: false
+                required:
+                - data
+                - meta
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SearchResult'
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
         default:
           description: PLAN.md 4.1 错误信封
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '400':
+          description: Strict input/query or cursor validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '401':
+          description: Access/session invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '404':
+          description: Not found, not owned, or parent unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+        '500':
+          description: Unexpected SQL/internal failure, with no batch writes committed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+      parameters:
+      - in: query
+        name: q
+        required: true
+        schema:
+          type: string
+          maxLength: 100
+          description: NFKC + lowercase, split whitespace into at most 5 AND keywords; instr literal semantics,
+            % and _ are ordinary characters.
+          minLength: 1
+      - in: query
+        name: groups
+        required: false
+        schema:
+          type: string
+          default: restaurants
+          pattern: ^(restaurants|visits|revisions)(,(restaurants|visits|revisions)){0,2}$
+          description: Unique groups; dishes aggregate into restaurants. No independent cursors.
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 10
+      description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
+        All SQL is parameterized and owner scoped.
   /health:
     get:
       operationId: get_health
@@ -1400,12 +4271,18 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      schema: *id001
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: Required UUID v4 for all domain writes. SHA-256(method + normalized path + canonical normalized
+        JSON); success response is atomic with business/history/search, cached 7 days. Same fingerprint replays
+        original status/data/meta; another fingerprint is 409. Errors are not cached.
     RefreshRequestId:
       name: X-Refresh-Request-Id
       in: header
       required: true
-      schema: *id001
+      schema:
+        type: string
+        format: uuid
     AuthIdempotencyKey:
       name: Idempotency-Key
       in: header
@@ -1413,23 +4290,34 @@ components:
       schema:
         type: string
         format: uuid
-      description: 可选 UUID v4。同账号、同 key、同 method/path/payload 在 120 秒内返回相同加密缓存结果；不同
-        payload 或过期 key 返回 409。鉴权响应仅存 AES-GCM 密文；密码仅参与 HMAC 请求指纹。
+      description: 可选 UUID v4。同账号、同 key、同 method/path/payload 在 120 秒内返回相同加密缓存结果；不同 payload 或过期 key 返回 409。鉴权响应仅存
+        AES-GCM 密文；密码仅参与 HMAC 请求指纹。
   schemas:
     User:
       type: object
       properties:
-        id: *id001
-        username: &id002
+        id:
+          $ref: '#/components/schemas/Uuid'
+        username:
           type: string
-        display_name: *id002
-        version: &id004
-          type: integer
-          minimum: 1
-        created_at: &id003
+        display_name:
+          type: string
+        version:
+          $ref: '#/components/schemas/Version'
+        created_at:
           type: string
           format: date-time
-        updated_at: *id003
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - username
+      - display_name
+      - version
+      - created_at
+      - updated_at
+      additionalProperties: false
     Rating:
       type:
       - number
@@ -1437,6 +4325,8 @@ components:
       minimum: 1
       maximum: 5
       multipleOf: 0.1
+      description: Null means unrated. Storage and revision diffs use integer rating_tenths; responses divide by
+        10.
     Category:
       type: string
       enum:
@@ -1458,155 +4348,424 @@ components:
       - null
     Restaurant:
       type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - category
+      - cuisine
+      - address
+      - rating
+      - review
+      - note
+      - version
+      - created_at
+      - updated_at
+      - deleted_at
       properties:
-        id: *id001
-        version: *id004
-        created_at: *id003
-        updated_at: *id003
-        deleted_at: &id008
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        category:
+          $ref: '#/components/schemas/Category'
+        cuisine:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+        address:
+          type: string
+          maxLength: 500
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        version:
+          $ref: '#/components/schemas/Version'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
           type:
           - string
           - 'null'
           format: date-time
-        name: *id002
-        category: &id006
-          $ref: '#/components/schemas/Category'
-        address: *id002
-        cuisine: &id005
-          type:
-          - string
-          - 'null'
-        rating: &id007
-          $ref: '#/components/schemas/Rating'
-        review: *id005
-        note: *id005
     RestaurantCreate:
       type: object
-      properties:
-        id: *id001
-        name: *id002
-        category: *id006
-        address: *id002
-        cuisine: *id005
-        rating: *id007
-        review: *id005
-        note: *id005
-        first_visit:
-          $ref: '#/components/schemas/VisitCreate'
+      additionalProperties: false
       required:
       - id
       - name
       - category
       - address
-      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        category:
+          $ref: '#/components/schemas/Category'
+        cuisine:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+        address:
+          type: string
+          maxLength: 500
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        first_visit:
+          $ref: '#/components/schemas/VisitCreate'
+      description: Strict JSON. Normalize NFC, CRLF to LF, outer trim; optional blank text becomes null. Preserve
+        interior whitespace. Max 64 KiB of actual request bytes.
     RestaurantPatch:
       type: object
-      properties:
-        expected_version: *id004
-        name: *id002
-        category: *id006
-        address: *id002
-        cuisine: *id005
-        rating: *id007
-        review: *id005
-        note: *id005
+      additionalProperties: false
       required:
       - expected_version
-      additionalProperties: false
+      properties:
+        expected_version:
+          $ref: '#/components/schemas/Version'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        category:
+          $ref: '#/components/schemas/Category'
+        cuisine:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+        address:
+          type: string
+          maxLength: 500
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+      anyOf:
+      - required:
+        - name
+      - required:
+        - category
+      - required:
+        - cuisine
+      - required:
+        - address
+      - required:
+        - rating
+      - required:
+        - review
+      - required:
+        - note
+      description: At least one editable field. Omitted fields stay unchanged; nullable null clears. Server computes
+        diff; no client before values. No-op still guards version and parent, without changing business version
+        or time.
     Dish:
       type: object
-      properties:
-        id: *id001
-        version: *id004
-        created_at: *id003
-        updated_at: *id003
-        deleted_at: *id008
-        name: *id002
-        rating: &id009
-          $ref: '#/components/schemas/Rating'
-        review: *id005
-        restaurant_id: *id001
-    DishCreate:
-      type: object
-      properties:
-        id: *id001
-        name: *id002
-        rating: *id009
-        review: *id005
+      additionalProperties: false
       required:
       - id
       - name
+      - rating
+      - review
+      - version
+      - created_at
+      - updated_at
+      - deleted_at
+      - restaurant_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+        version:
+          $ref: '#/components/schemas/Version'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+    DishCreate:
+      type: object
       additionalProperties: false
+      required:
+      - id
+      - name
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+      description: Strict JSON. Normalize NFC, CRLF to LF, outer trim; optional blank text becomes null. Preserve
+        interior whitespace. Max 64 KiB of actual request bytes.
     DishPatch:
       type: object
-      properties:
-        expected_version: *id004
-        name: *id002
-        rating: *id009
-        review: *id005
+      additionalProperties: false
       required:
       - expected_version
-      additionalProperties: false
+      properties:
+        expected_version:
+          $ref: '#/components/schemas/Version'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+      anyOf:
+      - required:
+        - name
+      - required:
+        - rating
+      - required:
+        - review
+      description: At least one editable field. Omitted fields stay unchanged; nullable null clears. Server computes
+        diff; no client before values. No-op still guards version and parent, without changing business version
+        or time.
     Visit:
       type: object
-      properties:
-        id: *id001
-        version: *id004
-        created_at: *id003
-        updated_at: *id003
-        deleted_at: *id008
-        dining_date: &id010
-          type: string
-          format: date
-        meal: &id011
-          $ref: '#/components/schemas/Meal'
-        note: *id005
-        restaurant_id: *id001
-    VisitCreate:
-      type: object
-      properties:
-        id: *id001
-        dining_date: *id010
-        meal: *id011
-        note: *id005
+      additionalProperties: false
       required:
       - id
       - dining_date
+      - meal
+      - note
+      - version
+      - created_at
+      - updated_at
+      - deleted_at
+      - restaurant_id
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        dining_date:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+        meal:
+          $ref: '#/components/schemas/Meal'
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+        version:
+          $ref: '#/components/schemas/Version'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+    VisitCreate:
+      type: object
       additionalProperties: false
+      required:
+      - id
+      - dining_date
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        dining_date:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+        meal:
+          $ref: '#/components/schemas/Meal'
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+      description: Strict JSON. Normalize NFC, CRLF to LF, outer trim; optional blank text becomes null. Preserve
+        interior whitespace. Max 64 KiB of actual request bytes.
     VisitPatch:
       type: object
-      properties:
-        expected_version: *id004
-        dining_date: *id010
-        meal: *id011
-        note: *id005
+      additionalProperties: false
       required:
       - expected_version
-      additionalProperties: false
+      properties:
+        expected_version:
+          $ref: '#/components/schemas/Version'
+        dining_date:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+        meal:
+          $ref: '#/components/schemas/Meal'
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 2000
+      anyOf:
+      - required:
+        - dining_date
+      - required:
+        - meal
+      - required:
+        - note
+      description: At least one editable field. Omitted fields stay unchanged; nullable null clears. Server computes
+        diff; no client before values. No-op still guards version and parent, without changing business version
+        or time.
     FieldDiff:
       type: object
-      properties:
-        field: *id002
-        before: {}
-        after: {}
+      additionalProperties: false
       required:
       - field
       - before
       - after
-      additionalProperties: false
+      properties:
+        field:
+          type: string
+          enum:
+          - name
+          - category
+          - cuisine
+          - address
+          - rating_tenths
+          - review
+          - note
+          - dining_date
+          - meal
+          - deleted_at
+        before:
+          type:
+          - string
+          - integer
+          - 'null'
+        after:
+          type:
+          - string
+          - integer
+          - 'null'
+      description: Server-computed whitelist diff. rating_tenths is an integer (40 -> 43). deleted_at is an ISO 8601
+        UTC string in API responses and remains an epoch millisecond integer in stored diff_json. Never record
+        updated_at/version/search/session fields.
     Revision:
       type: object
+      additionalProperties: false
+      required:
+      - id
+      - change_set_id
+      - restaurant_id
+      - restaurant_name
+      - entity_type
+      - entity_id
+      - entity_label
+      - action
+      - entity_version_before
+      - entity_version_after
+      - changed_fields
+      - note
+      - metadata_version
+      - created_at
+      - deleted_at
+      - diff
+      - source_revision_id
+      - metadata_updated_at
       properties:
-        id: *id001
-        change_set_id: *id001
-        restaurant_id: *id001
+        id:
+          $ref: '#/components/schemas/Uuid'
+        change_set_id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_name:
+          type: string
+          maxLength: 120
         entity_type:
           type: string
           enum:
           - restaurant
           - dish
           - visit
-        entity_id: *id001
+        entity_id:
+          $ref: '#/components/schemas/Uuid'
+        entity_label:
+          type: string
+          maxLength: 120
         action:
           type: string
           enum:
@@ -1617,67 +4776,121 @@ components:
         entity_version_before:
           type: integer
           minimum: 0
-        entity_version_after: *id004
+        entity_version_after:
+          $ref: '#/components/schemas/Version'
+        changed_fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - name
+            - category
+            - cuisine
+            - address
+            - rating_tenths
+            - review
+            - note
+            - dining_date
+            - meal
+            - deleted_at
+          minItems: 1
+          uniqueItems: true
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        metadata_version:
+          $ref: '#/components/schemas/Version'
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
         diff:
           type: array
-          minItems: 1
           items:
             $ref: '#/components/schemas/FieldDiff'
+          minItems: 1
         source_revision_id:
           type:
           - string
           - 'null'
           format: uuid
-        note: *id005
-        metadata_version: *id004
-        metadata_updated_at: *id003
-        created_at: *id003
-        deleted_at: *id005
+        metadata_updated_at:
+          type: string
+          format: date-time
     RevisionApply:
       type: object
-      properties:
-        source_revision_id: *id001
-        side:
-          enum:
-          - before
-          - after
-          type: string
-        fields:
-          type: array
-          minItems: 1
-          maxItems: 7
-          uniqueItems: true
-          items: *id002
-        expected_version: *id004
+      additionalProperties: false
       required:
       - source_revision_id
       - side
       - fields
       - expected_version
-      additionalProperties: false
+      properties:
+        source_revision_id:
+          $ref: '#/components/schemas/Uuid'
+        side:
+          type: string
+          enum:
+          - before
+          - after
+        fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - name
+            - category
+            - cuisine
+            - address
+            - rating_tenths
+            - review
+            - note
+            - dining_date
+            - meal
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+        expected_version:
+          $ref: '#/components/schemas/Version'
+      description: Only action=update sources owned by the caller. Fields must occur in the source diff and be editable
+        for the target entity type. Revalidate values and recompute current -> selected history values; retain unselected
+        fields. No id/owner/version/system times/deleted_at.
     RevisionMetadataPatch:
       type: object
-      properties:
-        expected_metadata_version: *id004
-        note: *id005
+      additionalProperties: false
       required:
       - expected_metadata_version
       - note
-      additionalProperties: false
+      properties:
+        expected_metadata_version:
+          $ref: '#/components/schemas/Version'
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
     VersionBody:
       type: object
-      properties:
-        expected_version: *id004
+      additionalProperties: false
       required:
       - expected_version
-      additionalProperties: false
+      properties:
+        expected_version:
+          $ref: '#/components/schemas/Version'
     MetadataVersionBody:
       type: object
-      properties:
-        expected_metadata_version: *id004
+      additionalProperties: false
       required:
       - expected_metadata_version
-      additionalProperties: false
+      properties:
+        expected_metadata_version:
+          $ref: '#/components/schemas/Version'
     RegisterRequest:
       type: object
       properties:
@@ -1685,13 +4898,12 @@ components:
           type: string
           maxLength: 256
           description: NFKC → trim → lowercase 后满足 ^[a-z][a-z0-9_]{2,31}$。
-        password: &id013
+        password:
           type: string
           maxLength: 128
           minLength: 12
           writeOnly: true
-          description: 12–128 Unicode 字符，UTF-8 ≤512 bytes；允许空格和 Unicode，拒绝全空白、NUL
-            与随包 v1 弱口令表。密码不做规范化。
+          description: 12–128 Unicode 字符，UTF-8 ≤512 bytes；允许空格和 Unicode，拒绝全空白、NUL 与随包 v1 弱口令表。密码不做规范化。
         display_name:
           type: string
           minLength: 1
@@ -1712,7 +4924,7 @@ components:
           type: string
           maxLength: 256
           description: NFKC → trim → lowercase 后满足 ^[a-z][a-z0-9_]{2,31}$。
-        password: &id012
+        password:
           type: string
           maxLength: 512
           writeOnly: true
@@ -1738,15 +4950,24 @@ components:
     PasswordReauth:
       type: object
       properties:
-        password: *id002
+        password:
+          type: string
       required:
       - password
       additionalProperties: false
     PasswordChange:
       type: object
       properties:
-        current_password: *id012
-        new_password: *id013
+        current_password:
+          type: string
+          maxLength: 512
+          writeOnly: true
+        new_password:
+          type: string
+          maxLength: 128
+          minLength: 12
+          writeOnly: true
+          description: 12–128 Unicode 字符，UTF-8 ≤512 bytes；允许空格和 Unicode，拒绝全空白、NUL 与随包 v1 弱口令表。密码不做规范化。
         device_name:
           type: string
           minLength: 1
@@ -1767,7 +4988,12 @@ components:
           type: string
           maxLength: 128
           writeOnly: true
-        new_password: *id013
+        new_password:
+          type: string
+          maxLength: 128
+          minLength: 12
+          writeOnly: true
+          description: 12–128 Unicode 字符，UTF-8 ≤512 bytes；允许空格和 Unicode，拒绝全空白、NUL 与随包 v1 弱口令表。密码不做规范化。
         device_name:
           type: string
           minLength: 1
@@ -1781,8 +5007,11 @@ components:
     UserPatch:
       type: object
       properties:
-        expected_version: *id004
-        display_name: *id002
+        expected_version:
+          type: integer
+          minimum: 1
+        display_name:
+          type: string
       required:
       - expected_version
       - display_name
@@ -1790,9 +5019,13 @@ components:
     AccountDelete:
       type: object
       properties:
-        expected_version: *id004
-        password: *id002
-        confirm_username: *id002
+        expected_version:
+          type: integer
+          minimum: 1
+        password:
+          type: string
+        confirm_username:
+          type: string
       required:
       - expected_version
       - password
@@ -1801,19 +5034,27 @@ components:
     AuthResult:
       type: object
       properties:
-        user: &id014
+        user:
           $ref: '#/components/schemas/User'
-        token_type: &id015
+        token_type:
           const: Bearer
           type: string
-        access_token: *id002
-        expires_in: &id016
+        access_token:
+          type: string
+        expires_in:
           type: integer
           const: 600
-        refresh_token: *id002
-        refresh_expires_at: *id003
-        session_expires_at: *id003
-        session_id: *id001
+        refresh_token:
+          type: string
+        refresh_expires_at:
+          type: string
+          format: date-time
+        session_expires_at:
+          type: string
+          format: date-time
+        session_id:
+          type: string
+          format: uuid
       required:
       - user
       - token_type
@@ -1839,39 +5080,26 @@ components:
       additionalProperties: false
     Meta:
       type: object
-      properties:
-        request_id: *id001
-        next_cursor: *id005
-        has_more:
-          type: boolean
-    SuccessEnvelope:
-      type: object
-      properties:
-        data: {}
-        meta:
-          $ref: '#/components/schemas/Meta'
+      additionalProperties: false
       required:
-      - data
-      - meta
-    PageEnvelope:
-      type: object
+      - request_id
       properties:
-        data:
-          type: object
-          properties:
-            items:
-              type: array
-              items: {}
-        meta:
-          $ref: '#/components/schemas/Meta'
-      required:
-      - data
-      - meta
+        request_id:
+          $ref: '#/components/schemas/Uuid'
     ErrorEnvelope:
       type: object
+      additionalProperties: false
+      required:
+      - error
+      - meta
       properties:
         error:
           type: object
+          additionalProperties: false
+          required:
+          - code
+          - message
+          - field_errors
           properties:
             code:
               type: string
@@ -1897,27 +5125,52 @@ components:
               - RATE_LIMITED
               - DATABASE_BUSY
               - TEMPORARILY_UNAVAILABLE
-            message: *id002
+              - INTERNAL_ERROR
+            message:
+              type: string
             field_errors:
               type: object
-            current: {}
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+            current:
+              oneOf:
+              - $ref: '#/components/schemas/Restaurant'
+              - $ref: '#/components/schemas/Dish'
+              - $ref: '#/components/schemas/Visit'
+              - $ref: '#/components/schemas/RevisionMetadataResult'
+              - $ref: '#/components/schemas/User'
         meta:
           $ref: '#/components/schemas/Meta'
-      required:
-      - error
-      - meta
+      description: 'current only for a confirmed owned object. Other-owner IDs always 404; never reveal existence
+        or current. Batch failure: committed idempotency result/fingerprint first, ownership/existence, version
+        current, otherwise INTERNAL_ERROR 500.'
     AuthResultWithRecoveryCodes:
       description: AuthResult 的全部字段加 recovery_codes。
       type: object
       properties:
-        user: *id014
-        token_type: *id015
-        access_token: *id002
-        expires_in: *id016
-        refresh_token: *id002
-        refresh_expires_at: *id003
-        session_expires_at: *id003
-        session_id: *id001
+        user:
+          $ref: '#/components/schemas/User'
+        token_type:
+          const: Bearer
+          type: string
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+          const: 600
+        refresh_token:
+          type: string
+        refresh_expires_at:
+          type: string
+          format: date-time
+        session_expires_at:
+          type: string
+          format: date-time
+        session_id:
+          type: string
+          format: uuid
         recovery_codes:
           type: array
           minItems: 8
@@ -1935,6 +5188,7 @@ components:
       - session_expires_at
       - session_id
       - recovery_codes
+      additionalProperties: false
     DeviceSession:
       type: object
       additionalProperties: false
@@ -1972,6 +5226,7 @@ components:
           $ref: '#/components/schemas/User'
         session:
           $ref: '#/components/schemas/DeviceSession'
+      additionalProperties: false
     SessionList:
       type: object
       required:
@@ -1981,3 +5236,659 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/DeviceSession'
+      additionalProperties: false
+    Version:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+    Uuid:
+      type: string
+      format: uuid
+      pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+    RestaurantStats:
+      type: object
+      additionalProperties: false
+      required:
+      - dish_count
+      - visit_count
+      - last_visit_date
+      properties:
+        dish_count:
+          type: integer
+          minimum: 0
+        visit_count:
+          type: integer
+          minimum: 0
+        last_visit_date:
+          type:
+          - string
+          - 'null'
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+    RestaurantDetail:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - category
+      - cuisine
+      - address
+      - rating
+      - review
+      - note
+      - version
+      - created_at
+      - updated_at
+      - deleted_at
+      - stats
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+        category:
+          $ref: '#/components/schemas/Category'
+        cuisine:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+        address:
+          type: string
+          maxLength: 500
+          minLength: 1
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 4000
+        version:
+          $ref: '#/components/schemas/Version'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        stats:
+          $ref: '#/components/schemas/RestaurantStats'
+    RestaurantSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - category
+      - cuisine
+      - address_excerpt
+      - rating
+      - version
+      - updated_at
+      - dish_count
+      - visit_count
+      - last_visit_date
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          type: string
+          maxLength: 120
+        category:
+          $ref: '#/components/schemas/Category'
+        cuisine:
+          type:
+          - string
+          - 'null'
+          maxLength: 60
+        address_excerpt:
+          type: string
+          maxLength: 120
+        rating:
+          $ref: '#/components/schemas/Rating'
+        version:
+          $ref: '#/components/schemas/Version'
+        updated_at:
+          type: string
+          format: date-time
+        dish_count:
+          type: integer
+          minimum: 0
+        visit_count:
+          type: integer
+          minimum: 0
+        last_visit_date:
+          type:
+          - string
+          - 'null'
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+        matched_fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - restaurant
+            - dish
+            - review
+            - note
+          uniqueItems: true
+        match_label:
+          type:
+          - string
+          - 'null'
+    DishSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - restaurant_id
+      - restaurant_name
+      - name
+      - rating
+      - review_excerpt
+      - version
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_name:
+          type: string
+          maxLength: 120
+        name:
+          type: string
+          maxLength: 120
+        rating:
+          $ref: '#/components/schemas/Rating'
+        review_excerpt:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        version:
+          $ref: '#/components/schemas/Version'
+        updated_at:
+          type: string
+          format: date-time
+    VisitSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - restaurant_id
+      - restaurant_name
+      - dining_date
+      - meal
+      - note_excerpt
+      - version
+      - updated_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_name:
+          type: string
+          maxLength: 120
+        dining_date:
+          type: string
+          format: date
+          pattern: ^\d{4}-\d{2}-\d{2}$
+          description: Valid Gregorian date, 1900-01-01 through 2100-12-31; no timezone conversion.
+        meal:
+          $ref: '#/components/schemas/Meal'
+        note_excerpt:
+          type:
+          - string
+          - 'null'
+          maxLength: 120
+        version:
+          $ref: '#/components/schemas/Version'
+        updated_at:
+          type: string
+          format: date-time
+    RevisionSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - change_set_id
+      - restaurant_id
+      - restaurant_name
+      - entity_type
+      - entity_id
+      - entity_label
+      - action
+      - entity_version_before
+      - entity_version_after
+      - changed_fields
+      - note
+      - metadata_version
+      - created_at
+      - deleted_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        change_set_id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+        restaurant_name:
+          type: string
+          maxLength: 120
+        entity_type:
+          type: string
+          enum:
+          - restaurant
+          - dish
+          - visit
+        entity_id:
+          $ref: '#/components/schemas/Uuid'
+        entity_label:
+          type: string
+          maxLength: 120
+        action:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - restore
+        entity_version_before:
+          type: integer
+          minimum: 0
+        entity_version_after:
+          $ref: '#/components/schemas/Version'
+        changed_fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - name
+            - category
+            - cuisine
+            - address
+            - rating_tenths
+            - review
+            - note
+            - dining_date
+            - meal
+            - deleted_at
+          minItems: 1
+          uniqueItems: true
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        metadata_version:
+          $ref: '#/components/schemas/Version'
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    RevisionMetadataResult:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - note
+      - metadata_version
+      - metadata_updated_at
+      - deleted_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        note:
+          type:
+          - string
+          - 'null'
+          maxLength: 500
+        metadata_version:
+          $ref: '#/components/schemas/Version'
+        metadata_updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    Tombstone:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - version
+      - deleted_at
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        version:
+          $ref: '#/components/schemas/Version'
+        deleted_at:
+          type: string
+          format: date-time
+        restaurant_id:
+          $ref: '#/components/schemas/Uuid'
+    RestaurantMutation:
+      type: object
+      additionalProperties: false
+      required:
+      - entity
+      - changed
+      - change_set_id
+      - revisions
+      properties:
+        entity:
+          $ref: '#/components/schemas/Restaurant'
+        changed:
+          type: boolean
+        change_set_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionSummary'
+    DishMutation:
+      type: object
+      additionalProperties: false
+      required:
+      - entity
+      - changed
+      - change_set_id
+      - revisions
+      properties:
+        entity:
+          $ref: '#/components/schemas/Dish'
+        changed:
+          type: boolean
+        change_set_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionSummary'
+    VisitMutation:
+      type: object
+      additionalProperties: false
+      required:
+      - entity
+      - changed
+      - change_set_id
+      - revisions
+      properties:
+        entity:
+          $ref: '#/components/schemas/Visit'
+        changed:
+          type: boolean
+        change_set_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionSummary'
+    TombstoneMutation:
+      type: object
+      additionalProperties: false
+      required:
+      - entity
+      - changed
+      - change_set_id
+      - revisions
+      properties:
+        entity:
+          $ref: '#/components/schemas/Tombstone'
+        changed:
+          type: boolean
+        change_set_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionSummary'
+    RestaurantCreateResult:
+      type: object
+      additionalProperties: false
+      required:
+      - entity
+      - changed
+      - change_set_id
+      - revisions
+      - first_visit
+      properties:
+        entity:
+          $ref: '#/components/schemas/Restaurant'
+        changed:
+          type: boolean
+        change_set_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionSummary'
+        first_visit:
+          anyOf:
+          - $ref: '#/components/schemas/Visit'
+          - type: 'null'
+    RevisionApplyResult:
+      type: object
+      additionalProperties: false
+      required:
+      - entity
+      - revision
+      - change_set_id
+      - changed
+      properties:
+        entity:
+          oneOf:
+          - $ref: '#/components/schemas/Restaurant'
+          - $ref: '#/components/schemas/Dish'
+          - $ref: '#/components/schemas/Visit'
+        revision:
+          anyOf:
+          - $ref: '#/components/schemas/Revision'
+          - type: 'null'
+        change_set_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        changed:
+          type: boolean
+    RestaurantSearchResult:
+      type: object
+      additionalProperties: false
+      required:
+      - restaurant
+      - matched_fields
+      - match_label
+      properties:
+        restaurant:
+          $ref: '#/components/schemas/RestaurantSummary'
+        matched_fields:
+          type: array
+          items:
+            type: string
+            enum:
+            - restaurant
+            - dish
+            - review
+            - note
+          uniqueItems: true
+        match_label:
+          type:
+          - string
+          - 'null'
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required:
+      - restaurants
+      - visits
+      - revisions
+      properties:
+        restaurants:
+          type: array
+          items:
+            $ref: '#/components/schemas/RestaurantSearchResult'
+        visits:
+          type: array
+          items:
+            $ref: '#/components/schemas/VisitSummary'
+        revisions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionSummary'
+    RecoveryCodeResult:
+      type: object
+      additionalProperties: false
+      required:
+      - recovery_codes
+      properties:
+        recovery_codes:
+          type: array
+          items:
+            type: string
+          minItems: 8
+          maxItems: 8
+    AccountDeleteResult:
+      type: object
+      additionalProperties: false
+      required:
+      - deleted_at
+      - purge_after
+      properties:
+        deleted_at:
+          type: string
+          format: date-time
+        purge_after:
+          type: string
+          format: date-time
+    PageMeta:
+      type: object
+      additionalProperties: false
+      required:
+      - request_id
+      - next_cursor
+      - has_more
+      properties:
+        request_id:
+          $ref: '#/components/schemas/Uuid'
+        next_cursor:
+          type:
+          - string
+          - 'null'
+          maxLength: 2048
+        has_more:
+          type: boolean
+      description: limit+1 keyset pagination without total. Cursor binds sort, key, ID, normalized filters and owner,
+        with a server signature. Invalid/tampered cursor returns 400 INVALID_CURSOR; never an authorization token
+        or SQL fragment. No cross-request snapshot guarantee.
+    RestaurantSummaryPage:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RestaurantSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    DishSummaryPage:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/DishSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    VisitSummaryPage:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/VisitSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    RevisionSummaryPage:
+      type: object
+      additionalProperties: false
+      required:
+      - data
+      - meta
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+          - items
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/RevisionSummary'
+        meta:
+          $ref: '#/components/schemas/PageMeta'

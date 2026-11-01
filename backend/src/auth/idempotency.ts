@@ -35,3 +35,26 @@ export class AuthIdempotency {
       .bind(this.userId, this.key, this.method, this.path, this.hash, status, JSON.stringify(encrypted), now, expires);
   }
 }
+
+// Business writes reuse the P2 store/commit interface, with public JSON and a
+// seven-day window. Credential operations retain their encrypted 120s policy.
+export class BusinessIdempotency {
+  private constructor(private db: D1Database, public userId: string, public key: string, private method: string, private path: string, private hash: string) {}
+  static async create(db: D1Database, userId: string, key: string, method: string, path: string, payload: unknown) {
+    const { digest } = await import('./config');
+    const normalizedPath = path.replace(/\/{2,}/g, '/').replace(/\/$/, '').replace(/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, s => s.toLowerCase());
+    return new BusinessIdempotency(db, userId, key.toLowerCase(), method, normalizedPath, await digest(`${method}\n${normalizedPath}\n${canonical(payload)}`));
+  }
+  async read(): Promise<{ response: CachedResponse; status: number } | null> {
+    const row = await this.db.prepare('SELECT * FROM idempotency_keys WHERE user_id=? AND idempotency_key=?').bind(this.userId, this.key).first<CacheRow>();
+    if (!row) return null;
+    if (row.method !== this.method || row.path !== this.path || row.request_hash !== this.hash) throw new AuthError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was used for a different request.');
+    if (row.expires_at <= Date.now()) throw new AuthError(409, 'IDEMPOTENCY_CONFLICT', 'Retry window has expired. Reload before saving.');
+    return { response: JSON.parse(row.response_json) as CachedResponse, status: row.response_status };
+  }
+  async statement(response: CachedResponse, status: number): Promise<D1PreparedStatement> {
+    const now = Date.now();
+    return this.db.prepare('INSERT INTO idempotency_keys (user_id,idempotency_key,method,path,request_hash,response_status,response_json,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?,?)')
+      .bind(this.userId, this.key, this.method, this.path, this.hash, status, JSON.stringify(response), now, now + 7 * 86400000);
+  }
+}

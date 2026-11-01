@@ -12,4 +12,4 @@ export interface Bindings {
   REFRESH_RETRY_KEY_ID: string;
   REGISTRATION_ENABLED: string;
 }
-export type AppEnv = { Bindings: Bindings };
+export type AppEnv = { Bindings: Bindings; Variables: { userId: string } };

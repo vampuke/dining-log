@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import app from '../src';
 
-// Every method/path is copied from PLAN.md 4.3-4.8; P2 promotes auth routes.
+// Every method/path is copied from PLAN.md 4.3-4.8; domain routes require access.
 const routes = [
   [
     "POST",
@@ -183,7 +183,7 @@ describe('versioned routing', () => {
     const response = await app.request(path, { method });
     const promotedWrites = ['/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout', '/api/v1/auth/password', '/api/v1/auth/recover'];
     const promotedAccess = ['/api/v1/auth/sessions', '/api/v1/auth/sessions/00000000-0000-4000-8000-000000000001'];
-    const status = promotedWrites.includes(path) ? 415 : promotedAccess.includes(path) ? 401 : 501;
+    const status = promotedWrites.includes(path) ? 415 : promotedAccess.includes(path) || (!path.startsWith('/api/v1/auth/') && path !== '/api/v1/me') ? 401 : 501;
     expect(response.status).toBe(status);
     const body = await response.json();
     if (status === 501) expect(body).toEqual({ status: 'not_implemented', api_version: 'v1' });

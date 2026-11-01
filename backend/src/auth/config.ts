@@ -4,8 +4,8 @@ import type { JwtConfig } from './jwt';
 import type { PasswordOptions } from './password';
 
 export class AuthError extends Error {
-  constructor(public status: 400 | 401 | 404 | 409 | 413 | 415 | 429 | 503, public code: string,
-    message: string, public retryAfter?: number) { super(message); }
+  constructor(public status: 400 | 401 | 404 | 409 | 410 | 413 | 500 | 415 | 429 | 503, public code: string,
+    message: string, public retryAfter?: number, public current?: unknown, public fieldErrors: Record<string, string[]> = {}) { super(message); }
 }
 export const invalidCredentials = () => new AuthError(401, 'INVALID_CREDENTIALS', 'Invalid username or credentials.');
 export const revoked = () => new AuthError(401, 'SESSION_REVOKED', 'Session is no longer valid.');
@@ -30,7 +30,7 @@ export async function privateHash(env: Bindings, value: string): Promise<string>
   const key = await crypto.subtle.importKey('raw', bytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   return hex(new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value))));
 }
-export function guard(db: D1Database): D1PreparedStatement[] {
-  const id = crypto.randomUUID();
+export function guard(db: D1Database, operationId = crypto.randomUUID()): D1PreparedStatement[] {
+  const id = operationId;
   return [db.prepare('INSERT INTO mutation_guards VALUES (?, changes())').bind(id), db.prepare('DELETE FROM mutation_guards WHERE operation_id=?').bind(id)];
 }

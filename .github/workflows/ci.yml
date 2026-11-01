@@ -25,6 +25,8 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npm run check
+      - name: Verify final v1 OpenAPI contract
+        run: node tests/contracts.mjs
       - run: npm test
       - name: Verify SQL with sqlite3 CLI
         run: bash tests/sql/verify.sh

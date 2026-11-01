@@ -1,11 +1,11 @@
-import { Hono } from 'hono';
-import type { AppEnv } from '../env';
-import { notImplemented } from './placeholder';
-
-export const restaurants = new Hono<AppEnv>();
-restaurants.post('/restaurants', notImplemented);
-restaurants.get('/restaurants', notImplemented);
-restaurants.get('/restaurants/:restaurant_id', notImplemented);
-restaurants.patch('/restaurants/:restaurant_id', notImplemented);
-restaurants.delete('/restaurants/:restaurant_id', notImplemented);
-restaurants.post('/restaurants/:restaurant_id/restore', notImplemented);
+import { router, input, idempotency, pathId } from '../domain/http';
+import { creates, patches, versionBody } from '../domain/schemas';
+import { create, mutate } from '../domain/mutations';
+import { detail, list } from '../domain/queries';
+export const restaurants = router();
+restaurants.post('/restaurants', async c => { const p = await input(c, creates.restaurant); return create(c, 'restaurant', p, await idempotency(c, p)); });
+restaurants.get('/restaurants', c => list(c, 'restaurant') as Promise<Response>);
+restaurants.get('/restaurants/:restaurant_id', c => detail(c, 'restaurant', pathId(c, 'restaurant_id')));
+restaurants.patch('/restaurants/:restaurant_id', async c => { const id = pathId(c, 'restaurant_id'), p = await input(c, patches.restaurant); return mutate(c, 'restaurant', id, p, 'update', await idempotency(c, p)); });
+restaurants.delete('/restaurants/:restaurant_id', async c => { const id = pathId(c, 'restaurant_id'), p = await input(c, versionBody); return mutate(c, 'restaurant', id, p, 'delete', await idempotency(c, p)); });
+restaurants.post('/restaurants/:restaurant_id/restore', async c => { const id = pathId(c, 'restaurant_id'), p = await input(c, versionBody); return mutate(c, 'restaurant', id, p, 'restore', await idempotency(c, p)); });

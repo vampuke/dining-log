@@ -20,6 +20,8 @@ for (const result of scenarios) {
   assert.equal(result.p95LimitMs, 100);
   assert.equal(result.queries.length, 9);
   for (const query of result.queries) assert.equal(query.samples.length, 30);
+  assert.equal(result.actualAPI.length, 8);
+  for (const measured of result.actualAPI) assert.equal(measured.samples.length, 30);
 }
 
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
@@ -106,10 +108,13 @@ for (const result of scenarios) {
     lines.push(`**${label[query.id]}**`, '', '```sql', ...query.statements.map((statement) => statement.sql + ';'), '```', '',
       '```text', ...query.plans.flat(), '```', '');
   }
-  lines.push('</details>', '', '### 一次完整写入 batch', '',
+  lines.push('</details>', '', '### P3 实际 API 读取（含 accessIdentity 和响应序列化）', '',
+    '| 路径 | wall p50 ms | wall p95 ms |', '| --- | ---: | ---: |');
+  for (const measured of result.actualAPI) lines.push(`| ${measured.path} | ${fmt(measured.wallMs.p50)} | ${fmt(measured.wallMs.p95)} |`);
+  lines.push('', '每条路径保留 30 次原始样本，不跳过冷样本；p95 仍断言 ≤100 ms。仅为 CI 本地 Workers/D1 pool，未经过公网，不代表免费 Worker CPU。', '', '### 一次完整写入 batch', '',
     '创建 1 餐厅 + 5 菜品 + 3 到店，9 条 create revision 加 1 次真实餐厅更新 / update revision，共 10 revision；同 batch 还写 1 change_set 与 1 restaurant_search。',
     `实测：${result.write.statements.length} 条 SQL，${result.write.changes} 次逻辑行变更，rows_read=${result.write.rowsRead}，**rows_written=${result.write.rowsWritten}**，**wall=${fmt(result.write.wallMs)} ms**，SQL duration 合计=${fmt(result.write.sqlMs)} ms。`,
-    '这是直接 SQL 的容量 batch；当前 P1 业务 API 仍为 501，未计入鉴权、幂等与 CAS 守卫，不能声称完整产品写入性能已通过。',
+    '这是直接 SQL 的容量 batch，未计入鉴权、幂等与 CAS 守卫；P3 实际 API 读取在下表单独测量，生产写入/CPU/网络性能仍未验证。',
     `写入后增量：restaurants=${result.write.rowDeltas.restaurants}，dishes=${result.write.rowDeltas.dishes}，visits=${result.write.rowDeltas.visits}，revisions=${result.write.rowDeltas.revisions}，change_sets=${result.write.rowDeltas.change_sets}，restaurant_search=${result.write.rowDeltas.restaurant_search}；其他业务表增量=0。foreign_key_check 无异常，quick_check=${result.integrity.quickCheck}。`, '',
     '### PLAN.md 8.5 免费档边界对照', '');
   const maxRead = Math.max(...result.queries.map((query) => query.rowsRead.max));
