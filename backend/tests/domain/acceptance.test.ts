@@ -1,5 +1,5 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { account, counts, data, error, request, restaurant, restaurantInput, type Entity, type Mutation, type Revision } from './helpers';
 import { cleanupDomain } from '../../src/domain/cleanup';
 import { cleanupAuth } from '../../src/auth/cleanup';
@@ -49,6 +49,8 @@ describe('P3 acceptance CRUD ownership and history', () => {
     const a = await account(), b = await account('bob'), t = a.access_token, keep = await restaurant(b.access_token), ownKeep = await restaurant(t), old = await restaurant(t);
     await data<Mutation>(await request(`/restaurants/${old.entity.id}`, t, { expected_version: 1 }, 'DELETE'));
     const real = Date.now();
+    vi.spyOn(Date, 'now').mockReturnValue(real);
+    try {
     await env.DB.prepare('UPDATE restaurants SET deleted_at=?,created_at=?,updated_at=? WHERE id=?').bind(real - 30 * 86400000, real - 31 * 86400000, real - 30 * 86400000, old.entity.id).run();
     await error(await request(`/restaurants/${old.entity.id}/restore`, t, { expected_version: 2 }), 410, 'RESTORE_WINDOW_EXPIRED');
     // Force >20 expired children through several bounded cleanup calls.
@@ -60,11 +62,15 @@ describe('P3 acceptance CRUD ownership and history', () => {
     expect((await data<Entity>(await request(`/restaurants/${keep.entity.id}`, b.access_token))).id).toBe(keep.entity.id);
     expect((await data<Entity>(await request(`/restaurants/${ownKeep.entity.id}`, t))).id).toBe(ownKeep.entity.id);
     expect((await env.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([]);
+    } finally { vi.restoreAllMocks(); }
   });
   it('restore succeeds just inside thirty days without a session clock jump', async () => {
     const a = await account(), r = await restaurant(a.access_token), now = Date.now();
-    await env.DB.prepare('UPDATE restaurants SET created_at=?,updated_at=?,deleted_at=? WHERE id=?').bind(now - 31 * 86400000, now - 30 * 86400000 + 60000, now - 30 * 86400000 + 60000, r.entity.id).run();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+    await env.DB.prepare('UPDATE restaurants SET created_at=?,updated_at=?,deleted_at=? WHERE id=?').bind(now - 31 * 86400000, now - 30 * 86400000 + 1, now - 30 * 86400000 + 1, r.entity.id).run();
     expect((await data<Mutation>(await request(`/restaurants/${r.entity.id}/restore`, a.access_token, { expected_version: 1 }))).entity.deleted_at).toBeNull();
+    } finally { vi.restoreAllMocks(); }
   });
   it('S11 revision read note hide restore forbid diff and original timestamps', async () => {
     const a = await account(), t = a.access_token, r = await restaurant(t), id = r.revisions[0].id, original = await data<Revision>(await request(`/revisions/${id}`, t));
