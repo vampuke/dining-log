@@ -107,7 +107,7 @@ class P6SmallScreenEndToEndTest {
                     val node = compose.onAllNodesWithTag("record:$id").fetchSemanticsNodes().singleOrNull()
                     if (node == null) false else {
                         val bounds = compose.onNodeWithTag("record:$id").getUnclippedBoundsInRoot()
-                        bounds.height > 0.dp && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom
+                        bounds.bottom > bounds.top && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom
                     }
                 }
                 assertTrue("360x640 real API first screen must show >= 3 complete records", complete.size >= 3)

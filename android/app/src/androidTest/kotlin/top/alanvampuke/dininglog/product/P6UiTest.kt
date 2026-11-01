@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
@@ -70,7 +71,7 @@ class P6UiTest {
             }, useUnmergedTree = true).fetchSemanticsNodes()
             val visible = nodes.map { it.config[SemanticsProperties.TestTag] }.filter { tag ->
                 val bounds = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
-                bounds.height > 0.dp && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom
+                bounds.bottom > bounds.top && bounds.top >= viewport.top && bounds.bottom <= viewport.bottom
             }
             assertTrue("360x640 ${if (night) "dark" else "light"} first screen has ${visible.size} complete records", visible.size >= 3)
             visible.forEach { compose.onNodeWithTag(it).assertIsDisplayed() }
@@ -179,11 +180,13 @@ class P6UiTest {
             compose.onNodeWithTag("product-navigation").assert(SemanticsMatcher.expectValue(NavigationAnimationsEnabled, true))
             compose.mainClock.autoAdvance = false
             compose.onNodeWithTag("tab:visits").performClick()
-            repeat(6) { frame ->
-                compose.mainClock.advanceTimeBy(40)
-                val pixels = compose.onNodeWithTag("product-navigation").captureToImage().toPixelMap()
-                assertTrue("frame $frame retains dark background", count(pixels, QuietGridDark.bg.toArgb()) > 250)
-                assertEquals("frame $frame must have no white flash", 0, count(pixels, Color.WHITE))
+            repeat(15) { frame ->
+                if (frame > 0) compose.mainClock.advanceTimeBy(16)
+                val bitmap = compose.onNodeWithTag("product-navigation").captureToImage().asAndroidBitmap()
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                assertTrue("frame $frame retains dark background", pixels.count { it == QuietGridDark.bg.toArgb() } > 250)
+                assertEquals("frame $frame must have no white flash", 0, pixels.count { it == Color.WHITE })
             }
             compose.mainClock.autoAdvance = true
             animationScale(0f)
@@ -191,7 +194,7 @@ class P6UiTest {
             compose.onNodeWithTag("tab:settings").performClick()
             compose.onNodeWithTag("screen:settings").assertIsDisplayed()
             compose.onAllNodesWithTag("screen:visit:list").assertCountEquals(0)
-            println("P6 dark_navigation_frames=6 white_pixels=0 remove_animations_observed=true")
+            println("P6 dark_navigation_frames=15 sample_interval_ms=16 white_pixels=0 remove_animations_observed=true")
         } finally { compose.mainClock.autoAdvance = true; animationScale(previous); fixture.close() }
     }
 
