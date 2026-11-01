@@ -13,7 +13,7 @@ export async function account(username = 'alice'): Promise<AuthResult> {
   const res = await app.request('/api/v1/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': username === 'alice' ? '192.0.2.1' : '192.0.2.2' }, body: JSON.stringify({ username, password: 'a deliberate strong passphrase', device_name: 'P3 test' }) }, bindings);
   expect(res.status).toBe(201); return (await res.json() as { data: AuthResult }).data;
 }
-export type Entity = { id: string; version: number; updated_at: string; deleted_at: string | null; restaurant_id?: string; rating?: number | null; name?: string; review?: string | null; note?: string | null; address?: string };
+export type Entity = { id: string; version: number; updated_at: string; deleted_at: string | null; restaurant_id?: string; rating?: number | null; name?: string; review?: string | null; note?: string | null; address?: string | null };
 export type Revision = { id: string; change_set_id: string; action: string; changed_fields: string[]; metadata_version: number; diff: { field: string; before: unknown; after: unknown }[]; source_revision_id: string | null };
 export type Mutation = { entity: Entity; changed: boolean; revisions: Revision[]; change_set_id: string | null; first_visit?: Entity };
 export async function data<T>(res: Response, status = 200): Promise<T> { expect(res.status, await res.clone().text()).toBe(status); expect(res.headers.get('Cache-Control')).toBe('no-store'); return (await res.json() as { data: T }).data; }

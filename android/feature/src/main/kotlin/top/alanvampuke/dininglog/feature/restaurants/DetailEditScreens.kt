@@ -36,18 +36,18 @@ import top.alanvampuke.dininglog.feature.theme.*
                 if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) item { Score(record.fields["rating_tenths"], prominent = true, meter = true) }
                 item {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        editableFields(record.ref.kind).filter { it !in setOf("name", "rating_tenths", "review", "note") }.forEach { field ->
+                        editableFields(record.ref.kind).filter { it !in setOf("name", "rating_tenths", "review", "note") && !record.fields[it].isNullOrBlank() }.forEach { field ->
                             GridText(fieldLabel(field), style = MaterialTheme.typography.titleSmall, color = LocalQuietGridColors.current.secondary)
                             GridText(displayValue(field, record.fields[field]), Modifier.testTag("detail:$field"))
                         }
                         GridText("版本 ${record.version} · 更新于 ${record.updatedAt}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
                     }
                 }
-                if ("review" in editableFields(record.ref.kind)) item {
+                if ("review" in editableFields(record.ref.kind) && !record.fields["review"].isNullOrBlank()) item {
                     GridText(if (record.ref.kind == RecordKind.DISH) "短评" else "我的评价", style = MaterialTheme.typography.titleMedium)
                     ExpandableValue("review", record.fields["review"], "detail:review")
                 }
-                if ("note" in editableFields(record.ref.kind)) item {
+                if ("note" in editableFields(record.ref.kind) && !record.fields["note"].isNullOrBlank()) item {
                     GridText("备注", style = MaterialTheme.typography.titleMedium)
                     ExpandableValue("note", record.fields["note"], "detail:note")
                 }
@@ -114,11 +114,12 @@ import top.alanvampuke.dininglog.feature.theme.*
                             ChoiceChips(Category.entries.map { it.code to categoryLabel(it.code) }, draft.localFields[field], { onField(field, it) }, enabled)
                         }
                         "meal" -> {
-                            GridText("餐次", style = MaterialTheme.typography.titleMedium)
+                            GridText("餐次 · 选填", style = MaterialTheme.typography.titleMedium)
                             ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, draft.localFields[field], { onField(field, it) }, enabled)
                         }
                         else -> FormField(field, draft.localFields[field], { onField(field, it) }, enabled, state.errors[field],
-                            label = if (field == "review" && kind == RecordKind.DISH) "短评" else if (field == "note" && kind == RecordKind.REVISION) "历史说明" else fieldLabel(field),
+                            label = (if (field == "review" && kind == RecordKind.DISH) "短评" else if (field == "note" && kind == RecordKind.REVISION) "历史说明" else fieldLabel(field)) +
+                                if (field in setOf("cuisine", "address", "review", "note")) " · 选填" else "",
                             minLines = if (field in setOf("review", "note")) 4 else if (field == "address") 2 else 1,
                             supporting = if (field == "dining_date") "YYYY-MM-DD，同日多次到店分别保留" else null)
                     }
@@ -131,7 +132,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                         if (visit != null) {
                             FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, state.errors["first_visit"], label = "首访日期", supporting = "YYYY-MM-DD")
                             ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, visit.meal, { onFirstVisit(visit.copy(meal = it)) }, enabled)
-                            FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, state.errors["first_visit_note"], label = "首访备注", minLines = 2)
+                            FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, state.errors["first_visit_note"], label = "首访备注 · 选填", minLines = 2)
                         }
                     }
                 }

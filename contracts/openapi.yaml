@@ -4418,7 +4418,9 @@ components:
           - 'null'
           maxLength: 60
         address:
-          type: string
+          type:
+          - string
+          - 'null'
           maxLength: 500
           minLength: 1
         rating:
@@ -4453,7 +4455,6 @@ components:
       - id
       - name
       - category
-      - address
       properties:
         id:
           $ref: '#/components/schemas/Uuid'
@@ -4469,9 +4470,10 @@ components:
           - 'null'
           maxLength: 60
         address:
-          type: string
+          type:
+          - string
+          - 'null'
           maxLength: 500
-          minLength: 1
         rating:
           $ref: '#/components/schemas/Rating'
         review:
@@ -4508,9 +4510,10 @@ components:
           - 'null'
           maxLength: 60
         address:
-          type: string
+          type:
+          - string
+          - 'null'
           maxLength: 500
-          minLength: 1
         rating:
           $ref: '#/components/schemas/Rating'
         review:
@@ -5346,7 +5349,9 @@ components:
           - 'null'
           maxLength: 60
         address:
-          type: string
+          type:
+          - string
+          - 'null'
           maxLength: 500
           minLength: 1
         rating:

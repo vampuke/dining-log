@@ -94,7 +94,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
 }
 @Composable fun RatingEditor(value: String?, onChange: (String?) -> Unit, enabled: Boolean, tag: String = "rating") {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        GridText("评分", style = MaterialTheme.typography.titleMedium)
+        GridText("评分 · 选填", style = MaterialTheme.typography.titleMedium)
         Score(value, meter = true)
         Slider(value = (value?.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
             enabled = enabled, valueRange = 1f..5f, steps = 39, modifier = Modifier.fillMaxWidth().testTag(tag).semantics {

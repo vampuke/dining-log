@@ -70,6 +70,18 @@ class ProductViewModelTest {
     }
     private fun TestScope.start() { runCurrent(); advanceTimeBy(300); runCurrent() }
 
+    @Test fun restaurantWithOnlyNameAndCategoryCanBeSavedAndOptionalTextStillHasLimits() {
+        val minimal = SavedDraft("A", "minimal", ref, WriteAction.CREATE, null,
+            mapOf("name" to "只填名称", "category" to "restaurant"))
+        assertTrue(validateDraft(minimal).isEmpty())
+        for (address in listOf(null, "", "   ")) {
+            assertTrue(validateDraft(minimal.copy(localFields = minimal.localFields + ("address" to address))).isEmpty())
+        }
+        assertEquals(setOf("name"), validateDraft(minimal.copy(localFields = minimal.localFields + ("name" to "   "))).keys)
+        assertEquals(setOf("category"), validateDraft(minimal.copy(localFields = minimal.localFields - "category")).keys)
+        assertEquals(setOf("address"), validateDraft(minimal.copy(localFields = minimal.localFields + ("address" to "x".repeat(501)))).keys)
+    }
+
     @Test fun refreshFailureAndPaginationKeepVisibleRowsAndDeduplicateIds() = runTest { fixture { vm, repo, _, _ ->
         val first = CompletableDeferred<Unit>(); val more = CompletableDeferred<Unit>()
         repo.refreshBody = { _, loadMore -> if (loadMore) more.await() else first.await() }

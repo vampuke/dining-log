@@ -183,7 +183,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
                 val cached = repository.findDraft(accountId, id)
                 val draft = cached ?: if (create) {
                     val fields = editableFields(ref.kind).associateWith { field -> when (field) {
-                        "name", "address" -> ""; "category" -> "restaurant"; "dining_date" -> LocalDate.now().toString(); else -> null
+                        "name" -> ""; "category" -> "restaurant"; "dining_date" -> LocalDate.now().toString(); else -> null
                     } }
                     SavedDraft(accountId, id, ref, WriteAction.CREATE, null, fields,
                         firstVisit = if (ref.kind == RecordKind.RESTAURANT) FirstVisitInput(UUID.randomUUID().toString(), LocalDate.now().toString()) else null)
@@ -388,7 +388,7 @@ fun validFilters(filters: ListFilters): Boolean =
 fun validateDraft(draft: SavedDraft): Map<String, String> = buildMap {
     if (draft.action in setOf(WriteAction.DELETE, WriteAction.RESTORE)) return@buildMap
     val kind = draft.ref.kind
-    val required = when (kind) { RecordKind.RESTAURANT -> setOf("name", "category", "address"); RecordKind.DISH -> setOf("name"); RecordKind.VISIT -> setOf("dining_date"); else -> emptySet() }
+    val required = when (kind) { RecordKind.RESTAURANT -> setOf("name", "category"); RecordKind.DISH -> setOf("name"); RecordKind.VISIT -> setOf("dining_date"); else -> emptySet() }
     required.forEach { if (draft.localFields[it].isNullOrBlank()) put(it, "请填写${fieldLabel(it)}") }
     draft.localFields.forEach { (field, value) ->
         val limit = when (field) { "name" -> 120; "cuisine" -> 60; "address" -> 500; "review", "note" -> if (kind == RecordKind.RESTAURANT) 4000 else if (kind == RecordKind.REVISION) 500 else 2000; else -> Int.MAX_VALUE }

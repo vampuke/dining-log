@@ -57,6 +57,8 @@ jobs:
           npm run smoke:production
       - name: Verify SQL with sqlite3 CLI
         run: bash tests/sql/verify.sh
+      - name: Verify migration 0002 preserves populated data and indexes
+        run: bash scripts/verify_migration_0002.sh
       - name: Measure 4500 and 6000 object capacity
         timeout-minutes: 15
         continue-on-error: false
