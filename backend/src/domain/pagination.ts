@@ -11,7 +11,7 @@ export async function decode(c: C, encoded: string | undefined, sort: Cursor['so
   if (!encoded) return null;
   try {
     if (encoded.length > 2048 || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error();
-    const parsed = cursorSchema.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(base64UrlDecode(encoded))));
+    const parsed = cursorSchema.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(base64UrlDecode(encoded))));
     const { signature, ...payload } = parsed;
     if (parsed.sort !== sort || parsed.filter !== filter || signature !== await privateHash(c.env, `business-cursor:${JSON.stringify(payload)}`)) throw new Error();
     if (sort === 'date_desc' ? typeof parsed.key !== 'string' : sort === 'rating_desc' ? parsed.key !== null && (typeof parsed.key !== 'number' || parsed.key < 10 || parsed.key > 50) : typeof parsed.key !== 'number') throw new Error();
