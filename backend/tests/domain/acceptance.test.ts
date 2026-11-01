@@ -118,6 +118,18 @@ describe('P3 acceptance CRUD ownership and history', () => {
     await expect(env.DB.prepare('UPDATE restaurants SET rating_tenths=? WHERE id=?').bind(40.5, r.entity.id).run()).rejects.toThrow(/constraint/i);
     await error(await request('/restaurants', t, restaurantInput({ review: 'x'.repeat(70000) })), 413, 'PAYLOAD_TOO_LARGE');
   });
+  it('ratings require exact tenths for restaurant and dish writes', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t, { rating: 4.1 }), d = await makeChild(t, r.entity.id, 'dishes', { rating: 3.3 }), before = await counts();
+    for (const rating of [4.30000000001, 4.29999999999, 1.00000000001]) {
+      await error(await request('/restaurants', t, restaurantInput({ rating })), 400, 'VALIDATION_ERROR');
+      await error(await request(`/restaurants/${r.entity.id}/dishes`, t, { id: crypto.randomUUID(), name: 'Invalid rating', rating }), 400, 'VALIDATION_ERROR');
+      await error(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, rating }, 'PATCH'), 400, 'VALIDATION_ERROR');
+      await error(await request(`/dishes/${d.entity.id}`, t, { expected_version: 1, rating }, 'PATCH'), 400, 'VALIDATION_ERROR');
+    }
+    expect(await counts()).toEqual(before);
+    expect(await data<Entity>(await request(`/restaurants/${r.entity.id}`, t))).toMatchObject({ rating: 4.1, version: 1 });
+    expect(await data<Entity>(await request(`/dishes/${d.entity.id}`, t))).toMatchObject({ rating: 3.3, version: 1 });
+  });
   it('business cache lasts seven days and P2 auth janitor cannot erase it early', async () => {
     const a = await account(), t = a.access_token, key = crypto.randomUUID(), input = restaurantInput();
     const first = await request('/restaurants', t, input, 'POST', key); const original = await first.json();
