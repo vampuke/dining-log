@@ -1,22 +1,32 @@
 package top.alanvampuke.dininglog.feature
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import androidx.navigation.toRoute
 import androidx.navigation.NavDestination.Companion.hasRoute
 import kotlinx.serialization.Serializable
+import kotlinx.coroutines.launch
 import java.util.UUID
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.feature.components.*
@@ -35,8 +45,16 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Serializable data class ChooseRestaurantRoute(val purpose: String)
 
 @Composable fun ProductRoot(vm: ProductViewModel, username: String, theme: ThemeChoice, onTheme: (ThemeChoice) -> Unit,
-    onLogout: () -> Unit, version: String) {
-    val nav = rememberNavController()
+    onLogout: () -> Unit, version: String, navController: NavHostController = rememberNavController(),
+    updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {}) {
+    val nav = navController
+    val animate = rememberNavigationAnimationsEnabled()
+    val motionPx = with(LocalDensity.current) { 12.dp.roundToPx() }
+    val restaurantScroll = rememberLazyListState()
+    val visitScroll = rememberLazyListState()
+    val settingsScroll = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    var selectedTab by rememberSaveable { mutableStateOf(vm.restoredTab) }
     val list by vm.list.collectAsStateWithLifecycle()
     val search by vm.search.collectAsStateWithLifecycle()
     val filters by vm.filters.collectAsStateWithLifecycle()
@@ -56,8 +74,25 @@ import top.alanvampuke.dininglog.feature.theme.*
     fun create(kind: RecordKind, parent: String? = null) { nav.navigate(EditRoute(kind.name, UUID.randomUUID().toString(), parent, create = true)) }
     fun back() { nav.popBackStack() }
     val tabs: @Composable () -> Unit = {
-        val selected = entry?.destination?.route?.substringBefore('?')
+        val selected = when {
+            entry?.destination?.hasRoute<RestaurantsRoute>() == true -> "restaurants"
+            entry?.destination?.hasRoute<VisitsRoute>() == true -> "visits"
+            entry?.destination?.hasRoute<SettingsRoute>() == true -> "settings"
+            else -> selectedTab
+        }
         BottomTabs(selected) { tab ->
+            val destination = nav.currentBackStackEntry?.destination
+            val current = when (tab) {
+                "restaurants" -> destination?.hasRoute<RestaurantsRoute>() == true
+                "visits" -> destination?.hasRoute<VisitsRoute>() == true
+                else -> destination?.hasRoute<SettingsRoute>() == true
+            }
+            if (current) {
+                val scroll = when (tab) { "restaurants" -> restaurantScroll; "visits" -> visitScroll; else -> settingsScroll }
+                scope.launch { if (animate) scroll.animateScrollToItem(0) else scroll.scrollToItem(0) }
+                return@BottomTabs
+            }
+            selectedTab = tab
             vm.selectTab(tab)
             when (tab) {
                 "restaurants" -> nav.navigate(RestaurantsRoute) { popUpTo(nav.graph.findStartDestination().id); launchSingleTop = true }
@@ -78,24 +113,33 @@ import top.alanvampuke.dininglog.feature.theme.*
             }
         } }
     }
-    NavHost(nav, startDestination = when (vm.restoredTab) { "visits" -> VisitsRoute; "settings" -> SettingsRoute; else -> RestaurantsRoute }) {
+    val colors = LocalQuietGridColors.current
+    NavHost(nav, startDestination = when (vm.restoredTab) { "visits" -> VisitsRoute; "settings" -> SettingsRoute; else -> RestaurantsRoute },
+        modifier = Modifier.fillMaxSize().background(colors.bg).testTag("product-navigation").semantics {
+            this[BackgroundArgb] = colors.bg.toArgb(); this[NavigationAnimationsEnabled] = animate
+        },
+        enterTransition = { if (animate) fadeIn(tween(200)) + slideInVertically(tween(200)) { motionPx } else EnterTransition.None },
+        exitTransition = { if (animate) fadeOut(tween(180)) + slideOutVertically(tween(180)) { -motionPx } else ExitTransition.None },
+        popEnterTransition = { if (animate) fadeIn(tween(200)) + slideInVertically(tween(200)) { -motionPx } else EnterTransition.None },
+        popExitTransition = { if (animate) fadeOut(tween(180)) + slideOutVertically(tween(180)) { motionPx } else ExitTransition.None }) {
         composable<RestaurantsRoute> {
             LaunchedEffect(Unit) { vm.activateList(RecordKind.RESTAURANT) }
             RecordListScreen(list, search, filters, vm::setSearch, vm::setFilters, ::openRecord, vm::refresh, vm::loadMore,
-                onAdd = { create(RecordKind.RESTAURANT) }, onTrash = { nav.navigate(NestedListRoute(RecordKind.RESTAURANT.name, deleted = true)) }, bottomBar = tabs)
+                onAdd = { create(RecordKind.RESTAURANT) }, onTrash = { nav.navigate(NestedListRoute(RecordKind.RESTAURANT.name, deleted = true)) }, bottomBar = tabs, listState = restaurantScroll)
         }
         composable<VisitsRoute> {
             LaunchedEffect(Unit) { vm.activateList(RecordKind.VISIT, vm.visitRestaurantId) }
             RecordListScreen(list, search, filters, vm::setSearch, vm::setFilters, ::openRecord, vm::refresh, vm::loadMore,
                 onAdd = { nav.navigate(ChooseRestaurantRoute("new-visit")) }, onTrash = { nav.navigate(NestedListRoute(RecordKind.VISIT.name, vm.visitRestaurantId, true)) },
                 onChooseRestaurant = { nav.navigate(ChooseRestaurantRoute("filter-visits")) },
-                onClearRestaurant = if (vm.visitRestaurantId != null) { { vm.filterVisits(null) } } else null, bottomBar = tabs)
+                onClearRestaurant = if (vm.visitRestaurantId != null) { { vm.filterVisits(null) } } else null, bottomBar = tabs, listState = visitScroll)
         }
         composable<SettingsRoute> {
             LaunchedEffect(Unit) { vm.loadSettings() }
             SettingsScreen(settings, username, drafts, theme, version, vm::loadSettings, vm::revokeSession, vm::changePassword,
                 onLogout, onDraft = { draft -> nav.navigate(EditRoute(draft.ref.kind.name, draft.ref.id, draft.ref.restaurantId, draft.action == WriteAction.CREATE, draft.id)) }, onTheme, tabs,
-                onPasswordInput = vm::editPassword)
+                onPasswordInput = vm::editPassword, listState = settingsScroll,
+                updateState = updateState, onUpdateToggle = onUpdateToggle, onOpenUpdate = onOpenUpdate)
         }
         composable<DetailRoute> { destination ->
             val route = destination.toRoute<DetailRoute>()
@@ -155,12 +199,27 @@ import top.alanvampuke.dininglog.feature.theme.*
     if (apply != null) ApplyFieldsDialog(apply!!, vm::applySide, vm::selectApply, vm::submitApply, vm::dismissApply)
     if (operationVisible && conflict == null && expired == null) OperationDialog(editor, vm::saveEditor, vm::dismissOperation)
 }
+val TabIconFilled = SemanticsPropertyKey<Boolean>("TabIconFilled")
 @Composable fun BottomTabs(selectedRoute: String?, onSelect: (String) -> Unit) {
+    val c = LocalQuietGridColors.current
     NavigationBar(modifier = Modifier.heightIn(min = if (LocalDensity.current.fontScale > 1.3f) 112.dp else 80.dp),
-        containerColor = LocalQuietGridColors.current.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
-        listOf(Triple("restaurants", "餐厅", "≡"), Triple("visits", "到店", "◷"), Triple("settings", "我的", "○")).forEach { (id, title, icon) ->
-            NavigationBarItem(selected = selectedRoute?.contains(when (id) { "restaurants" -> "RestaurantsRoute"; "visits" -> "VisitsRoute"; else -> "SettingsRoute" }) == true,
-                onClick = { onSelect(id) }, icon = { Text(icon) }, label = { Text(title, Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }, modifier = Modifier.testTag("tab:$id"))
+        containerColor = c.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
+        listOf("restaurants" to "餐厅", "visits" to "到店", "settings" to "我的").forEach { (id, title) ->
+            val selected = selectedRoute == id || selectedRoute?.contains(when (id) { "restaurants" -> "RestaurantsRoute"; "visits" -> "VisitsRoute"; else -> "SettingsRoute" }) == true
+            val foreground = if (selected) c.accentInk else c.secondary
+            val icon = when (id) {
+                "restaurants" -> if (selected) QuietGridIcons.restaurantFilled else QuietGridIcons.restaurantOutline
+                "visits" -> if (selected) QuietGridIcons.visitsFilled else QuietGridIcons.visitsOutline
+                else -> if (selected) QuietGridIcons.personFilled else QuietGridIcons.personOutline
+            }
+            NavigationBarItem(selected = selected, onClick = { onSelect(id) },
+                icon = { Icon(icon, contentDescription = null, tint = foreground, modifier = Modifier.size(24.dp).testTag("tab-icon:$id").semantics {
+                    this[TabIconFilled] = selected; this[ForegroundArgb] = foreground.toArgb()
+                    this[BackgroundArgb] = (if (selected) c.accentSoft else c.surface).toArgb()
+                }) },
+                label = { Text(title, Modifier.fillMaxWidth().semantics { this[ForegroundArgb] = foreground.toArgb() }, color = foreground, textAlign = TextAlign.Center) },
+                colors = NavigationBarItemDefaults.colors(selectedIconColor = c.accentInk, selectedTextColor = c.accentInk,
+                    indicatorColor = c.accentSoft, unselectedIconColor = c.secondary, unselectedTextColor = c.secondary), modifier = Modifier.testTag("tab:$id"))
         }
     }
 }

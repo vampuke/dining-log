@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- A ruled dining journal with a fork, contained in the adaptive safe zone. -->
+    <path android:fillColor="#FBFBFA" android:fillType="evenOdd"
+        android:pathData="M32,30H76V78H32Z M36,34H72V74H36Z" />
+    <path android:fillColor="#FBFBFA"
+        android:pathData="M40,38H43V46H46V38H49V49H46V69H43V49H40Z M55,40H67V43H55Z M55,52H67V55H55Z M55,64H67V67H55Z" />
+</vector>

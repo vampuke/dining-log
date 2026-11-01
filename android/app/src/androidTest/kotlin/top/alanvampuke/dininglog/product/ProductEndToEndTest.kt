@@ -380,6 +380,14 @@ class ProductEndToEndTest {
     }
     private fun scroll(tag: String) {
         if (tag in setOf("save", "confirm", "apply-save", "confirm-merge", "password-save") || tag.startsWith("tab:")) return
+        if (tag in setOf("refresh", "trash", "choose-restaurant", "clear-restaurant")) {
+            if (compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()) {
+                scroll("list-more")
+                compose.onNodeWithTag("list-more").performClick()
+            }
+            compose.onNodeWithTag(tag).assertIsDisplayed()
+            return
+        }
         val dialog = listOf("screen:apply", "screen:conflict", "screen:expired", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
         if (dialog) { compose.onNodeWithTag(tag).performScrollTo(); return }
         val lazy = listOf("edit-scroll", "record-list", "detail-scroll", "history-scroll", "settings-scroll").firstOrNull { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }

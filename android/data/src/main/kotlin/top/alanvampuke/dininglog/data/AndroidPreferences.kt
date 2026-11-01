@@ -5,7 +5,10 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
@@ -13,11 +16,13 @@ import kotlinx.coroutines.flow.*
 import top.alanvampuke.dininglog.core.*
 
 private val Context.displaySettings by preferencesDataStore("display-settings")
-class AndroidThemePreferences(context: Context) : ThemePreferences {
-    private val data = context.applicationContext.displaySettings
+class AndroidThemePreferences(context: Context, private val data: DataStore<Preferences> = context.applicationContext.displaySettings) : ThemePreferences, UpdatePreferences {
     private val themeKey = stringPreferencesKey("theme")
+    private val updatesKey = booleanPreferencesKey("update-checks")
     override val theme = data.data.map { preferences -> ThemeChoice.entries.firstOrNull { it.name == preferences[themeKey] } ?: ThemeChoice.SYSTEM }
     override suspend fun setTheme(choice: ThemeChoice) { data.edit { it[themeKey] = choice.name } }
+    override val updateChecksEnabled = data.data.map { it[updatesKey] ?: true }
+    override suspend fun setUpdateChecksEnabled(enabled: Boolean) { data.edit { it[updatesKey] = enabled } }
 }
 fun connectivity(context: Context, scope: CoroutineScope): StateFlow<Boolean> {
     val manager = context.getSystemService(ConnectivityManager::class.java)

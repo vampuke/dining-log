@@ -100,6 +100,8 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Verify P6 vectors, native backgrounds and navigation contrast
+        run: python3 android/tools/verify_p6_visuals.py
       - name: Build, lint and test using committed dependency locks
         working-directory: android
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --no-daemon

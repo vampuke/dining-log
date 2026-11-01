@@ -2,6 +2,8 @@ package top.alanvampuke.dininglog.feature.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -10,6 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -23,19 +28,26 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable fun SettingsScreen(state: SettingsUiState, username: String, drafts: List<SavedDraft>, theme: ThemeChoice,
     version: String, onRefresh: () -> Unit, onRevoke: (String) -> Unit, onPassword: (String, String) -> Unit,
     onLogout: () -> Unit, onDraft: (SavedDraft) -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit,
-    onPasswordInput: (String, String) -> Unit = { _, _ -> }) {
+    onPasswordInput: (String, String) -> Unit = { _, _ -> }, listState: LazyListState = rememberLazyListState(),
+    updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {}) {
     var revoke by remember { mutableStateOf<DeviceSession?>(null) }
     var password by remember { mutableStateOf(false) }
     var logout by remember { mutableStateOf(false) }
     LaunchedEffect(state.passwordRevision) { if (state.passwordRevision > 0) password = false }
     ScreenFrame("screen:settings", bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("settings-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("settings-scroll"), state = listState, contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 PageHeader("我的", subtitle = username)
                 GridText("账号 ${state.profile?.displayName ?: username}", style = MaterialTheme.typography.titleMedium)
                 state.profile?.let { GridText("注册于 ${it.createdAt}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary) }
                 TextButton(onClick = onRefresh, enabled = !state.loading) { Text(if (state.loading) "正在刷新账号…" else "刷新账号与会话") }
                 if (state.message != null) ErrorMessage(state.message, "settings-message")
+            }
+            val release = updateState.release
+            if (updateState.enabled && release != null) item {
+                TextButton(onClick = { onOpenUpdate(release) }, modifier = Modifier.fillMaxWidth().testTag("app-update")) {
+                    Text("有新版本 ${release.versionName}")
+                }
             }
             item { GridText("登录会话", style = MaterialTheme.typography.headlineSmall) }
             items(state.sessions, key = { it.id }) { session ->
@@ -66,6 +78,11 @@ import top.alanvampuke.dininglog.feature.theme.*
             item {
                 GridText("关于食记", style = MaterialTheme.typography.titleMedium)
                 GridText("版本 $version\n以文字记下餐厅、菜品与每一次到店。", color = LocalQuietGridColors.current.secondary)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    GridText("启动时检查更新")
+                    Switch(checked = updateState.enabled, onCheckedChange = onUpdateToggle,
+                        modifier = Modifier.testTag("update-checks").semantics { contentDescription = "启动时检查更新" })
+                }
                 TextButton(onClick = { logout = true }, modifier = Modifier.testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
             }
         }
