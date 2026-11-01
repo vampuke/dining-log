@@ -17,10 +17,12 @@ function walk(value) {
   }
 }
 walk(doc);
+const actual = [];
 let endpoints = 0;
 for (const [path, methods] of Object.entries(doc.paths)) for (const [method, op] of Object.entries(methods)) {
   if (!['get', 'post', 'patch', 'delete'].includes(method)) continue;
   endpoints++;
+  actual.push(`${method.toUpperCase()} ${path}`);
   const domain = /^\/(restaurants|dishes|visits|revisions|search)(\/|$)/.test(path);
   if (!domain) continue;
   assert.ok(op.responses['400'] && op.responses['401'] && op.responses['404'] && op.responses['500']);
@@ -29,7 +31,23 @@ for (const [path, methods] of Object.entries(doc.paths)) for (const [method, op]
   if (method === 'get' && ['/restaurants', '/visits', '/revisions'].includes(path)) assert.ok(op.parameters.some(p => p.name === 'cursor'));
 }
 assert.equal(doc.info.version, '1.0.0');
-assert.equal(endpoints, 45);
+const expected = [
+  'POST /auth/register', 'POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout',
+  'POST /auth/logout-all', 'POST /auth/password', 'POST /auth/recover', 'POST /auth/recovery-codes',
+  'GET /auth/sessions', 'DELETE /auth/sessions/{session_id}', 'GET /auth/session',
+  'GET /me', 'PATCH /me', 'DELETE /me', 'GET /health',
+  'POST /restaurants', 'GET /restaurants', 'GET /restaurants/{restaurant_id}',
+  'PATCH /restaurants/{restaurant_id}', 'DELETE /restaurants/{restaurant_id}', 'POST /restaurants/{restaurant_id}/restore',
+  'POST /restaurants/{restaurant_id}/dishes', 'GET /restaurants/{restaurant_id}/dishes',
+  'GET /dishes/{dish_id}', 'PATCH /dishes/{dish_id}', 'DELETE /dishes/{dish_id}', 'POST /dishes/{dish_id}/restore',
+  'POST /restaurants/{restaurant_id}/visits', 'GET /restaurants/{restaurant_id}/visits', 'GET /visits',
+  'GET /visits/{visit_id}', 'PATCH /visits/{visit_id}', 'DELETE /visits/{visit_id}', 'POST /visits/{visit_id}/restore',
+  'POST /revisions', 'GET /revisions', 'GET /restaurants/{restaurant_id}/revisions',
+  'GET /dishes/{dish_id}/revisions', 'GET /visits/{visit_id}/revisions', 'GET /revisions/{revision_id}',
+  'PATCH /revisions/{revision_id}', 'DELETE /revisions/{revision_id}', 'POST /revisions/{revision_id}/restore', 'GET /search',
+];
+// Assert exact method/path coverage rather than an erroneous hand-count.
+assert.deepEqual(actual.sort(), expected.sort());
 assert.equal(schemas.RevisionApply.properties.fields.maxItems, 7);
 assert.equal(schemas.RevisionApply.properties.fields.uniqueItems, true);
 assert.equal(schemas.RestaurantPatch.additionalProperties, false);
