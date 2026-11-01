@@ -1,12 +1,12 @@
-import { Hono } from 'hono';
-import type { AppEnv } from '../env';
-import { notImplemented } from './placeholder';
-
-export const visits = new Hono<AppEnv>();
-visits.post('/restaurants/:restaurant_id/visits', notImplemented);
-visits.get('/restaurants/:restaurant_id/visits', notImplemented);
-visits.get('/visits', notImplemented);
-visits.get('/visits/:visit_id', notImplemented);
-visits.patch('/visits/:visit_id', notImplemented);
-visits.delete('/visits/:visit_id', notImplemented);
-visits.post('/visits/:visit_id/restore', notImplemented);
+import { router, input, idempotency, pathId } from '../domain/http';
+import { creates, patches, versionBody } from '../domain/schemas';
+import { create, mutate } from '../domain/mutations';
+import { detail, list } from '../domain/queries';
+export const visits = router();
+visits.post('/restaurants/:restaurant_id/visits', async c => { const id = pathId(c, 'restaurant_id'), p = await input(c, creates.visit); return create(c, 'visit', p, await idempotency(c, p), id); });
+visits.get('/restaurants/:restaurant_id/visits', c => list(c, 'visit', pathId(c, 'restaurant_id')) as Promise<Response>);
+visits.get('/visits', c => list(c, 'visit') as Promise<Response>);
+visits.get('/visits/:visit_id', c => detail(c, 'visit', pathId(c, 'visit_id')));
+visits.patch('/visits/:visit_id', async c => { const id = pathId(c, 'visit_id'), p = await input(c, patches.visit); return mutate(c, 'visit', id, p, 'update', await idempotency(c, p)); });
+visits.delete('/visits/:visit_id', async c => { const id = pathId(c, 'visit_id'), p = await input(c, versionBody); return mutate(c, 'visit', id, p, 'delete', await idempotency(c, p)); });
+visits.post('/visits/:visit_id/restore', async c => { const id = pathId(c, 'visit_id'), p = await input(c, versionBody); return mutate(c, 'visit', id, p, 'restore', await idempotency(c, p)); });

@@ -6,7 +6,9 @@ import { restaurants } from './routes/restaurants';
 import { dishes } from './routes/dishes';
 import { visits } from './routes/visits';
 import { revisions } from './routes/revisions';
-import { notImplemented } from './routes/placeholder';
+import { router } from './domain/http';
+import { search } from './domain/queries';
+import { cleanupDomain } from './domain/cleanup';
 
 const app = new Hono<AppEnv>();
 const api = new Hono<AppEnv>();
@@ -16,7 +18,9 @@ api.route('/', restaurants);
 api.route('/', dishes);
 api.route('/', visits);
 api.route('/', revisions);
-api.get('/search', notImplemented);
+const searches = router();
+searches.get('/search', search);
+api.route('/', searches);
 app.route('/api/v1', api);
 app.notFound((c) => {
   c.header('Cache-Control', 'no-store');
@@ -24,5 +28,5 @@ app.notFound((c) => {
     meta: { request_id: crypto.randomUUID() } }, 404);
 });
 export default Object.assign(app, {
-  async scheduled(_controller: ScheduledController, env: Bindings) { await cleanupAuth(env.DB); },
+  async scheduled(_controller: ScheduledController, env: Bindings) { await cleanupAuth(env.DB); await cleanupDomain(env.DB); },
 });

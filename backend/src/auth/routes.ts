@@ -14,10 +14,11 @@ import { accessIdentity, activeSession, issueSession, lookupRefresh, publicSessi
 import { loginSchema, passwordSchema, recoverSchema, refreshSchema, registerSchema, uuid } from './schemas';
 
 type C = Context<AppEnv>;
-const envelope = (data: unknown) => ({ data, meta: { request_id: crypto.randomUUID() } });
-function json(c: C, response: unknown, status = 200): Response { return c.newResponse(JSON.stringify(response), status as StatusCode, { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store' }); }
+export interface IdempotencyStore { read(): Promise<{ response: { data: unknown; meta: { request_id: string } }; status: number } | null>; statement(response: { data: unknown; meta: { request_id: string } }, status: number): Promise<D1PreparedStatement> }
+export const envelope = (data: unknown) => ({ data, meta: { request_id: crypto.randomUUID() } });
+export function json(c: C, response: unknown, status = 200): Response { return c.newResponse(JSON.stringify(response), status as StatusCode, { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store' }); }
 function ip(c: C) { return c.req.header('CF-Connecting-IP') ?? 'unknown'; }
-async function body<T extends z.ZodTypeAny>(c: C, schema: T): Promise<z.infer<T>> {
+export async function body<T extends z.ZodTypeAny>(c: C, schema: T): Promise<z.infer<T>> {
   if (c.req.header('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new AuthError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.');
   const reader = c.req.raw.body?.getReader();
   const chunks: Uint8Array[] = []; let bytes = 0;
@@ -30,14 +31,14 @@ async function body<T extends z.ZodTypeAny>(c: C, schema: T): Promise<z.infer<T>
 }
 function idemKey(c: C) { const key = c.req.header('Idempotency-Key'); if (key && !uuid.safeParse(key).success) throw new AuthError(400, 'VALIDATION_ERROR', 'Idempotency-Key must be UUID v4.'); return key; }
 async function idempotency(c: C, userId: string, payload: unknown) { return AuthIdempotency.create(c.env, userId, idemKey(c), c.req.method, c.req.path, payload); }
-async function cached(c: C, idem: AuthIdempotency | null): Promise<Response | null> { const hit = await idem?.read(); return hit ? (hit.status === 204 ? c.body(null, 204) : json(c, hit.response, hit.status)) : null; }
-async function commit(c: C, statements: D1PreparedStatement[], data: unknown, status: number, idem: AuthIdempotency | null, failure?: () => Promise<Response>) {
+export async function cached(c: C, idem: IdempotencyStore | null): Promise<Response | null> { const hit = await idem?.read(); return hit ? (hit.status === 204 ? c.body(null, 204) : json(c, hit.response, hit.status)) : null; }
+export async function commit(c: C, statements: D1PreparedStatement[], data: unknown, status: number, idem: IdempotencyStore | null, failure?: () => Promise<Response>, classifyAll = false) {
   const response = envelope(data);
   if (idem) statements.push(await idem.statement(response, status));
   try { await c.env.DB.batch(statements); }
   catch (error) {
     const replay = await cached(c, idem); if (replay) return replay;
-    if (failure && error instanceof Error && /constraint failed/i.test(error.message)) return failure();
+    if (failure && (classifyAll || (error instanceof Error && /constraint failed/i.test(error.message)))) return failure();
     throw error;
   }
   return status === 204 ? c.body(null, 204) : json(c, response, status);
