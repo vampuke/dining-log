@@ -1,0 +1,42 @@
+# Android / IDE
+*.iml
+.gradle/
+.kotlin/
+local.properties
+.idea/
+.DS_Store
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.jks
+*.keystore
+*.p12
+*.pfx
+# Dependencies / local Worker data
+node_modules/
+.wrangler/
+dist/
+coverage/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+*.local
+# Credentials, private exports and run logs
+.git-credentials
+.npmrc
+service-account*.json
+*credentials*.json
+*.pem
+*.key
+*.db
+*.db-*
+*.sqlite*
+*.sql.export
+*.log
+logs/
+design/*_run.log

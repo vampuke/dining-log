@@ -1,0 +1,1543 @@
+openapi: 3.1.0
+info:
+  title: 食记 API
+  version: 0.1.0
+  description: P1 路径和 schema 骨架；完整 query 与响应字段在 P2/P3 补全。endpoint 清单位于 PLAN.md 4.3–4.8（第
+    6 节说明 diff 语义）。
+servers:
+- url: https://dining.alanvampuke.top/api/v1
+security:
+- AccessBearer: []
+paths:
+  /auth/register:
+    post:
+      operationId: post_auth_register
+      summary: 'RegisterRequest → 201：AuthResult + recovery_codes: string[8]'
+      x-auth: Public；注册限流
+      responses:
+        '201':
+          description: '201：AuthResult + recovery_codes: string[8]'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+  /auth/login:
+    post:
+      operationId: post_auth_login
+      summary: LoginRequest → 200：AuthResult
+      x-auth: Public；账号 / IP 限流
+      responses:
+        '200':
+          description: 200：AuthResult
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /auth/refresh:
+    post:
+      operationId: post_auth_refresh
+      summary: '{refresh_token: string}；X-Refresh-Request-Id 必填 UUID → 200：AuthResult；同
+        key 重试返回同轮换结果'
+      x-auth: Refresh；单独限流
+      responses:
+        '200':
+          description: 200：AuthResult；同 key 重试返回同轮换结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/RefreshRequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /auth/logout:
+    post:
+      operationId: post_auth_logout
+      summary: '{refresh_token: string} → 204；撤销该 refresh 所属会话，已撤销 / 无效 token 也返回
+        204'
+      x-auth: Refresh 作为撤销凭据；不要求未过期 access
+      responses:
+        '204':
+          description: 204；撤销该 refresh 所属会话，已撤销 / 无效 token 也返回 204
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /auth/logout-all:
+    post:
+      operationId: post_auth_logout_all
+      summary: '{password: string} → 204；auth_version +1，撤销全部会话'
+      x-auth: Reauth
+      responses:
+        '204':
+          description: 204；auth_version +1，撤销全部会话
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordReauth'
+  /auth/password:
+    post:
+      operationId: post_auth_password
+      summary: '{current_password: string, new_password: string, device_name: string}
+        → 200：新 AuthResult；旧会话全部失效'
+      x-auth: Reauth
+      responses:
+        '200':
+          description: 200：新 AuthResult；旧会话全部失效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChange'
+  /auth/recover:
+    post:
+      operationId: post_auth_recover
+      summary: '{username: string, recovery_code: string, new_password: string, device_name:
+        string} → 200：新 AuthResult + recovery_codes: string[8]；旧码全失效'
+      x-auth: Public；有效一次性恢复码与恢复限流
+      responses:
+        '200':
+          description: '200：新 AuthResult + recovery_codes: string[8]；旧码全失效'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoverRequest'
+  /auth/recovery-codes:
+    post:
+      operationId: post_auth_recovery_codes
+      summary: '{password: string} → 200：{recovery_codes: string[8]}；作废全部旧码'
+      x-auth: Reauth
+      responses:
+        '200':
+          description: '200：{recovery_codes: string[8]}；作废全部旧码'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordReauth'
+  /auth/sessions:
+    get:
+      operationId: get_auth_sessions
+      summary: '无 body → 200：{items: DeviceSession[]}，只列当前有效会话'
+      x-auth: Access
+      responses:
+        '200':
+          description: '200：{items: DeviceSession[]}，只列当前有效会话'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /auth/sessions/{session_id}:
+    delete:
+      operationId: delete_auth_sessions_session_id
+      summary: 无 body → 204；只撤销自己指定的设备会话，已撤销也 204
+      x-auth: Access；非本人 session 404
+      responses:
+        '204':
+          description: 204；只撤销自己指定的设备会话，已撤销也 204
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema: &id001
+          type: string
+          format: uuid
+  /me:
+    get:
+      operationId: get_me
+      summary: 无 body → 200：User
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      operationId: patch_me
+      summary: '{expected_version: integer, display_name: string}；Idempotency-Key
+        → 200：User；用户名不允许修改'
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：User；用户名不允许修改
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatch'
+    delete:
+      operationId: delete_me
+      summary: '{expected_version: integer, password: string, confirm_username: string}
+        → 202：{deleted_at, purge_after}；立即失效全部会话'
+      x-auth: Reauth；不进业务幂等表
+      responses:
+        '202':
+          description: 202：{deleted_at, purge_after}；立即失效全部会话
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountDelete'
+  /restaurants:
+    post:
+      operationId: post_restaurants
+      summary: RestaurantCreate；Idempotency-Key → 201：RestaurantCreateResult；餐厅与可选
+        first_visit 原子创建
+      x-auth: Access
+      responses:
+        '201':
+          description: 201：RestaurantCreateResult；餐厅与可选 first_visit 原子创建
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantCreate'
+    get:
+      operationId: get_restaurants
+      summary: 下述 RestaurantQuery → 200：Page<RestaurantSummary>
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：Page<RestaurantSummary>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /restaurants/{restaurant_id}:
+    get:
+      operationId: get_restaurants_restaurant_id
+      summary: deleted=exclude\|include，默认 exclude → 200：RestaurantDetail；include
+        可查看自己的软删除对象
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：RestaurantDetail；include 可查看自己的软删除对象
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+    patch:
+      operationId: patch_restaurants_restaurant_id
+      summary: RestaurantPatch；Idempotency-Key → 200：MutationResult<Restaurant>
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：MutationResult<Restaurant>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RestaurantPatch'
+    delete:
+      operationId: delete_restaurants_restaurant_id
+      summary: DeleteBody；Idempotency-Key → 200：MutationResult<Tombstone>
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：MutationResult<Tombstone>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionBody'
+  /restaurants/{restaurant_id}/restore:
+    post:
+      operationId: post_restaurants_restaurant_id_restore
+      summary: RestoreBody；Idempotency-Key → 200：MutationResult<Restaurant>；过期 410
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：MutationResult<Restaurant>；过期 410
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionBody'
+  /restaurants/{restaurant_id}/dishes:
+    post:
+      operationId: post_restaurants_restaurant_id_dishes
+      summary: DishCreate；Idempotency-Key → 201：MutationResult<Dish>
+      x-auth: Access；父餐厅有效
+      responses:
+        '201':
+          description: 201：MutationResult<Dish>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishCreate'
+    get:
+      operationId: get_restaurants_restaurant_id_dishes
+      summary: q、min_rating、max_rating、unrated、sort=updated_desc\|rating_desc、deleted、cursor、limit
+        → 200：Page<DishSummary>
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：Page<DishSummary>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+  /dishes/{dish_id}:
+    get:
+      operationId: get_dishes_dish_id
+      summary: deleted=exclude\|include → 200：Dish
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：Dish
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: dish_id
+        in: path
+        required: true
+        schema: *id001
+    patch:
+      operationId: patch_dishes_dish_id
+      summary: DishPatch；Idempotency-Key → 200：MutationResult<Dish>
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：MutationResult<Dish>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: dish_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DishPatch'
+    delete:
+      operationId: delete_dishes_dish_id
+      summary: DeleteBody；Idempotency-Key → 200：MutationResult<Tombstone>
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：MutationResult<Tombstone>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: dish_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionBody'
+  /dishes/{dish_id}/restore:
+    post:
+      operationId: post_dishes_dish_id_restore
+      summary: RestoreBody；Idempotency-Key → 200：MutationResult<Dish>
+      x-auth: Access；父餐厅先恢复，30 天内
+      responses:
+        '200':
+          description: 200：MutationResult<Dish>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: dish_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionBody'
+  /restaurants/{restaurant_id}/visits:
+    post:
+      operationId: post_restaurants_restaurant_id_visits
+      summary: VisitCreate；Idempotency-Key → 201：MutationResult<Visit>
+      x-auth: Access；父餐厅有效
+      responses:
+        '201':
+          description: 201：MutationResult<Visit>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitCreate'
+    get:
+      operationId: get_restaurants_restaurant_id_visits
+      summary: q、from、to、meal、deleted、cursor、limit → 200：Page<VisitSummary>
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：Page<VisitSummary>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+  /visits:
+    get:
+      operationId: get_visits
+      summary: restaurant_id?、q、from、to、meal、deleted、cursor、limit → 200：Page<VisitSummary>；全局到店时间线
+      x-auth: Access；默认排除已删除父餐厅
+      responses:
+        '200':
+          description: 200：Page<VisitSummary>；全局到店时间线
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /visits/{visit_id}:
+    get:
+      operationId: get_visits_visit_id
+      summary: deleted=exclude\|include → 200：Visit
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：Visit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: visit_id
+        in: path
+        required: true
+        schema: *id001
+    patch:
+      operationId: patch_visits_visit_id
+      summary: VisitPatch；Idempotency-Key → 200：MutationResult<Visit>
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：MutationResult<Visit>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: visit_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VisitPatch'
+    delete:
+      operationId: delete_visits_visit_id
+      summary: DeleteBody；Idempotency-Key → 200：MutationResult<Tombstone>
+      x-auth: Access；父餐厅有效
+      responses:
+        '200':
+          description: 200：MutationResult<Tombstone>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: visit_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionBody'
+  /visits/{visit_id}/restore:
+    post:
+      operationId: post_visits_visit_id_restore
+      summary: RestoreBody；Idempotency-Key → 200：MutationResult<Visit>
+      x-auth: Access；父餐厅先恢复，30 天内
+      responses:
+        '200':
+          description: 200：MutationResult<Visit>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: visit_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionBody'
+  /revisions:
+    post:
+      operationId: post_revisions
+      summary: '{source_revision_id: UUID, side: "before"\|"after", fields: string[],
+        expected_version: integer}；Idempotency-Key → 有效变更 201、无变化 200：RevisionApplyResult；无变化时
+        revision / change_set_id 为 null、changed=false'
+      x-auth: Access；来源和目标均属于本人，目标有效
+      responses:
+        '201':
+          description: 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id
+            为 null、changed=false
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '200':
+          description: 有效变更 201、无变化 200：RevisionApplyResult；无变化时 revision / change_set_id
+            为 null、changed=false
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevisionApply'
+    get:
+      operationId: get_revisions
+      summary: restaurant_id?、entity_type?、entity_id?、action?、field?、q?、from?、to?、deleted、cursor、limit
+        → 200：Page<RevisionSummary>
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：Page<RevisionSummary>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /restaurants/{restaurant_id}/revisions:
+    get:
+      operationId: get_restaurants_restaurant_id_revisions
+      summary: 同上，但 restaurant_id 由路径决定 → 200：Page<RevisionSummary>；含餐厅、菜品、到店历史
+      x-auth: Access；可看自己的软删除餐厅历史
+      responses:
+        '200':
+          description: 200：Page<RevisionSummary>；含餐厅、菜品、到店历史
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: restaurant_id
+        in: path
+        required: true
+        schema: *id001
+  /dishes/{dish_id}/revisions:
+    get:
+      operationId: get_dishes_dish_id_revisions
+      summary: action、field、q、from、to、deleted、cursor、limit → 200：Page<RevisionSummary>
+      x-auth: Access；目标属于本人且未永久清理
+      responses:
+        '200':
+          description: 200：Page<RevisionSummary>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: dish_id
+        in: path
+        required: true
+        schema: *id001
+  /visits/{visit_id}/revisions:
+    get:
+      operationId: get_visits_visit_id_revisions
+      summary: 同上 → 200：Page<RevisionSummary>
+      x-auth: Access；目标属于本人且未永久清理
+      responses:
+        '200':
+          description: 200：Page<RevisionSummary>
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: visit_id
+        in: path
+        required: true
+        schema: *id001
+  /revisions/{revision_id}:
+    get:
+      operationId: get_revisions_revision_id
+      summary: deleted=exclude\|include → 200：Revision
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：Revision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: revision_id
+        in: path
+        required: true
+        schema: *id001
+    patch:
+      operationId: patch_revisions_revision_id
+      summary: '{expected_metadata_version: integer, note: string\|null}；Idempotency-Key
+        → 200：RevisionMetadataResult'
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：RevisionMetadataResult
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: revision_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RevisionMetadataPatch'
+    delete:
+      operationId: delete_revisions_revision_id
+      summary: RevisionDeleteBody；Idempotency-Key → 200：RevisionMetadataResult；隐藏，metadata_version
+        +1
+      x-auth: Access
+      responses:
+        '200':
+          description: 200：RevisionMetadataResult；隐藏，metadata_version +1
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: revision_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetadataVersionBody'
+  /revisions/{revision_id}/restore:
+    post:
+      operationId: post_revisions_revision_id_restore
+      summary: RevisionRestoreBody；Idempotency-Key → 200：RevisionMetadataResult；取消隐藏
+      x-auth: Access；原实体未永久清理
+      responses:
+        '200':
+          description: 200：RevisionMetadataResult；取消隐藏
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+      parameters:
+      - name: revision_id
+        in: path
+        required: true
+        schema: *id001
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MetadataVersionBody'
+  /search:
+    get:
+      operationId: get_search
+      summary: 'q 必填；groups=restaurants,visits,revisions，默认 restaurants；每组 limit 默认
+        10、最大 20 → 200：{restaurants: RestaurantSearchResult[], visits: VisitSummary[],
+        revisions: RevisionSummary[]}；菜品命中归入所属餐厅结果，不返回全局 dishes 组'
+      x-auth: Access
+      responses:
+        '200':
+          description: '200：{restaurants: RestaurantSearchResult[], visits: VisitSummary[],
+            revisions: RevisionSummary[]}；菜品命中归入所属餐厅结果，不返回全局 dishes 组'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        default:
+          description: PLAN.md 4.1 错误信封
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /health:
+    get:
+      operationId: get_health
+      summary: '无 → 200：{status: "ok", api_version: "v1"}；不查询或暴露 D1 结构 / 账号'
+      x-auth: Public
+      responses:
+        '200':
+          description: '200：{status: "ok", api_version: "v1"}；不查询或暴露 D1 结构 / 账号'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+      security: []
+components:
+  securitySchemes:
+    AccessBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: *id001
+    RefreshRequestId:
+      name: X-Refresh-Request-Id
+      in: header
+      required: true
+      schema: *id001
+  schemas:
+    User:
+      type: object
+      properties:
+        id: *id001
+        username: &id002
+          type: string
+        display_name: *id002
+        version: &id004
+          type: integer
+          minimum: 1
+        created_at: &id003
+          type: string
+          format: date-time
+        updated_at: *id003
+    Rating:
+      type:
+      - number
+      - 'null'
+      minimum: 1
+      maximum: 5
+      multipleOf: 0.1
+    Category:
+      type: string
+      enum:
+      - restaurant
+      - cafe
+      - bakery
+      - bar
+      - street_food
+      - other
+    Meal:
+      type:
+      - string
+      - 'null'
+      enum:
+      - breakfast
+      - lunch
+      - dinner
+      - other
+      - null
+    Restaurant:
+      type: object
+      properties:
+        id: *id001
+        version: *id004
+        created_at: *id003
+        updated_at: *id003
+        deleted_at: &id008
+          type:
+          - string
+          - 'null'
+          format: date-time
+        name: *id002
+        category: &id006
+          $ref: '#/components/schemas/Category'
+        address: *id002
+        cuisine: &id005
+          type:
+          - string
+          - 'null'
+        rating: &id007
+          $ref: '#/components/schemas/Rating'
+        review: *id005
+        note: *id005
+    RestaurantCreate:
+      type: object
+      properties:
+        id: *id001
+        name: *id002
+        category: *id006
+        address: *id002
+        cuisine: *id005
+        rating: *id007
+        review: *id005
+        note: *id005
+        first_visit:
+          $ref: '#/components/schemas/VisitCreate'
+      required:
+      - id
+      - name
+      - category
+      - address
+      additionalProperties: false
+    RestaurantPatch:
+      type: object
+      properties:
+        expected_version: *id004
+        name: *id002
+        category: *id006
+        address: *id002
+        cuisine: *id005
+        rating: *id007
+        review: *id005
+        note: *id005
+      required:
+      - expected_version
+      additionalProperties: false
+    Dish:
+      type: object
+      properties:
+        id: *id001
+        version: *id004
+        created_at: *id003
+        updated_at: *id003
+        deleted_at: *id008
+        name: *id002
+        rating: &id009
+          $ref: '#/components/schemas/Rating'
+        review: *id005
+        restaurant_id: *id001
+    DishCreate:
+      type: object
+      properties:
+        id: *id001
+        name: *id002
+        rating: *id009
+        review: *id005
+      required:
+      - id
+      - name
+      additionalProperties: false
+    DishPatch:
+      type: object
+      properties:
+        expected_version: *id004
+        name: *id002
+        rating: *id009
+        review: *id005
+      required:
+      - expected_version
+      additionalProperties: false
+    Visit:
+      type: object
+      properties:
+        id: *id001
+        version: *id004
+        created_at: *id003
+        updated_at: *id003
+        deleted_at: *id008
+        dining_date: &id010
+          type: string
+          format: date
+        meal: &id011
+          $ref: '#/components/schemas/Meal'
+        note: *id005
+        restaurant_id: *id001
+    VisitCreate:
+      type: object
+      properties:
+        id: *id001
+        dining_date: *id010
+        meal: *id011
+        note: *id005
+      required:
+      - id
+      - dining_date
+      additionalProperties: false
+    VisitPatch:
+      type: object
+      properties:
+        expected_version: *id004
+        dining_date: *id010
+        meal: *id011
+        note: *id005
+      required:
+      - expected_version
+      additionalProperties: false
+    FieldDiff:
+      type: object
+      properties:
+        field: *id002
+        before: {}
+        after: {}
+      required:
+      - field
+      - before
+      - after
+      additionalProperties: false
+    Revision:
+      type: object
+      properties:
+        id: *id001
+        change_set_id: *id001
+        restaurant_id: *id001
+        entity_type:
+          type: string
+          enum:
+          - restaurant
+          - dish
+          - visit
+        entity_id: *id001
+        action:
+          type: string
+          enum:
+          - create
+          - update
+          - delete
+          - restore
+        entity_version_before:
+          type: integer
+          minimum: 0
+        entity_version_after: *id004
+        diff:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/FieldDiff'
+        source_revision_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        note: *id005
+        metadata_version: *id004
+        metadata_updated_at: *id003
+        created_at: *id003
+        deleted_at: *id005
+    RevisionApply:
+      type: object
+      properties:
+        source_revision_id: *id001
+        side:
+          enum:
+          - before
+          - after
+          type: string
+        fields:
+          type: array
+          minItems: 1
+          maxItems: 7
+          uniqueItems: true
+          items: *id002
+        expected_version: *id004
+      required:
+      - source_revision_id
+      - side
+      - fields
+      - expected_version
+      additionalProperties: false
+    RevisionMetadataPatch:
+      type: object
+      properties:
+        expected_metadata_version: *id004
+        note: *id005
+      required:
+      - expected_metadata_version
+      - note
+      additionalProperties: false
+    VersionBody:
+      type: object
+      properties:
+        expected_version: *id004
+      required:
+      - expected_version
+      additionalProperties: false
+    MetadataVersionBody:
+      type: object
+      properties:
+        expected_metadata_version: *id004
+      required:
+      - expected_metadata_version
+      additionalProperties: false
+    RegisterRequest:
+      type: object
+      properties:
+        username: *id002
+        password: *id002
+        display_name: *id002
+        device_name: *id002
+      required:
+      - username
+      - password
+      - device_name
+      additionalProperties: false
+    LoginRequest:
+      type: object
+      properties:
+        username: *id002
+        password: *id002
+        device_name: *id002
+      required:
+      - username
+      - password
+      - device_name
+      additionalProperties: false
+    RefreshRequest:
+      type: object
+      properties:
+        refresh_token: *id002
+      required:
+      - refresh_token
+      additionalProperties: false
+    PasswordReauth:
+      type: object
+      properties:
+        password: *id002
+      required:
+      - password
+      additionalProperties: false
+    PasswordChange:
+      type: object
+      properties:
+        current_password: *id002
+        new_password: *id002
+        device_name: *id002
+      required:
+      - current_password
+      - new_password
+      - device_name
+      additionalProperties: false
+    RecoverRequest:
+      type: object
+      properties:
+        username: *id002
+        recovery_code: *id002
+        new_password: *id002
+        device_name: *id002
+      required:
+      - username
+      - recovery_code
+      - new_password
+      - device_name
+      additionalProperties: false
+    UserPatch:
+      type: object
+      properties:
+        expected_version: *id004
+        display_name: *id002
+      required:
+      - expected_version
+      - display_name
+      additionalProperties: false
+    AccountDelete:
+      type: object
+      properties:
+        expected_version: *id004
+        password: *id002
+        confirm_username: *id002
+      required:
+      - expected_version
+      - password
+      - confirm_username
+      additionalProperties: false
+    AuthResult:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token_type:
+          const: Bearer
+          type: string
+        access_token: *id002
+        expires_in:
+          type: integer
+          const: 600
+        refresh_token: *id002
+        refresh_expires_at: *id003
+        session_expires_at: *id003
+        session_id: *id001
+    Health:
+      type: object
+      properties:
+        status:
+          const: ok
+          type: string
+        api_version:
+          const: v1
+          type: string
+      required:
+      - status
+      - api_version
+      additionalProperties: false
+    Meta:
+      type: object
+      properties:
+        request_id: *id001
+        next_cursor: *id005
+        has_more:
+          type: boolean
+    SuccessEnvelope:
+      type: object
+      properties:
+        data: {}
+        meta:
+          $ref: '#/components/schemas/Meta'
+      required:
+      - data
+      - meta
+    PageEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: {}
+        meta:
+          $ref: '#/components/schemas/Meta'
+      required:
+      - data
+      - meta
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+              - VALIDATION_ERROR
+              - UNKNOWN_FIELD
+              - INVALID_CURSOR
+              - MISSING_VERSION
+              - INVALID_CREDENTIALS
+              - TOKEN_EXPIRED
+              - SESSION_REVOKED
+              - REFRESH_REUSED
+              - NOT_FOUND
+              - PARENT_UNAVAILABLE
+              - VERSION_CONFLICT
+              - IDEMPOTENCY_CONFLICT
+              - USERNAME_TAKEN
+              - ID_CONFLICT
+              - RESTORE_WINDOW_EXPIRED
+              - PAYLOAD_TOO_LARGE
+              - DIFF_TOO_LARGE
+              - UNSUPPORTED_MEDIA_TYPE
+              - RATE_LIMITED
+              - DATABASE_BUSY
+              - TEMPORARILY_UNAVAILABLE
+            message: *id002
+            field_errors:
+              type: object
+            current: {}
+        meta:
+          $ref: '#/components/schemas/Meta'
+      required:
+      - error
+      - meta

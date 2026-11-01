@@ -1,0 +1,12 @@
+name: release
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      # P5: reviewed master SHA, protected environment, signing, migration,
+      # deployment, private smoke and APK publication. No deploy command in P1.
+      - run: echo 'Release workflow will be implemented in P5.'

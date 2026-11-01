@@ -1,0 +1,30 @@
+{
+  "name": "dining-log-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "check": "tsc --noEmit && eslint .",
+    "test": "node tests/password-vectors.mjs && vitest run",
+    "db:verify": "vitest run tests/migrations.test.ts"
+  },
+  "dependencies": {
+    "@noble/hashes": "1.8.0",
+    "hono": "4.7.11",
+    "jose": "6.0.11",
+    "zod": "3.25.49"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.8.49",
+    "@cloudflare/workers-types": "4.20250620.0",
+    "eslint": "9.28.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.34.1",
+    "vitest": "3.2.4",
+    "wrangler": "4.23.0"
+  }
+}

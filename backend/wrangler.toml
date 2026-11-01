@@ -1,0 +1,43 @@
+name = "dining-log-api"
+main = "src/index.ts"
+account_id = "49eee8b8033579863adb3b7cf0b1852c"
+compatibility_date = "2026-10-31"
+workers_dev = false
+preview_urls = false
+
+routes = [
+  { pattern = "dining.alanvampuke.top", custom_domain = true }
+]
+
+[vars]
+APP_ENV = "production"
+AUTH_ISSUER = "https://dining.alanvampuke.top"
+AUTH_AUDIENCE = "dining-log-android"
+JWT_ACTIVE_KID = "v1"
+PASSWORD_ACTIVE_PEPPER = "v1"
+REFRESH_RETRY_KEY_ID = "v1"
+ACCESS_TTL_SECONDS = "600"
+REFRESH_IDLE_SECONDS = "604800"
+SESSION_MAX_AGE_SECONDS = "2592000"
+REFRESH_RETRY_SECONDS = "120"
+PASSWORD_ITERATIONS = "10000"
+REGISTRATION_ENABLED = "true"
+API_BODY_MAX_BYTES = "65536"
+REVISION_MAX_BYTES = "131072"
+SOFT_DELETE_RETENTION_DAYS = "30"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dining-log-prod"
+database_id = "REPLACE_WITH_CREATED_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["17 * * * *"]
+
+[observability]
+enabled = true
+head_sampling_rate = 0.1
+
+[observability.logs]
+invocation_logs = false

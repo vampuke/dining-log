@@ -1,0 +1,11 @@
+name: android-ui
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      # P4: API 26/35 emulator tests with FakeRepository and synthetic data.
+      - run: echo 'Android UI tests will be added in P4.'
