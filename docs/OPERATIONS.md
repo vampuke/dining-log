@@ -13,7 +13,7 @@
 | ANDROID_KEYSTORE_B64 | GitHub production environment；已有 release keystore |
 | ANDROID_STORE_PASSWORD | 同 environment；keystore 密码 |
 | ANDROID_KEY_PASSWORD | 同 environment；key 密码 |
-| ANDROID_KEY_ALIAS | 同 environment；固定 alias `dining-log` |
+| ANDROID_KEY_ALIAS | 同 environment；已有 release key 的 alias |
 | CLOUDFLARE_API_TOKEN | 同 environment；限定账号 / zone 的发布权限 |
 
 现有生产材料在受控的 `/root/.dining_secrets/worker_secrets.json`、`/root/release_key/`、`/root/.cloudflare_env`，权限 0600。不要重新生成 key、复制到仓库、输出值或把它们放进 command arguments / shell tracing。签名材料保留离线加密备份；备份完成与恢复演练若无实证仍记为 unverified。

@@ -108,7 +108,7 @@ jobs:
           set -euo pipefail
           export DINING_SIGNING_STORE_FILE="$RUNNER_TEMP/non-secret-signing-test.jks"
           export DINING_SIGNING_STORE_PASSWORD=non-secret-test-placeholder
-          export DINING_SIGNING_KEY_ALIAS=dining-log
+          export DINING_SIGNING_KEY_ALIAS=non-secret-test-alias
           export DINING_SIGNING_KEY_PASSWORD=non-secret-test-placeholder
           trap 'rm -f "$DINING_SIGNING_STORE_FILE"' EXIT
           touch "$DINING_SIGNING_STORE_FILE"
