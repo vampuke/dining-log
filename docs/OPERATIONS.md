@@ -168,6 +168,8 @@ VPS 对应使用已验证的 `node "$DINING_WRANGLER_SCRIPT" ...`，而非安装
 
 Cron 每小时第 17 分钟调用同一 scheduled handler：清理过期 refresh 重试密文 / 幂等响应 / 限流窗口，再按 30 天保留期和预算分块清理软删除领域记录。测试已覆盖边界和中断；真实 Cron CPU、扫描成本和恢复演练另列 unverified，配置存在不等于实际清理已运行。
 
+P6 增加注销账号的最终清理：每阶段最多 20 行，依次删除该过期账号的刷新重试结果、refresh tokens、sessions、恢复码、幂等缓存。users 只有在全部 11 张子表均无数据时才能删除；领域记录和 change_sets 继续由前一阶段分块清理，最终 CASCADE 不得清除残余数据。用户名因此在保留期内占用，真正完成物理清理后才可由新 user_id 注册。users / 鉴权时间为秒，领域时间为毫秒，清理测试覆盖差一秒、精确 30 天、分块进度、其他账号校验和、批次失败回滚和重新注册不继承旧记录。
+
 只读查看 Worker errors / CPU 与 D1 rows_read / rows_written / size，按账户共享额度监控。D1 存储达到免费单库容量约 70% 时应告警并评估容量；不能用本地 p95 报告代替生产性能。当前没有自动新建付费服务或新增监控 token。
 
 ## Time Travel 与数据恢复

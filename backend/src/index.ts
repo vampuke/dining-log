@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv, Bindings } from './env';
 import { cleanupAuth } from './auth/cleanup';
+import { cleanupDeletedAccounts } from './auth/account-cleanup';
 import { auth } from './routes/auth';
 import { appVersion } from './routes/app-version';
 import { restaurants } from './routes/restaurants';
@@ -30,5 +31,9 @@ app.notFound((c) => {
     meta: { request_id: crypto.randomUUID() } }, 404);
 });
 export default Object.assign(app, {
-  async scheduled(_controller: ScheduledController, env: Bindings) { await cleanupAuth(env.DB); await cleanupDomain(env.DB); },
+  async scheduled(_controller: ScheduledController, env: Bindings) {
+    await cleanupAuth(env.DB);
+    await cleanupDomain(env.DB);
+    await cleanupDeletedAccounts(env.DB);
+  },
 });
