@@ -34,7 +34,7 @@ fun authErrorText(error: AuthFailure): String = when (error.code) {
 @Composable
 fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend () -> Unit,
     onLogout: suspend () -> String?, onCopyRecoveryCodes: (List<String>) -> Unit,
-    onAuthenticated: (@Composable (AuthSession) -> Unit)? = null) {
+    onAuthenticated: (@Composable (AuthSession, () -> Unit) -> Unit)? = null) {
     val session by account.session.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var page by remember { mutableStateOf(AuthPage.LOGIN) }
@@ -60,7 +60,7 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
     }
     val authenticated = session
     if (authenticated != null && (authenticated.recoveryCodes.isEmpty() || acknowledgedFor == authenticated.sessionId) && onAuthenticated != null) {
-        key(authenticated.userId) { onAuthenticated(authenticated) }
+        key(authenticated.userId) { onAuthenticated(authenticated) { launchAction { message = onLogout(); page = AuthPage.LOGIN } } }
         return
     }
     Surface(color = LocalQuietGridColors.current.bg, modifier = Modifier.fillMaxSize()) {

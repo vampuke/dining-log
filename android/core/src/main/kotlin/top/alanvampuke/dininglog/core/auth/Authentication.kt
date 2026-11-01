@@ -47,6 +47,12 @@ class AccountSession(private val store: SecureTokenStore, private val local: Acc
     internal suspend fun clearIfGeneration(expected: Long) = transition.withLock {
         if (generation == expected) clearLocked()
     }
+    internal suspend fun clearIfAccess(expected: Long, token: String) = transition.withLock {
+        if (generation == expected && _session.value?.accessToken == token) clearLocked()
+    }
+    suspend fun restoreCachedSession(value: StoredSession) = transition.withLock {
+        if (_session.value == null) _session.value = AuthSession(value.userId, "已保存账号", value.sessionId, "", value.refreshToken)
+    }
     suspend fun install(value: AuthSession) = transition.withLock {
         clearLocked()
         try {
@@ -76,7 +82,7 @@ class RefreshCoordinator(private val store: SecureTokenStore, private val accoun
     suspend fun refreshAfter401(failedAccessToken: String?): String = mutex.withLock {
         val generation = account.generation
         val current = account.session.value
-        if (current != null && current.accessToken != failedAccessToken) return@withLock current.accessToken
+        if (current != null && current.accessToken.isNotEmpty() && current.accessToken != failedAccessToken) return@withLock current.accessToken
         val saved = store.read() ?: run { account.clearIfGeneration(generation); throw AuthFailure("SESSION_REVOKED") }
         if (lastNetworkFailure?.let { it.first == failedAccessToken && nowMillis() - it.second < 1000 } == true) throw AuthFailure("NETWORK_ERROR")
         val pending = if (saved.pendingRequestId == null) saved.copy(pendingRequestId = UUID.randomUUID().toString(), pendingStartedAt = nowMillis()) else saved
@@ -102,18 +108,27 @@ class RefreshCoordinator(private val store: SecureTokenStore, private val accoun
     // Each API operation is retried at most once; revoked sessions never enter a refresh loop.
     suspend fun <T> authenticated(call: suspend (String) -> T): T {
         val generation = account.generation
-        val access = account.session.value?.accessToken ?: refreshAfter401(null)
+        val access = account.session.value?.accessToken?.takeIf { it.isNotEmpty() } ?: refreshAfter401(null)
         if (generation != account.generation) throw AuthFailure("SESSION_REVOKED")
         try { return call(access) } catch (error: AuthFailure) {
             if (error.code == "TOKEN_EXPIRED") {
                 val next = refreshAfter401(access)
                 if (generation != account.generation) throw AuthFailure("SESSION_REVOKED")
                 try { return call(next) } catch (retry: AuthFailure) {
-                    if (retry.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) account.clearIfGeneration(generation)
+                    if (retry.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) account.clearIfAccess(generation, next)
                     throw retry
                 }
             }
-            if (error.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) account.clearIfGeneration(generation)
+            if (error.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) {
+                val next = account.session.value?.accessToken
+                if (next != null && next.isNotEmpty() && next != access && generation == account.generation) {
+                    try { return call(next) } catch (retry: AuthFailure) {
+                        if (retry.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) account.clearIfAccess(generation, next)
+                        throw retry
+                    }
+                }
+                account.clearIfAccess(generation, access)
+            }
             throw error
         }
     }

@@ -84,7 +84,7 @@ fun compareConflict(draft: SavedDraft, server: RecordSnapshot): ConflictComparis
         ConflictField(field, base, current, local, local != base && current != base && current != local)
     }
     return ConflictComparison(draft.baseSnapshot, server, draft, fields,
-        server.deletedAt == null && draft.action !in setOf(WriteAction.DELETE, WriteAction.RESTORE) && draft.ref.kind != RecordKind.REVISION)
+        server.deletedAt == null && draft.action !in setOf(WriteAction.DELETE, WriteAction.RESTORE))
 }
 sealed interface SaveOutcome {
     data class Saved(val snapshot: RecordSnapshot) : SaveOutcome

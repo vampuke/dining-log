@@ -50,6 +50,11 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     val drafts = _drafts.asStateFlow()
     private val _editorDishes = MutableStateFlow<List<RecordSummary>>(emptyList())
     val editorDishes = _editorDishes.asStateFlow()
+    private val _relatedDishes = MutableStateFlow(CachedPage())
+    val relatedDishes = _relatedDishes.asStateFlow()
+    private val _relatedVisits = MutableStateFlow(CachedPage())
+    val relatedVisits = _relatedVisits.asStateFlow()
+    private var relatedJob: Job? = null
     private val _apply = MutableStateFlow<ApplyUiState?>(null)
     val apply = _apply.asStateFlow()
     private val eventChannel = Channel<ProductEvent>(Channel.BUFFERED)
@@ -59,6 +64,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private var refreshListAction: (Boolean) -> Unit = {}
     private var refreshDetailAction: () -> Unit = {}
     private var scopeKey = "RESTAURANT::EXCLUDE"
+    private var hasActiveList = false
     var visitRestaurantId: String? = saved["visit_restaurant_id"]; private set
     val restoredTab: String = saved["tab"] ?: "restaurants"
     private var actionFromEditor = true
@@ -120,7 +126,8 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private fun filterKey(name: String) = "$scopeKey:$name"
     fun activateList(kind: RecordKind, restaurantId: String? = null, deleted: DeletedFilter = DeletedFilter.EXCLUDE) {
         val nextKey = "${kind.name}:${restaurantId ?: ""}:${deleted.name}"
-        if (scopeKey == nextKey && _query.value.kind == kind && _query.value.restaurantId == restaurantId && _query.value.deleted == deleted) return
+        if (hasActiveList && scopeKey == nextKey && _query.value.kind == kind && _query.value.restaurantId == restaurantId && _query.value.deleted == deleted) return
+        hasActiveList = true
         scopeKey = nextKey
         _search.value = saved[filterKey("q")] ?: ""
         _filters.value = ListFilters(saved[filterKey("category")], saved[filterKey("cuisine")] ?: "", saved[filterKey("min")], saved[filterKey("max")], saved[filterKey("unrated")] ?: false,
@@ -139,8 +146,25 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     fun filterVisits(restaurantId: String?) { visitRestaurantId = restaurantId; saved["visit_restaurant_id"] = restaurantId; activateList(RecordKind.VISIT, restaurantId) }
     fun refresh() { refreshListAction(false) }
     fun loadMore() { if (_list.value.hasMore) refreshListAction(true) }
-    fun openDetail(ref: RecordRef) { if (_detailRef.value == ref) refreshDetail() else _detailRef.value = ref }
-    fun refreshDetail() { refreshDetailAction() }
+    fun openDetail(ref: RecordRef) {
+        if (_detailRef.value == ref) refreshDetail() else _detailRef.value = ref
+        relatedJob?.cancel(); _relatedDishes.value = CachedPage(); _relatedVisits.value = CachedPage()
+        if (ref.kind == RecordKind.RESTAURANT) relatedJob = scope.launch {
+            listOf(RecordKind.DISH, RecordKind.VISIT).forEach { kind -> launch {
+                repository.observeList(accountId, ListQuery(kind, ref.id)).collect { if (kind == RecordKind.DISH) _relatedDishes.value = it else _relatedVisits.value = it }
+            } }
+            refreshRelated()
+        }
+    }
+    private fun refreshRelated() {
+        val ref = _detailRef.value ?: return
+        if (ref.kind == RecordKind.RESTAURANT) listOf(RecordKind.DISH, RecordKind.VISIT).forEach { kind -> scope.launch {
+            try { repository.refreshList(accountId, ListQuery(kind, ref.id)) }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { }
+        } }
+    }
+    fun refreshDetail() { refreshDetailAction(); refreshRelated() }
     fun openEditor(ref: RecordRef, create: Boolean, draftId: String? = null) {
         scope.launch {
             autosaver?.stopAndFlush(); autosaver = null
@@ -231,6 +255,13 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     fun confirmConflict(choices: Map<String, ConflictChoice>) {
         val comparison = _editor.value.conflict ?: return
         val draft = comparison.confirmed(choices, System.currentTimeMillis())
+        if (draft.changedFields.isEmpty()) {
+            scope.launch {
+                repository.discardDraft(accountId, draft.id); _editor.value = EditorUiState(message = "已保留服务器值")
+                refresh(); refreshDetail(); eventChannel.send(ProductEvent.Saved(comparison.serverCurrent.ref, actionFromEditor))
+            }
+            return
+        }
         _editor.value = EditorUiState(draft)
         restartAutosaver(draft); saveEditor()
     }

@@ -89,7 +89,7 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             val data = remote.write(pending)
             val raw = (data["entity"] as? JsonObject) ?: data
             val partial = snapshot(pending.ref.kind, raw, pending.ref.restaurantId)
-            val baseline = pending.baseSnapshot
+            val baseline = dao.detail(pending.accountId, pending.ref.kind.name, pending.ref.id)?.let { ProductJson.decodeFromString<RecordSnapshot>(it.payload) } ?: pending.baseSnapshot
             val saved = partial.copy(fields = (baseline?.fields ?: emptyMap()) + partial.fields,
                 diff = if (partial.diff.isEmpty()) baseline?.diff ?: emptyList() else partial.diff)
             owner.write(account, pending.accountId, generation) {
@@ -151,7 +151,7 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
     }
     override suspend fun confirmExpired(draft: SavedDraft, current: RecordSnapshot?): SaveOutcome {
         check(draft.status == DraftStatus.EXPIRED_REVIEW)
-        if (current?.deletedAt != null || draft.action in setOf(WriteAction.DELETE, WriteAction.RESTORE)) return SaveOutcome.Kept(draft, "请先恢复或刷新，再从当前详情发起操作；草稿保留")
+        if (current?.deletedAt != null || draft.action in setOf(WriteAction.DELETE, WriteAction.RESTORE) || current == null && draft.action != WriteAction.CREATE) return SaveOutcome.Kept(draft, "请先恢复或刷新，再从当前详情发起操作；草稿保留")
         val next = draft.copy(baseSnapshot = current, original = null, status = DraftStatus.EDITING,
             action = if (draft.action == WriteAction.CREATE && current != null) WriteAction.UPDATE else draft.action,
             firstVisit = if (current == null) draft.firstVisit else null, updatedAt = now())
@@ -168,6 +168,7 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         val old = dao.summary(accountId, record.ref.kind.name, record.ref.id)?.let { ProductJson.decodeFromString<RecordSummary>(it.payload) }
         val fields = record.fields.toMutableMap()
         fields.remove("review"); fields.remove("note"); fields.remove("address")
+        if (record.ref.kind == RecordKind.REVISION) fields["note"] = record.fields["note"]
         record.fields["address"]?.let { fields["address_excerpt"] = it.take(120) }
         record.fields["review"]?.let { fields["review_excerpt"] = it.take(120) }
         record.fields["note"]?.let { fields["note_excerpt"] = it.take(120) }

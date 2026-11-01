@@ -20,7 +20,7 @@ import top.alanvampuke.dininglog.data.remote.*
 @Serializable data class PasswordBody(@SerialName("current_password") val current: String,
     @SerialName("new_password") val replacement: String, @SerialName("device_name") val deviceName: String = "Android")
 interface SecurityApi {
-    @GET("me") suspend fun profile(@Header("Authorization") token: String): Response<ObjectEnvelope>
+    @GET("auth/session") suspend fun profile(@Header("Authorization") token: String): Response<ObjectEnvelope>
     @GET("auth/sessions") suspend fun sessions(@Header("Authorization") token: String): Response<ObjectEnvelope>
     @DELETE("auth/sessions/{id}") suspend fun revoke(@Path("id") id: String, @Header("Authorization") token: String, @Header("Idempotency-Key") key: String): Response<Unit>
     @POST("auth/password") suspend fun password(@Header("Authorization") token: String, @Header("Idempotency-Key") key: String, @Body body: PasswordBody): Response<AuthEnvelope>
@@ -31,7 +31,7 @@ class RetrofitAccountSecurity(private val api: SecurityApi, private val refresh:
     private data class PendingPassword(val body: PasswordBody, val key: String, val token: String, val generation: Long, val startedAt: Long)
     private var pendingPassword: PendingPassword? = null
     override suspend fun profile(): AccountInfo = read { token ->
-        val value = checked(api.profile("Bearer $token")).data
+        val value = checked(api.profile("Bearer $token")).data["user"]!!.jsonObject
         AccountInfo(requireNotNull(value.text("id")), requireNotNull(value.text("username")), value.text("display_name") ?: "", value.text("created_at") ?: "")
     }
     override suspend fun sessions(): List<DeviceSession> = read { token -> checked(api.sessions("Bearer $token")).data["items"]!!.jsonArray.map { item ->
@@ -60,7 +60,10 @@ class RetrofitAccountSecurity(private val api: SecurityApi, private val refresh:
         pendingPassword = request
         try {
             // Original access/key/body permit the auth endpoint's encrypted replay after revocation.
-            val next = checked(api.password("Bearer ${request.token}", request.key, request.body)).data.domain()
+            val next = if (old == null) refresh.authenticated { token ->
+                pendingPassword = request.copy(token = token)
+                checked(api.password("Bearer $token", request.key, request.body)).data.domain()
+            } else checked(api.password("Bearer ${request.token}", request.key, request.body)).data.domain()
             account.replaceAfterPassword(next, request.generation)
             pendingPassword = null
         } catch (_: IOException) { throw ProductFailure("AUTH_RESULT_UNKNOWN") }
