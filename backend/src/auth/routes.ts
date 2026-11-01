@@ -32,9 +32,10 @@ export async function body<T extends z.ZodTypeAny>(c: C, schema: T): Promise<z.i
 function idemKey(c: C) { const key = c.req.header('Idempotency-Key'); if (key && !uuid.safeParse(key).success) throw new AuthError(400, 'VALIDATION_ERROR', 'Idempotency-Key must be UUID v4.'); return key; }
 async function idempotency(c: C, userId: string, payload: unknown) { return AuthIdempotency.create(c.env, userId, idemKey(c), c.req.method, c.req.path, payload); }
 export async function cached(c: C, idem: IdempotencyStore | null): Promise<Response | null> { const hit = await idem?.read(); return hit ? (hit.status === 204 ? c.body(null, 204) : json(c, hit.response, hit.status)) : null; }
-export async function commit(c: C, statements: D1PreparedStatement[], data: unknown, status: number, idem: IdempotencyStore | null, failure?: () => Promise<Response>, classifyAll = false) {
+export async function commit(c: C, statements: D1PreparedStatement[], data: unknown, status: number, idem: IdempotencyStore | null, failure?: () => Promise<Response>, classifyAll = false, cleanup: D1PreparedStatement[] = []) {
   const response = envelope(data);
   if (idem) statements.push(await idem.statement(response, status));
+  statements.push(...cleanup);
   try { await c.env.DB.batch(statements); }
   catch (error) {
     const replay = await cached(c, idem); if (replay) return replay;

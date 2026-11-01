@@ -8,7 +8,7 @@ function text(max: number, required = false) {
   return z.string().max(max * 4 + 1024).transform(normalizeText).pipe(z.string().refine(v => !v.includes('\0') && Array.from(v).length <= max && (!required || v.length > 0), `Use ${required ? '1' : '0'}–${max} characters.`));
 }
 const optionalText = (max: number) => text(max).transform(v => v || null).nullable().optional();
-export const rating = z.number().min(1).max(5).refine(v => Math.abs(v * 10 - Math.round(v * 10)) < 1e-9, 'Use at most one decimal place.');
+export const rating = z.number().min(1).max(5).refine(v => Math.round(v * 10) / 10 === v, 'Use at most one decimal place.');
 export const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v => v >= '1900-01-01' && v <= '2100-12-31' && Number.isFinite(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, 'Use a valid date from 1900 to 2100.');
 export const instant = z.string().datetime({ precision: 3 });
 export const version = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);

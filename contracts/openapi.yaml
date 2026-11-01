@@ -4719,8 +4719,9 @@ components:
           - string
           - integer
           - 'null'
-      description: Server-computed whitelist diff. rating_tenths is an integer (40 -> 43), deleted_at an epoch millisecond
-        integer; never record timestamps/version/search/session fields.
+      description: Server-computed whitelist diff. rating_tenths is an integer (40 -> 43). deleted_at is an ISO 8601
+        UTC string in API responses and remains an epoch millisecond integer in stored diff_json. Never record
+        updated_at/version/search/session fields.
     Revision:
       type: object
       additionalProperties: false

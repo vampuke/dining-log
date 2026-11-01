@@ -44,9 +44,8 @@ export async function create(c: C, kind: Kind, payload: Record<string, unknown>,
   const revisions = entities.map(item => history(db, item.kind, item.row, diff(item.kind, null, item.row), 'create', setId, now, null));
   statements.push(...revisions.map(r => r.statement), ...await rebuild(db, userId, kind, row, now, kind === 'restaurant'));
   const result = { entity: entity(kind, row), changed: true, change_set_id: setId, revisions: revisions.map((r, i) => revisionSummary({ ...r.rev, restaurant_name: restaurantName, entity_label: entities[i].kind === 'visit' ? entities[i].row.dining_date : entities[i].row.name })), ...(kind === 'restaurant' ? { first_visit: first ? entity('visit', first) : null } : {}) };
-  // commit adds the successful response after business/history/search; guard cleanup
-  // is also transactional. Every affected_rows assertion directly follows its write.
-  statements.push(...cleanup);
+  // commit appends the successful response and then guard cleanup in the batch.
+  // Every affected_rows assertion directly follows its business write.
   return commit(c, statements, result, 201, idem, async () => {
     if (kind !== 'restaurant') await parent(db, userId, restaurantId!);
     for (const item of entities) {
@@ -55,7 +54,7 @@ export async function create(c: C, kind: Kind, payload: Record<string, unknown>,
       if (existing) throw new AuthError(409, 'ID_CONFLICT', 'ID is already in use.');
     }
     throw new Error('Creation batch failed');
-  }, true);
+  }, true, cleanup);
 }
 export async function mutate(c: C, kind: Kind, id: string, payload: Record<string, unknown>, action: Exclude<Action, 'create'>, idem: BusinessIdempotency, source: string | null = null) {
   const replay = await cached(c, idem); if (replay) return replay;
@@ -80,12 +79,12 @@ export async function mutate(c: C, kind: Kind, id: string, payload: Record<strin
   const enriched = rev ? { ...rev.rev, restaurant_name: parentRow.name, entity_label: kind === 'visit' ? row.dining_date : row.name } : null;
   const current = entity(kind, row);
   const result = source ? { entity: current, changed, change_set_id: setId, revision: enriched ? revisionDetail(enriched) : null } : { entity: action === 'delete' ? { id, ...(kind === 'restaurant' ? {} : { restaurant_id: row.restaurant_id }), version: row.version, deleted_at: new Date(row.deleted_at!).toISOString() } : current, changed, change_set_id: setId, revisions: enriched ? [revisionSummary(enriched)] : [] };
-  statements.push(clear);
   return commit(c, statements, result, source && changed ? 201 : 200, idem, async () => {
     const current = await owned(db, userId, kind, id, action === 'restore');
+    checkVersion(kind, current, expected);
     if (action === 'restore' && current.deleted_at !== null && Date.now() >= current.deleted_at + 30 * 86400000) throw new AuthError(410, 'RESTORE_WINDOW_EXPIRED', 'Restore window has expired.');
     return classify(db, userId, kind, id, expected, action === 'restore');
-  }, true);
+  }, true, [clear]);
 }
 export async function apply(c: C, sourceRow: Record<string, Value>, fieldsToApply: string[], side: 'before' | 'after', expected: number, idem: BusinessIdempotency) {
   const kind = sourceRow.entity_type as Kind;
