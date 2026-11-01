@@ -2,7 +2,8 @@
   "certificate_sha256": "A81806DBCDD4C5A212915F8A6F767B371C96D66CC61B1393D016B77DB9CE7093",
   "production_package": "top.alanvampuke.dininglog",
   "migrations": {
-    "0001_initial.sql": "191d1a80a7411ba828effc9041fbd144fa4d10abb372f61c793a8f6dc1a5b80b"
+    "0001_initial.sql": "191d1a80a7411ba828effc9041fbd144fa4d10abb372f61c793a8f6dc1a5b80b",
+    "0002_address_optional.sql": "5cfdaf6ae11a0eb98f87c4a143cadb237f9baa4222ad0225aeffe250b21bc686"
   },
   "bootstrap_only_migrations": ["0001_initial.sql"]
 }
