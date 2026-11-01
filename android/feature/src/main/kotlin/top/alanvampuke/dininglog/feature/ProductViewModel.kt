@@ -301,13 +301,33 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         review.serverCurrent?.let { eventChannel.send(ProductEvent.Saved(it.ref, actionFromEditor)) }
     } }
     fun mutate(snapshot: RecordSnapshot, action: WriteAction) {
-        if (_editor.value.saving) return
+        if (_editor.value.saving || _editor.value.loading) return
         actionFromEditor = false
         val draft = SavedDraft(accountId, "${action.name}:${snapshot.ref.kind.name}:${snapshot.ref.id}", snapshot.ref, action, snapshot, snapshot.editable)
-        _editor.value = EditorUiState(draft); _operationVisible.value = true; saveEditor()
+        _editor.value = EditorUiState(loading = true); _operationVisible.value = true
+        scope.launch {
+            try {
+                autosaver?.stopAndFlush(); autosaver = null
+                val previous = repository.findDraft(accountId, draft.id)
+                // Closing the operation dialog does not resolve a lost response.
+                // Reopening delete/restore must preserve the exact stored request.
+                val pending = previous?.takeIf { it.locked || it.original != null }
+                _editor.value = EditorUiState(pending ?: draft,
+                    message = if (pending != null) "原操作结果尚未确认；请重试原请求，草稿已保留" else null)
+                if (pending == null) saveEditor()
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { _editor.value = EditorUiState(message = errorText(e)) }
+        }
     }
     fun previewApply(revision: RecordSnapshot) { scope.launch {
         try {
+            val pending = repository.findDraft(accountId, "apply:${revision.ref.id}")?.takeIf { it.locked || it.original != null }
+            if (pending != null) {
+                actionFromEditor = false
+                _editor.value = EditorUiState(pending, message = "原重新应用结果尚未确认；请重试原请求后再选择其他字段")
+                _operationVisible.value = true
+                return@launch
+            }
             val kind = RecordKind.valueOf(requireNotNull(revision.fields["entity_type"]).uppercase())
             val ref = RecordRef(kind, requireNotNull(revision.fields["entity_id"]), if (kind == RecordKind.RESTAURANT) null else revision.ref.restaurantId)
             _apply.value = ApplyUiState(revision, repository.refreshDetail(accountId, ref))

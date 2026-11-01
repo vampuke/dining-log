@@ -151,4 +151,39 @@ class ProductViewModelTest {
         account.clear(); runCurrent()
         assertEquals(PasswordInputs(), vm.settings.value.passwordInputs)
     } }
+
+    @Test fun reopeningAnUnknownDeleteKeepsStoredPayloadAndKeyUntilManualRetry() = runTest { fixture { vm, repo, _, _ ->
+        start()
+        val original = OriginalRequest("DELETE", "restaurants/${ref.id}", "{\"expected_version\":1}", "original-delete-key", 1000)
+        val pending = SavedDraft("A", "DELETE:RESTAURANT:${ref.id}", ref, WriteAction.DELETE,
+            snapshot, snapshot.editable, status = DraftStatus.RESULT_UNKNOWN, original = original)
+        repo.drafts.value = listOf(pending)
+        vm.mutate(snapshot.copy(version = 2), WriteAction.DELETE); runCurrent()
+        assertTrue(vm.operationVisible.value)
+        assertEquals(pending, vm.editor.value.draft)
+        assertTrue(repo.submitted.isEmpty(), "Reopening a pending operation must ask for manual retry")
+        vm.dismissOperation(); vm.mutate(snapshot.copy(version = 3), WriteAction.DELETE); runCurrent()
+        assertEquals(original, vm.editor.value.draft!!.original)
+        vm.saveEditor(); runCurrent()
+        assertEquals(listOf(pending), repo.submitted)
+    } }
+
+    @Test fun reopeningUnknownHistoryApplyCannotReplaceItsSelectedFieldsOrRequest() = runTest { fixture { vm, repo, _, _ ->
+        start()
+        val revision = RecordSnapshot(RecordRef(RecordKind.REVISION, "revision", ref.id), 1,
+            mapOf("entity_type" to "restaurant", "entity_id" to ref.id), snapshot.updatedAt,
+            diff = listOf(Change("rating_tenths", "40", "43")))
+        val original = OriginalRequest("POST", "revisions", "original-apply-payload", "original-apply-key", 1000)
+        val pending = SavedDraft("A", "apply:revision", ref, WriteAction.APPLY, snapshot,
+            snapshot.editable + ("rating_tenths" to "43"), sourceRevisionId = "revision",
+            applySide = "after", applyFields = listOf("rating_tenths"), status = DraftStatus.RESULT_UNKNOWN, original = original)
+        repo.drafts.value = listOf(pending)
+        vm.previewApply(revision); runCurrent()
+        assertNull(vm.apply.value)
+        assertEquals(pending, vm.editor.value.draft)
+        assertTrue(vm.operationVisible.value); assertTrue(repo.submitted.isEmpty())
+        vm.saveEditor(); runCurrent()
+        assertEquals(original, repo.submitted.single().original)
+        assertEquals(listOf("rating_tenths"), repo.submitted.single().applyFields)
+    } }
 }
