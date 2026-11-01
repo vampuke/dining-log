@@ -117,6 +117,16 @@ jobs:
         api: [26, 35]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install the local Worker test runtime
+        working-directory: backend
+        run: npm ci
+      - name: Start isolated local API and D1 for Android E2E
+        run: bash .github/scripts/start-android-api.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -139,11 +149,20 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: cd android && ./gradlew :app:connectedDebugAndroidTest --no-daemon
+          script: bash .github/scripts/android-test.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-auth-api-${{ matrix.api }}
-          path: android/app/build/reports/androidTests/connected/
+          path: |
+            android/app/build/reports/androidTests/connected/
+            android/app/build/outputs/p4-screenshots/
           if-no-files-found: warn
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-api-log-${{ matrix.api }}
+          path: /tmp/android-worker.log
+          if-no-files-found: error
           retention-days: 14

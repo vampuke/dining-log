@@ -77,7 +77,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         Surface(color = LocalQuietGridColors.current.surface, shape = MaterialTheme.shapes.medium,
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.94f).windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp).testTag(tag)) {
             Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                GridText(title, style = MaterialTheme.typography.headlineSmall)
+                GridText(title, Modifier.testTag("dialog-title"), style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
                 footer()
                 TextButton(onClick = onDismiss) { Text("保留草稿，返回") }

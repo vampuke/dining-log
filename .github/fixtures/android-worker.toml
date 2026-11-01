@@ -1,0 +1,22 @@
+# Local GitHub Actions fixture only. No routes, remote D1 or deployment.
+name = "dining-log-android-ci"
+main = "../../backend/src/index.ts"
+compatibility_date = "2026-10-31"
+workers_dev = false
+preview_urls = false
+
+[vars]
+APP_ENV = "development"
+AUTH_ISSUER = "https://dining.alanvampuke.top"
+AUTH_AUDIENCE = "dining-log-android"
+JWT_ACTIVE_KID = "v1"
+PASSWORD_ACTIVE_PEPPER = "v1"
+REFRESH_RETRY_KEY_ID = "v1"
+PASSWORD_ITERATIONS = "10000"
+REGISTRATION_ENABLED = "true"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "dining-log-android-ci"
+database_id = "00000000-0000-4000-8000-000000000001"
+migrations_dir = "../../backend/migrations"
