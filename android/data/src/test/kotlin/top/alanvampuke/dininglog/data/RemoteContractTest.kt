@@ -70,6 +70,17 @@ class RemoteContractTest {
         assertEquals("parent", queryParameters(scopedHistory)["restaurant_id"])
         assertNotEquals(scopedHistory.fingerprint, scopedHistory.copy(historyEntityId = "other-dish").fingerprint)
     }
+    @Test fun timelineDateSearchUsesTheServersClosedDateRangeWithoutChangingTextSearch() {
+        val date = ListQuery(RecordKind.VISIT, query = "2026-11-01")
+        val parameters = queryParameters(date)
+        assertFalse("q" in parameters)
+        assertEquals("2026-11-01", parameters["from"])
+        assertEquals("2026-11-01", parameters["to"])
+        val ranged = queryParameters(date.copy(filters = ListFilters(from = "2026-10-01", to = "2026-12-01")))
+        assertEquals("2026-11-01", ranged["from"]); assertEquals("2026-11-01", ranged["to"])
+        assertEquals("兰记", queryParameters(date.copy(query = "兰记"))["q"])
+        assertEquals("同日第二次", queryParameters(date.copy(query = "同日第二次"))["q"])
+    }
     @Test fun getRetriesAtMostTwiceWithJitterAndHonorsRetryAfter() = runBlocking {
         val server = MockWebServer(); server.start()
         try {

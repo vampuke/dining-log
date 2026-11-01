@@ -37,6 +37,10 @@ import java.time.LocalDate
     val query: String = "", val filters: ListFilters = ListFilters(), val deleted: DeletedFilter = DeletedFilter.EXCLUDE,
     val historyEntityKind: RecordKind? = null, val historyEntityId: String? = null,
 ) {
+    val exactVisitDate: String? get() = query.trim().takeIf { kind == RecordKind.VISIT && validDate(it) }
+    val effectiveFilters: ListFilters get() = exactVisitDate?.let { day -> filters.copy(
+        from = maxOf(day, filters.from), to = if (filters.to.isBlank()) day else minOf(day, filters.to),
+    ) } ?: filters
     val fingerprint: String get() = listOf(kind.name, restaurantId, query.trim(), filters.category,
         filters.cuisine.trim(), filters.minRating, filters.maxRating, filters.unrated, filters.visited,
         filters.from, filters.to, filters.sort, deleted.name, historyEntityKind?.name, historyEntityId).joinToString("\u001f")

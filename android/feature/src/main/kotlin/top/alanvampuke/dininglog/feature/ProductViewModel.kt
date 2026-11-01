@@ -79,9 +79,9 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
             combine(_search.debounce(300), _query, _filters) { text, query, filters -> query.copy(query = text, filters = filters) }
                 .distinctUntilChanged().flatMapLatest { query ->
                     channelFlow {
-                        val flags = MutableStateFlow(LoadFlags(refreshing = validFilters(query.filters)))
+                        val flags = MutableStateFlow(LoadFlags(refreshing = validFilters(query.effectiveFilters)))
                         fun fetch(more: Boolean) {
-                            if (!validFilters(query.filters)) { flags.value = LoadFlags(error = "请检查日期与评分区间"); return }
+                            if (!validFilters(query.effectiveFilters)) { flags.value = LoadFlags(error = "请检查日期与评分区间"); return }
                             launch {
                                 flags.value = flags.value.copy(refreshing = !more, more = more, error = null)
                                 try {
@@ -99,7 +99,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
                                     cache.nextCursor, cache.hasMore, cache.fetchedAt, cache.localScope)
                             }.collect { send(it) }
                         }
-                        if (validFilters(query.filters)) fetch(false) else flags.value = LoadFlags(error = "请检查日期与评分区间")
+                        if (validFilters(query.effectiveFilters)) fetch(false) else flags.value = LoadFlags(error = "请检查日期与评分区间")
                         awaitCancellation()
                     }
                 }.collect { _list.value = it }

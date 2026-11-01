@@ -104,4 +104,12 @@ class ProductRulesTest {
         val query = ListQuery(RecordKind.REVISION, ref.id, historyEntityKind = RecordKind.DISH, historyEntityId = "dish-one")
         assertEquals(listOf("dish-history"), localSearch(query, listOf(dishHistory, sibling, restaurantHistory), emptyList()).map { it.ref.id })
     }
+    @Test fun cachedTimelineDateSearchKeepsAllSameDayVisitsAndIntersectsDateFilters() {
+        val first = summary().copy(ref = RecordRef(RecordKind.VISIT, "first", ref.id), fields = mapOf("dining_date" to "2026-11-01"))
+        val second = first.copy(ref = first.ref.copy(id = "second"))
+        val otherDay = first.copy(ref = first.ref.copy(id = "other"), fields = mapOf("dining_date" to "2026-11-02", "note" to "提到 2026-11-01"))
+        val query = ListQuery(RecordKind.VISIT, query = "2026-11-01")
+        assertEquals(setOf("first", "second"), localSearch(query, listOf(first, second, otherDay), emptyList()).map { it.ref.id }.toSet())
+        assertTrue(localSearch(query.copy(filters = ListFilters(from = "2026-11-02")), listOf(first, second, otherDay), emptyList()).isEmpty())
+    }
 }

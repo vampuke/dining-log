@@ -80,7 +80,10 @@ class ProductEndToEndTest {
                 }
             })
             .addInterceptor { chain ->
-                val request = chain.request()
+                // Wrangler's local HTTP preview closes idle keep-alive sockets.
+                // A fresh fixture connection avoids that proxy EOF race while
+                // retaining the deliberate response-loss test and no write retry.
+                val request = chain.request().newBuilder().header("Connection", "close").build()
                 if (!online.value) throw IOException("P4 injected offline transport")
                 val write = request.method in setOf("POST", "PATCH", "DELETE")
                 if (write) {
@@ -342,6 +345,7 @@ class ProductEndToEndTest {
             }
             if (::vm.isInitialized) android.util.Log.e("DiningP4", "P4 E2E diagnostic: phase=$phase, query=${vm.list.value.query}, listError=${vm.list.value.error}, " +
                 "detail=${vm.detail.value.cached.snapshot?.ref}, detailError=${vm.detail.value.error}, " +
+                "items=${vm.list.value.items.map { it.ref.id to it.fields["dining_date"] }}, " +
                 "draft=${vm.editor.value.draft?.ref}, draftStatus=${vm.editor.value.draft?.status}, " +
                 "saving=${vm.editor.value.saving}, message=${vm.editor.value.message}, fields=${vm.editor.value.errors}")
             throw failure

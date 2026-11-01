@@ -10,7 +10,7 @@ fun normalizedSearch(text: String): String = Normalizer.normalize(text, Normaliz
 fun localSearch(query: ListQuery, summaries: List<RecordSummary>, details: List<RecordSnapshot>): List<RecordSummary> {
     val full = details.associateBy { it.ref }
     val deletedParents = summaries.filter { it.ref.kind == RecordKind.RESTAURANT && it.deleted }.map { it.ref.id }.toSet()
-    val tokens = normalizedSearch(query.query).split(' ').filter(String::isNotEmpty)
+    val tokens = if (query.exactVisitDate != null) emptyList() else normalizedSearch(query.query).split(' ').filter(String::isNotEmpty)
     val filtered = summaries.filter { s ->
         s.ref.kind == query.kind && s.deleted == (query.deleted == DeletedFilter.ONLY) &&
             (query.historyEntityKind == null || s.fields["entity_type"] == query.historyEntityKind.name.lowercase()) &&
@@ -31,7 +31,7 @@ fun localSearch(query: ListQuery, summaries: List<RecordSummary>, details: List<
         } else mapOf(MatchType.RESTAURANT to (listOf(s.title) + fields.values + (snapshot?.diff?.flatMap { listOf(it.before, it.after) } ?: emptyList())).joinToString(" "))
         val normalized = groups.mapValues { normalizedSearch(it.value) }
         if (!tokens.all { token -> normalized.values.any { token in it } }) return@mapNotNull null
-        val f = query.filters
+        val f = query.effectiveFilters
         val rating = fields["rating_tenths"]?.toIntOrNull()
         if (f.unrated && rating != null || !f.unrated && (f.minRating != null && (rating == null || rating < f.minRating) || f.maxRating != null && (rating == null || rating > f.maxRating))) return@mapNotNull null
         if (query.kind == RecordKind.RESTAURANT) {
