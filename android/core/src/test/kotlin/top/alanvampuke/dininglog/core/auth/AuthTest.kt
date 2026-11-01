@@ -2,6 +2,9 @@ package top.alanvampuke.dininglog.core.auth
 
 import kotlinx.coroutines.*
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import kotlin.test.*
@@ -9,7 +12,12 @@ import kotlin.test.*
 private class MemoryFile : AtomicTokenFile {
     var bytes: ByteArray? = null
     var failWrites = false
-    override fun read() = bytes?.clone()
+    @Volatile var beforeReadReturn: (() -> Unit)? = null
+    override fun read(): ByteArray? {
+        val snapshot = bytes?.clone()
+        beforeReadReturn?.invoke()
+        return snapshot
+    }
     override fun replace(bytes: ByteArray) { if (failWrites) error("disk failure"); this.bytes = bytes.clone() }
     override fun delete() { bytes = null }
 }
@@ -123,4 +131,38 @@ class AuthTest {
         coroutineScope { (1..20).map { async { assertFailsWith<AuthFailure> { f.coordinator.refreshAfter401("old-access") } } }.awaitAll() }
         assertEquals(1, f.gateway.refreshCalls); assertNotNull(f.store.read()!!.pendingRequestId); assertEquals(f.old, f.account.session.value)
     }
+    @Test fun accountSwitchBetweenRefreshReadAndPendingWriteCannotRestoreOldAccount() = runBlocking {
+        withTimeout(5000) {
+            val f = Fixture(); f.account.install(f.old)
+            val readStarted = CountDownLatch(1); val releaseRead = CountDownLatch(1)
+            val generation = f.account.generation
+            f.file.beforeReadReturn = { readStarted.countDown(); assertTrue(releaseRead.await(5, TimeUnit.SECONDS)) }
+            val refreshing = async(Dispatchers.Default) { assertFailsWith<AuthFailure> { f.coordinator.refreshAfter401("old-access") } }
+            try {
+                assertTrue(readStarted.await(5, TimeUnit.SECONDS))
+                val bob = AuthSession("b", "bob", "t", "B-access", "B-refresh")
+                val switching = async(Dispatchers.Default) { f.account.install(bob) }
+                while (f.account.generation == generation) delay(1)
+                f.file.beforeReadReturn = null; releaseRead.countDown()
+                switching.await(); refreshing.await()
+                assertEquals(bob, f.account.session.value); assertEquals("b", f.store.read()!!.userId)
+                assertEquals(0, f.gateway.refreshCalls)
+            } finally { f.file.beforeReadReturn = null; releaseRead.countDown() }
+        }
+    }
+    @Test fun suspendedAccountCleanupSerializesLaterAccountInstall() = runBlocking {
+        val f = Fixture(); val resumeCleanup = CompletableDeferred<Unit>(); val calls = AtomicInteger()
+        val local = object : AccountLocalData {
+            override suspend fun clear() { if (calls.incrementAndGet() == 2) resumeCleanup.await() }
+        }
+        val account = AccountSession(f.store, local); account.install(f.old)
+        val bob = AuthSession("b", "bob", "t", "B-access", "B-refresh")
+        val carol = AuthSession("c", "carol", "u", "C-access", "C-refresh")
+        val first = async(start = CoroutineStart.UNDISPATCHED) { account.install(bob) }
+        val second = async(start = CoroutineStart.UNDISPATCHED) { account.install(carol) }
+        try { assertFalse(second.isCompleted) } finally { resumeCleanup.complete(Unit) }
+        first.await(); second.await()
+        assertEquals(carol, account.session.value); assertEquals("c", f.store.read()!!.userId)
+    }
+
 }

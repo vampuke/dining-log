@@ -29,12 +29,13 @@ class AccountMemory : AccountLocalData {
     override suspend fun clear() { lists.clear(); drafts.clear(); navigation.clear() }
 }
 class AccountSession(private val store: SecureTokenStore, private val local: AccountLocalData) {
+    private val transition = Mutex()
     private val _session = MutableStateFlow<AuthSession?>(null)
     val session = _session.asStateFlow()
     private var ownerJob = SupervisorJob()
     var ownerScope = CoroutineScope(ownerJob + Dispatchers.Default); private set
-    var generation = 0L; private set
-    suspend fun clear() {
+    @Volatile var generation = 0L; private set
+    private suspend fun clearLocked() {
         generation++
         _session.value = null
         ownerJob.cancel()
@@ -42,35 +43,46 @@ class AccountSession(private val store: SecureTokenStore, private val local: Acc
         local.clear()
         ownerJob = SupervisorJob(); ownerScope = CoroutineScope(ownerJob + Dispatchers.Default)
     }
-    suspend fun install(value: AuthSession) {
-        clear()
+    suspend fun clear() = transition.withLock { clearLocked() }
+    internal suspend fun clearIfGeneration(expected: Long) = transition.withLock {
+        if (generation == expected) clearLocked()
+    }
+    suspend fun install(value: AuthSession) = transition.withLock {
+        clearLocked()
         try {
             store.write(StoredSession(value.userId, value.sessionId, value.refreshToken))
             _session.value = value
-        } catch (error: Exception) { clear(); throw error }
+        } catch (error: Exception) { clearLocked(); throw error }
     }
-    internal fun publishRefresh(value: AuthSession) { _session.value = value }
+    internal suspend fun persistPending(value: StoredSession, expected: Long) = transition.withLock {
+        if (generation != expected) throw AuthFailure("SESSION_REVOKED")
+        store.write(value)
+    }
+    internal suspend fun commitRefresh(value: AuthSession, expected: Long) = transition.withLock {
+        if (generation != expected) throw AuthFailure("SESSION_REVOKED")
+        store.write(StoredSession(value.userId, value.sessionId, value.refreshToken))
+        _session.value = value
+    }
 }
 class RefreshCoordinator(private val store: SecureTokenStore, private val account: AccountSession,
     private val gateway: AuthGateway, private val nowMillis: () -> Long = System::currentTimeMillis) {
     private val mutex = Mutex()
     private var lastNetworkFailure: Pair<String?, Long>? = null
     suspend fun refreshAfter401(failedAccessToken: String?): String = mutex.withLock {
+        val generation = account.generation
         val current = account.session.value
         if (current != null && current.accessToken != failedAccessToken) return@withLock current.accessToken
-        val saved = store.read() ?: run { account.clear(); throw AuthFailure("SESSION_REVOKED") }
+        val saved = store.read() ?: run { account.clearIfGeneration(generation); throw AuthFailure("SESSION_REVOKED") }
         if (lastNetworkFailure?.let { it.first == failedAccessToken && nowMillis() - it.second < 1000 } == true) throw AuthFailure("NETWORK_ERROR")
         val pending = if (saved.pendingRequestId == null) saved.copy(pendingRequestId = UUID.randomUUID().toString(), pendingStartedAt = nowMillis()) else saved
-        if (nowMillis() - pending.pendingStartedAt!! >= 120_000) { account.clear(); throw AuthFailure("SESSION_REVOKED") }
-        val generation = account.generation
+        if (nowMillis() - pending.pendingStartedAt!! >= 120_000) { account.clearIfGeneration(generation); throw AuthFailure("SESSION_REVOKED") }
         try {
             // Stable request id is durable BEFORE the request; new token BEFORE publishing access.
-            store.write(pending)
+            account.persistPending(pending, generation)
             val next = gateway.refresh(pending.refreshToken, pending.pendingRequestId!!)
             if (generation != account.generation) throw AuthFailure("SESSION_REVOKED")
             require(next.userId == saved.userId && next.sessionId == saved.sessionId)
-            store.write(StoredSession(next.userId, next.sessionId, next.refreshToken))
-            account.publishRefresh(next)
+            account.commitRefresh(next, generation)
             lastNetworkFailure = null
             next.accessToken
         } catch (error: Exception) {
@@ -79,7 +91,7 @@ class RefreshCoordinator(private val store: SecureTokenStore, private val accoun
             if (error is AuthFailure && error.code in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE", "RATE_LIMITED")) {
                 lastNetworkFailure = failedAccessToken to nowMillis(); throw error
             }
-            account.clear(); throw error
+            account.clearIfGeneration(generation); throw error
         }
     }
     // Each API operation is retried at most once; revoked sessions never enter a refresh loop.
@@ -92,11 +104,11 @@ class RefreshCoordinator(private val store: SecureTokenStore, private val accoun
                 val next = refreshAfter401(access)
                 if (generation != account.generation) throw AuthFailure("SESSION_REVOKED")
                 try { return call(next) } catch (retry: AuthFailure) {
-                    if (retry.code in setOf("SESSION_REVOKED", "REFRESH_REUSED") && generation == account.generation) account.clear()
+                    if (retry.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) account.clearIfGeneration(generation)
                     throw retry
                 }
             }
-            if (error.code in setOf("SESSION_REVOKED", "REFRESH_REUSED") && generation == account.generation) account.clear()
+            if (error.code in setOf("SESSION_REVOKED", "REFRESH_REUSED")) account.clearIfGeneration(generation)
             throw error
         }
     }
