@@ -56,6 +56,7 @@ adb shell am start -n top.alanvampuke.dininglog.debug/top.alanvampuke.dininglog.
 cd backend
 npm ci
 node --test ../.github/scripts/release-guards.test.mjs
+python3 -B -m unittest discover -s ../.github/scripts -p 'test_apk_metadata.py'
 npm run check
 node tests/contracts.mjs
 npm test

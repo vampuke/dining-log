@@ -42,6 +42,8 @@ service-account*.json
 *.sqlite*
 *.sql.export
 *.log
+__pycache__/
+*.pyc
 logs/
 design/*_run.log
 backend/tests/capacity/output/

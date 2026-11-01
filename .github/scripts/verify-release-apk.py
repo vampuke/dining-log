@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+from apk_metadata import parse_badging
 
 root = Path(os.environ["GITHUB_WORKSPACE"])
 temp = Path(os.environ["RUNNER_TEMP"])
@@ -16,12 +17,12 @@ selection = json.loads((temp / "dining-release-selection.json").read_text())
 
 def identity(path):
     badging = subprocess.check_output([str(tools / "aapt2"), "dump", "badging", str(path)], text=True)
-    match = re.search(r"^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", badging, re.M)
-    if not match:
-        raise RuntimeError("APK has no readable package/version metadata")
-    if not re.search(r"^sdkVersion:'26'$", badging, re.M) or not re.search(r"^targetSdkVersion:'35'$", badging, re.M):
-        raise RuntimeError("APK SDK levels differ from the reviewed configuration")
-    return {"package": match[1], "versionCode": int(match[2]), "versionName": match[3]}
+    if path == apk:
+        # Retain only public manifest identity fields when the gate fails.
+        fields = [line for line in badging.splitlines()
+                  if line.startswith(("package: ", "sdkVersion:", "minSdkVersion:", "targetSdkVersion:"))]
+        (temp / "dining-apk-badging.txt").write_text("\n".join(fields) + "\n")
+    return parse_badging(badging)
 
 def signature(path):
     verified = subprocess.check_output([str(tools / "apksigner"), "verify", "--verbose", "--print-certs", str(path)], text=True)
