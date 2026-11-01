@@ -1,6 +1,10 @@
 import { applyD1Migrations, env, type D1Migration } from 'cloudflare:test';
 import { sha256 } from '@noble/hashes/sha256';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { bindings, request } from '../domain/helpers';
+import { issueSession, type UserRow } from '../../src/auth/session';
+import { fragment } from '../../src/domain/search-index';
+import type { Row } from '../../src/domain/model';
 
 declare module 'cloudflare:test' {
   interface ProvidedEnv { DB: D1Database; TEST_MIGRATIONS: D1Migration[] }
@@ -165,7 +169,7 @@ function cluster(index: number, dishCount: number, restaurantRevisions: number, 
     metadata_updated_at: revision.createdAt, created_at: revision.createdAt,
   }));
   statements.push(insert('restaurant_search', { restaurant_id: restaurantId, user_id: USER_ID,
-    content: normalize([restaurant, ...dishes].flatMap((item) => Object.values(item.fields)).join(' ')),
+    content: JSON.stringify({ parts: Object.fromEntries([restaurant, ...dishes].map(item => [item.id, fragment(item.type === 'restaurant' ? 'restaurant' : 'dish', { ...item.fields, id: item.id, deleted_at: null } as Row)])), text: normalize([restaurant, ...dishes].flatMap((item) => Object.values(item.fields)).join(' ')) }),
     updated_at: Math.max(...entities.map((item) => item.updatedAt)) }));
   return { statements, entities, summary: { id: restaurantId,
     rating: Number(restaurant.fields.rating_tenths), updatedAt: restaurant.updatedAt,
@@ -333,6 +337,38 @@ async function completeWrite() {
     rowDeltas: Object.fromEntries(APP_TABLES.map((table) => [table, after[table] - before[table]])) };
 }
 
+async function measureDomainAPI(summaries: Summary[], scenario: typeof SCENARIOS[number]) {
+  const user = await env.DB.prepare('SELECT * FROM users WHERE id=?').bind(USER_ID).first<UserRow>();
+  const issued = await issueSession(bindings, user!, 'Synthetic P3 capacity');
+  await env.DB.batch(issued.statements);
+  const selected = summaries[2];
+  const cases = [
+    { path: '/restaurants?limit=20', count: 20 },
+    { path: '/restaurants?sort=rating_desc&limit=20', count: 20 },
+    { path: '/search?q=' + encodeURIComponent(SEARCH_HIT), count: 10 },
+    { path: '/search?q=' + SEARCH_MISS, count: 0 },
+    { path: `/restaurants/${selected.id}`, count: null },
+    { path: `/restaurants/${selected.id}/dishes`, count: scenario.dishesPerRestaurant },
+    { path: `/restaurants/${selected.id}/visits`, count: 3 },
+    { path: `/restaurants/${selected.id}/revisions?limit=10`, count: 10 },
+  ];
+  const results = [];
+  for (const test of cases) {
+    const samples = [];
+    for (let i = 0; i < REPETITIONS; i++) {
+      const started = Date.now();
+      const response = await request(test.path, issued.result.access_token);
+      const body = await response.json() as { data: { id?: string; items?: unknown[]; restaurants?: unknown[] } };
+      samples.push(Date.now() - started);
+      expect(response.status, test.path).toBe(200);
+      if (test.count === null) expect(body.data.id).toBe(selected.id);
+      else expect(body.data.items ?? body.data.restaurants).toHaveLength(test.count);
+    }
+    results.push({ path: test.path, samples, wallMs: quantiles(samples) });
+  }
+  return results;
+}
+
 beforeAll(async () => { await applyD1Migrations(env.DB, env.TEST_MIGRATIONS); });
 
 describe('deterministic capacity in the local Cloudflare Workers D1 pool (GitHub Actions only)', () => {
@@ -370,6 +406,7 @@ describe('deterministic capacity in the local Cloudflare Workers D1 pool (GitHub
       }
       measuredQueries.push(await measure(query));
     }
+    const actualAPI = await measureDomainAPI(seeded.summaries, scenario);
     const write = await completeWrite();
     expect((await env.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([]);
     expect(await env.DB.prepare('PRAGMA quick_check').first('quick_check')).toBe('ok');
@@ -386,8 +423,12 @@ describe('deterministic capacity in the local Cloudflare Workers D1 pool (GitHub
     console.log('CAPACITY_RESULT ' + JSON.stringify({ schemaVersion: 1, scenario, runtime,
       repetitions: REPETITIONS, p95LimitMs: P95_LIMIT_MS, wallClock: 'Date.now (1 ms resolution; Workers performance.now is not used)',
       seed: seeded.metadata, rowCounts: counts,
-      restaurantRevisionRange: revisionRange, storage: measuredStorage, queries: measuredQueries, write,
+      restaurantRevisionRange: revisionRange, storage: measuredStorage, queries: measuredQueries, actualAPI, write,
       integrity: { foreignKeyViolations: 0, quickCheck: 'ok' }, overLimit }));
+    for (const measured of actualAPI) {
+      expect(measured.samples).toHaveLength(REPETITIONS);
+      expect(measured.wallMs.p95, `${scenario.name}/${measured.path} API pool p95`).toBeLessThanOrEqual(P95_LIMIT_MS);
+    }
     for (const query of measuredQueries) {
       expect(query.samples).toHaveLength(REPETITIONS);
       expect(query.wallMs.p95, `${scenario.name}/${query.id} wall p95`).toBeLessThanOrEqual(P95_LIMIT_MS);
