@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -75,7 +77,12 @@ class ProductVisualTest {
         RecordListScreen(state, state.query.query, state.query.filters, {}, {}, {}, {}, {})
     }
     private fun assertPixels(tag: String, background: Int, ink: Int, name: String) {
-        val bitmap = compose.onNodeWithTag(tag).captureToImage()
+        compose.onNodeWithTag(tag).assertExists()
+        // Compose's PixelCopy helper cannot capture a dialog before API 28.
+        // UiAutomation captures the actually rendered dialog on API 26 too.
+        val bitmap = if (tag == "screen:conflict") requireNotNull(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
+        ).asImageBitmap() else compose.onNodeWithTag(tag).captureToImage()
         val pixels = bitmap.toPixelMap()
         var backgroundPixels = 0; var inkPixels = 0
         for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
@@ -123,11 +130,27 @@ class ProductVisualTest {
     @Test fun darkKeyboardAt200PercentLeavesSaveAboveActualIme() { largeForm(true); assertKeyboard("dark") }
     private fun assertKeyboard(name: String) {
         compose.onNodeWithTag("field:name").performScrollTo().performClick()
+        compose.onNodeWithTag("field:name").performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        compose.onNodeWithTag("field:name").assertIsFocused()
         compose.activityRule.scenario.onActivity { activity ->
             val focused = activity.window.decorView.findFocus()
             if (focused != null) activity.getSystemService(InputMethodManager::class.java).showSoftInput(focused, InputMethodManager.SHOW_IMPLICIT)
         }
-        compose.waitUntil(15_000) { compose.onNodeWithTag("screen:edit").fetchSemanticsNode().config[ImeBottomPx] > 0 }
+        try {
+            compose.waitUntil(15_000) { compose.onNodeWithTag("screen:edit").fetchSemanticsNode().config[ImeBottomPx] > 0 }
+        } catch (error: Throwable) {
+            val folder = ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir("p4-screenshots")!!
+            folder.mkdirs()
+            val screenshot = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+            File(folder, "$name-keyboard-failure-api${android.os.Build.VERSION.SDK_INT}.png").outputStream().use {
+                screenshot.compress(Bitmap.CompressFormat.PNG, 100, it)
+            }
+            compose.activityRule.scenario.onActivity {
+                val visible = Rect(); it.window.decorView.getWindowVisibleDisplayFrame(visible)
+                println("IME diagnostic: visible=$visible decorHeight=${it.window.decorView.height} focused=${it.window.decorView.findFocus() != null}")
+            }
+            throw error
+        }
         compose.onNodeWithTag("save").assertIsDisplayed().assertIsEnabled()
         val save = compose.onNodeWithTag("save").fetchSemanticsNode().boundsInWindow
         val visible = Rect()
@@ -146,9 +169,11 @@ class ProductVisualTest {
         compose.runOnIdle { state = ListUiState(items = listOf(summary), isOffline = true, query = ListQuery(query = "辣子鸡"), fetchedAt = 100, localScope = true) }
         compose.onNodeWithTag("offline").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("cache-scope").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithTag("title:${ref.id}").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("record-list").performScrollToNode(hasTestTag("title:${ref.id}"))
+        compose.onNodeWithTag("title:${ref.id}").assertIsDisplayed()
         compose.runOnIdle { state = state.copy(isRefreshing = true) }
-        compose.onNodeWithTag("title:${ref.id}").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("record-list").performScrollToNode(hasTestTag("title:${ref.id}"))
+        compose.onNodeWithTag("title:${ref.id}").assertIsDisplayed()
     }
     @Test fun sameFieldConflictSaveIsDisabledUntilExplicitChoice() {
         var confirmations = 0

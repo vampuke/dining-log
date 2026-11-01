@@ -57,5 +57,7 @@ dependencies {
     androidTestImplementation(libs.mockwebserver)
     androidTestImplementation(libs.serialization.json)
     androidTestImplementation(libs.okhttp)
+    androidTestImplementation(libs.retrofit)
+    androidTestImplementation(libs.retrofit.serialization)
     debugImplementation(libs.compose.ui.test.manifest)
 }
