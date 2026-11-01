@@ -13,16 +13,16 @@
 - Android core/auth 提供 AES-GCM 安全存储与刷新协调；data/auth 使用真正 Android Keystore 非导出 AES-256 key 和 noBackupFilesDir/AtomicFile。access 仅在内存；密文损坏或缺 key 删除文件回登录；无明文 fallback。
 - 刷新前持久化 request ID/起始时间，重试复用旧 token + 同 ID；新 refresh 持久化后才发布新 access。Mutex 协调并发 401，每个业务请求最多重放一次；网络错误保留加密状态，撤销类错误清理会话。
 - 登录/注册/恢复 Compose 页面使用现有 D2 浅深主题 token、等宽数字、24dp 网格、滚动/键盘适配、持续错误提示、密码显隐、加载/禁用态和 429 秒数文案。敏感窗口 FLAG_SECURE；复制恢复码为用户主动动作，API 33+ 标记敏感剪贴板。
-- 切账号清 token、内存列表/草稿/导航，取消账号任务，清理保留的本地缓存/草稿/数据库位置。P2 尚未实现 P3 的业务列表与 Room CRUD。
+- 切账号清 token、内存列表/草稿/导航，账号切换/清理与 refresh 持久化/发布共用会话 Mutex，并检查可见的 generation；取消账号任务，清理保留的本地缓存/草稿/数据库位置。P2 尚未实现 P3 的业务列表与 Room CRUD。
 
 ## 验证状态
 
 已验证：GitHub Actions [run 41279089880](https://github.com/vampuke/dining-log/actions/runs/41279089880)，代码 commit `8f34f61`，backend、android、API 26/35 instrumentation 四个任务全部成功。
 
 - 后端 `tsc`/ESLint、103 个测试（含下列 29 个 auth 用例）全部通过；SQLite 迁移检查与原有两组容量场景通过，未降低任何阈值。
-- Android debug APK、`:core:test`（下列 12 个 auth JVM 用例）、app unit test task 和 lint 通过。JVM 测试报告位于 `android-build` artifact。
+- Android debug APK、`:core:test`（该 run 的 12 个 auth JVM 用例）、app unit test task 和 lint 通过。JVM 测试报告位于 `android-build` artifact。
 - API 26 与 API 35 模拟器分别执行下列 7 个 instrumentation 用例；Keystore 往返/损坏/缺 key，以及浅深主题、滚动大字体、持续 429 提示与密码显隐通过。报告位于 `android-auth-api-26`/`android-auth-api-35` artifacts。
-- 交付 PR：[#1](https://github.com/vampuke/dining-log/pull/1)。合并 commit 和合并后 master CI 可从该 PR 与 [Actions](https://github.com/vampuke/dining-log/actions/workflows/ci.yml) 复核。
+- 交付主 PR：[#1](https://github.com/vampuke/dining-log/pull/1)。跨线程收尾修复与最终 14 个 JVM 用例的 CI 见追加 [PR #2](https://github.com/vampuke/dining-log/pull/2) 的 Actions 检查；合并 commit 和合并后 master CI 可从 PR 与 [Actions](https://github.com/vampuke/dining-log/actions/workflows/ci.yml) 复核。
 
 全部构建/测试仅在 GitHub Actions 执行。本机未运行 npm install/npm ci、Gradle、Docker 或 Vitest。未部署 Cloudflare、未建真实 D1、未写真实 secret。`design/PLAN.md`、`backend/migrations/0001_initial.sql`、P1 `password.ts`/`jwt.ts` 未修改。
 
@@ -36,7 +36,7 @@
 | 4 并发 401/跨 ID 重用 | 后端同上：`S4 cross request-id old-token reuse revokes the entire session immediately`；`S4 expired replay window revokes session even with the original request-id`。Android `AuthTest.kt`：`concurrent401OperationsRefreshOnceAndReplayEachRequestOnce`、`concurrentNetworkFailuresAreCoalescedAndKeepEncryptedRetryState` | 客户端单飞在 JVM 测试；后端重用撤销在 Workers/D1 测试 |
 | 5 改密码/恢复即时失效 | 后端同上：`S5 password change invalidates all old access/refresh within the same second and creates current session`；`S5 recovery invalidates every old session/token and stores only recovery hashes`；`S5 password-change racing with slow login cannot create an old-version session` | 同秒 token 与旧会话失效、并发登录 CAS；新会话可用 |
 | 6 一次性恢复码 CAS | 同上：`S6 recovery CAS race commits exactly one new password/session/code set` | 该测试通过 test-only spy 放行 1/min 限流，以真正竞争恢复事务；生产无 bypass。独立测试仍严格验证恢复限流。只有一个消费/新会话/新码集合；全部旧码失效 |
-| 7 A→退出→B 无残留 | `android/core/.../auth/AuthTest.kt`：`switchingAccountsClearsListsDraftsNavigationAndOwnerJobs`、`accountSwitchDuringRefreshCannotPublishPreviousAccount` | 已验证：生命周期与内存状态单测；未验证：完整业务页面、真机账号切换，见 P2_BLOCKERS |
+| 7 A→退出→B 无残留 | `android/core/.../auth/AuthTest.kt`：`switchingAccountsClearsListsDraftsNavigationAndOwnerJobs`、`accountSwitchDuringRefreshCannotPublishPreviousAccount`、`accountSwitchBetweenRefreshReadAndPendingWriteCannotRestoreOldAccount`、`suspendedAccountCleanupSerializesLaterAccountInstall` | 已验证：生命周期与内存状态单测；未验证：完整业务页面、真机账号切换，见 P2_BLOCKERS |
 | 8 重启/损坏/重装 | 同上：`simulatedProcessRestartRecoversPendingRotationWithoutPersistingAccess`、`damagedCiphertextClearsSessionAndReturnsLogin`、`missingKeyNeverFallsBackToPlaintext`、`expiredPendingRetryRequiresLoginWithoutSendingOldToken`；`android/app/src/androidTest/.../auth/AndroidAuthTest.kt`：`realAndroidKeystoreRoundTripCorruptionAndMissingKeyReturnLogin` | 已验证：JVM 进程模拟 + API 26/35 模拟器 Keystore 检查；未验证：真实杀进程、卸载重装、备份恢复与厂商迁移未验证 |
 
 ## 后端 auth 用例清单
@@ -75,7 +75,7 @@
 
 ## Android 用例清单
 
-`android/core/src/test/kotlin/top/alanvampuke/dininglog/core/auth/AuthTest.kt` 共 **12** 个 JVM auth 用例：
+`android/core/src/test/kotlin/top/alanvampuke/dininglog/core/auth/AuthTest.kt` 共 **14** 个 JVM auth 用例（最后两项为跨线程修复新增）：
 
 - `secureStoreRoundTripUsesFreshNonceAndBindsApplicationId`
 - `damagedCiphertextClearsSessionAndReturnsLogin`
@@ -89,6 +89,8 @@
 - `diskFailureDoesNotPublishNewAccessOrLeaveSession`
 - `accountSwitchDuringRefreshCannotPublishPreviousAccount`
 - `concurrentNetworkFailuresAreCoalescedAndKeepEncryptedRetryState`
+- `accountSwitchBetweenRefreshReadAndPendingWriteCannotRestoreOldAccount`
+- `suspendedAccountCleanupSerializesLaterAccountInstall`
 
 `android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/auth/AndroidAuthTest.kt` 共 **7** 个 instrumentation 用例，在 API 26/35 模拟器运行：
 
