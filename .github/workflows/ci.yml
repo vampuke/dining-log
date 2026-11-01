@@ -71,9 +71,9 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Build debug APK and write dependency locks
+      - name: Build, lint and test using committed dependency locks
         working-directory: android
-        run: ./gradlew :app:assembleDebug :app:assembleRelease :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --write-locks --no-daemon
+        run: ./gradlew :app:assembleDebug :app:assembleRelease :app:assembleDebugAndroidTest :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --no-daemon
       - name: Verify debug APK identity and checksums
         working-directory: android/app/build/outputs/apk/debug
         run: |
