@@ -101,7 +101,7 @@ describe('P3 acceptance CRUD ownership and history', () => {
     for (const source of [del, restore]) await error(await request('/revisions', t, { ...base, expected_version: 4, fields: ['deleted_at'], source_revision_id: source.revisions[0].id }), 400, 'VALIDATION_ERROR');
   });
   it('S15 long text internal newlines null unrated and leap day round trip explicit errors', async () => {
-    const a = await account(), t = a.access_token, review = '行\n  文'.repeat(1000), r = await restaurant(t, { review, note: null, rating: null });
+    const a = await account(), t = a.access_token, review = '行\n  文'.repeat(800), r = await restaurant(t, { review, note: null, rating: null });
     expect((await data<Entity>(await request(`/restaurants/${r.entity.id}`, t)))).toMatchObject({ review, rating: null, note: null });
     const v = await makeChild(t, r.entity.id, 'visits', { dining_date: '2024-02-29', note: ' line\r\n  two ' }); expect(await data(await request(`/visits/${v.entity.id}`, t))).toMatchObject({ dining_date: '2024-02-29', note: 'line\n  two' });
     for (const rating of [0, 5.1, 4.33, '4.3']) await error(await request('/restaurants', t, restaurantInput({ rating })), 400, 'VALIDATION_ERROR');

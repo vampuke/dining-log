@@ -11,7 +11,7 @@ const boolean = z.enum(['true', 'false']).transform(v => v === 'true');
 const queryRating = z.string().regex(/^\d(?:\.\d)?$/).transform(Number).pipe(rating);
 const queryText = z.string().refine(v => Array.from(v).length <= 100).transform(normalizeSearch).refine(v => v.split(' ').filter(Boolean).length <= 5);
 const instant = z.string().datetime().transform(v => new Date(v).toISOString());
-const common = { q: queryText.optional(), deleted: z.enum(['exclude', 'include', 'only']).default('exclude'), cursor: z.string().max(2048).optional(), limit: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(50)).default('20') };
+const common = { q: queryText.optional(), deleted: z.enum(['exclude', 'include', 'only']).default('exclude'), cursor: z.string().optional(), limit: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(1).max(50)).default('20') };
 const rated = { min_rating: queryRating.optional(), max_rating: queryRating.optional(), unrated: boolean.optional(), sort: z.enum(['updated_desc', 'rating_desc']).default('updated_desc') };
 export const restaurantQuery = z.object({ ...common, ...rated, category: category.optional(), cuisine: z.string().refine(v => Array.from(v).length <= 60).transform(normalizeSearch).optional(), visited: boolean.optional(), visited_from: date.optional(), visited_to: date.optional() }).strict();
 export const dishQuery = z.object({ ...common, ...rated }).strict();

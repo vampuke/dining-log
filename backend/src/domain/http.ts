@@ -9,7 +9,16 @@ import { id, parse } from './schemas';
 export type C = Context<AppEnv>;
 export function router() {
   const app = new Hono<AppEnv>();
-  app.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); const { user } = await accessIdentity(c.env, c.req.header('Authorization')); c.set('userId', user.id); await next(); });
+  app.use('*', async (c, next) => {
+    c.header('Cache-Control', 'no-store');
+    // Hono merges middleware from sibling routers. Verify once for a matched
+    // endpoint; unmatched paths continue to the common 404 handler.
+    if (c.req.matchedRoutes.some(route => !route.path.endsWith('*')) && !c.get('userId')) {
+      const { user } = await accessIdentity(c.env, c.req.header('Authorization'));
+      c.set('userId', user.id);
+    }
+    await next();
+  });
   app.onError((e, c) => {
     const error = e instanceof AuthError ? e : new AuthError(500, 'INTERNAL_ERROR', 'Unable to complete the request.');
     return json(c, { error: { code: error.code, message: error.message, field_errors: error.fieldErrors, ...(error.current === undefined ? {} : { current: error.current }) }, meta: { request_id: crypto.randomUUID() } }, error.status);
