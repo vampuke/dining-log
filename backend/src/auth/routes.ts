@@ -22,15 +22,15 @@ async function body<T extends z.ZodTypeAny>(c: C, schema: T): Promise<z.infer<T>
   const chunks: Uint8Array[] = []; let bytes = 0;
   if (reader) { for (;;) { const part = await reader.read(); if (part.done) break; bytes += part.value.length; if (bytes > 65536) { await reader.cancel(); throw new AuthError(413, 'PAYLOAD_TOO_LARGE', 'Request body is too large.'); } chunks.push(part.value); } }
   const all = new Uint8Array(bytes); let offset = 0; for (const chunk of chunks) { all.set(chunk, offset); offset += chunk.length; }
-  let value: unknown; try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(all)); } catch { throw new AuthError(400, 'VALIDATION_ERROR', 'Invalid JSON request.'); }
+  let value: unknown; try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(all)); } catch { throw new AuthError(400, 'VALIDATION_ERROR', 'Invalid JSON request.'); }
   const result = schema.safeParse(value);
   if (!result.success) throw new AuthError(400, 'VALIDATION_ERROR', 'Invalid request fields.');
   return result.data;
 }
 function idemKey(c: C) { const key = c.req.header('Idempotency-Key'); if (key && !uuid.safeParse(key).success) throw new AuthError(400, 'VALIDATION_ERROR', 'Idempotency-Key must be UUID v4.'); return key; }
 async function idempotency(c: C, userId: string, payload: unknown) { return AuthIdempotency.create(c.env, userId, idemKey(c), c.req.method, c.req.path, payload); }
-async function cached(c: C, idem: AuthIdempotency | null): Promise<Response | null> { const hit = await idem?.read(); return hit ? json(c, hit.response, hit.status) : null; }
-async function commit(c: C, statements: D1PreparedStatement[], data: unknown, status: number, idem: AuthIdempotency | null, failure?: () => Promise<never>) {
+async function cached(c: C, idem: AuthIdempotency | null): Promise<Response | null> { const hit = await idem?.read(); return hit ? (hit.status === 204 ? c.body(null, 204) : json(c, hit.response, hit.status)) : null; }
+async function commit(c: C, statements: D1PreparedStatement[], data: unknown, status: number, idem: AuthIdempotency | null, failure?: () => Promise<Response>) {
   const response = envelope(data);
   if (idem) statements.push(await idem.statement(response, status));
   try { await c.env.DB.batch(statements); }
@@ -83,7 +83,7 @@ auth.post('/auth/register', async c => {
     VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(user.id, user.username, user.display_name, record.password_algorithm, record.password_hash, record.password_salt, record.password_iterations, record.pepper_version, now, now, now),
     ...session.statements, ...recovery.statements], { ...session.result, recovery_codes: recovery.codes }, 201, idem, async () => {
       const winner = await userByName(c.env.DB, input.username);
-      if (winner) { const retry = await cached(c, await idempotency(c, winner.id, input)); if (retry) return retry as never; throw new AuthError(409, 'USERNAME_TAKEN', 'Username is already registered.'); }
+      if (winner) { const retry = await cached(c, await idempotency(c, winner.id, input)); if (retry) return retry; throw new AuthError(409, 'USERNAME_TAKEN', 'Username is already registered.'); }
       throw new AuthError(503, 'TEMPORARILY_UNAVAILABLE', 'Please try again later.');
     });
 });
