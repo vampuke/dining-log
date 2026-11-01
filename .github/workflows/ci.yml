@@ -75,10 +75,11 @@ jobs:
       - name: Verify debug APK identity and checksums
         working-directory: android/app/build/outputs/apk/debug
         run: |
+          set -euo pipefail
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging app-debug.apk > APK_BADGING.txt
-          rg "^package: name='top\.alanvampuke\.dininglog' " APK_BADGING.txt
-          rg "^sdkVersion:'26'$" APK_BADGING.txt
-          rg "^targetSdkVersion:'35'$" APK_BADGING.txt
+          grep -E "^package: name='top\.alanvampuke\.dininglog' " APK_BADGING.txt
+          grep -E "^sdkVersion:'26'$" APK_BADGING.txt
+          grep -E "^targetSdkVersion:'35'$" APK_BADGING.txt
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app-debug.apk > APK_SIGNATURE.txt
           sha256sum app-debug.apk > SHA256SUMS
           md5sum app-debug.apk > MD5SUMS

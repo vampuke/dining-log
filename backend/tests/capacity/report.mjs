@@ -80,7 +80,7 @@ const lines = [
 for (const result of scenarios) {
   const scenario = result.scenario;
   lines.push(`## ${scenario.name}：${scenario.objects.toLocaleString('en-US')} 对象 / ${scenario.history.toLocaleString('en-US')} 历史`, '',
-    `SQLite ${result.runtime.sqlite_version}；1 user、${scenario.restaurants} restaurants、${result.rowCounts.dishes} dishes、${result.rowCounts.visits} visits。每家餐厅 ${result.restaurantRevisionRange.min}–${result.restaurantRevisionRange.max} 条 revision；菜品 / 到店各 ${scenario.childRevisions} 条。每条基线 revision 有独立 change_set，保守计入分组存储。`,
+    `SQLite 版本：${result.runtime.sqlite_version ?? `未读取（${result.runtime.sqliteVersionUnavailable}）`}；1 user、${scenario.restaurants} restaurants、${result.rowCounts.dishes} dishes、${result.rowCounts.visits} visits。每家餐厅 ${result.restaurantRevisionRange.min}–${result.restaurantRevisionRange.max} 条 revision；菜品 / 到店各 ${scenario.childRevisions} 条。每条基线 revision 有独立 change_set，保守计入分组存储。`,
     `生成数据 SHA-256：\`${result.seed.fixtureSha256}\`。初始化 ${result.seed.statements} 条 SQL、${result.seed.batches} 个 batch（每 batch ≤40 条 SQL），实测 wall ${fmt(result.seed.wallMs)} ms、rows_read=${result.seed.rowsRead}、rows_written=${result.seed.rowsWritten}。`, '',
     '| 文本类型 | restaurants | dishes | visits |', '| --- | ---: | ---: | ---: |');
   for (const kind of ['english_short', 'chinese_short', 'near_limit']) lines.push(`| ${kind} | ${result.seed.textCounts.restaurant[kind]} | ${result.seed.textCounts.dish[kind]} | ${result.seed.textCounts.visit[kind]} |`);

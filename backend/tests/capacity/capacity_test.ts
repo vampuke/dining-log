@@ -368,7 +368,14 @@ describe('deterministic capacity in the local Cloudflare Workers D1 pool (GitHub
     const write = await completeWrite();
     expect((await env.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([]);
     expect(await env.DB.prepare('PRAGMA quick_check').first('quick_check')).toBe('ok');
-    const runtime = await env.DB.prepare('SELECT sqlite_version() AS sqlite_version').first<{ sqlite_version: string }>();
+    let runtime: { sqlite_version: string | null; sqliteVersionUnavailable?: string } = { sqlite_version: null };
+    try {
+      runtime = (await env.DB.prepare('SELECT sqlite_version() AS sqlite_version').first<{ sqlite_version: string }>()) ?? runtime;
+    } catch (error) {
+      const reason = String(error);
+      if (!/not authorized to use function: sqlite_version/i.test(reason)) throw error;
+      runtime.sqliteVersionUnavailable = reason;
+    }
     const overLimit = measuredQueries.filter((query) => query.wallMs.p95 > P95_LIMIT_MS || query.sqlMs.p95 > P95_LIMIT_MS).map((query) => query.id);
     // Emit raw samples before the performance assertions, including evidence on failures.
     console.log('CAPACITY_RESULT ' + JSON.stringify({ schemaVersion: 1, scenario, runtime,
