@@ -75,3 +75,23 @@ describe('P3 atomic mutations and server history', () => {
     await error(await request('/restaurants', a.access_token, restaurantInput({ first_visit: { id: v.entity.id, dining_date: '2024-02-29' } })), 409, 'ID_CONFLICT'); expect(await counts()).toEqual(before);
   });
 });
+describe('P3 forced interleavings preserve atomicity and error attribution', () => {
+  it('no-op restaurant save loses a version race and leaves no successful cache or history', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t), before = await counts();
+    const db = batchDB(async statements => { await data(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, name: 'winner' }, 'PATCH')); return env.DB.batch(statements); });
+    await error(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, name: r.entity.name }, 'PATCH', crypto.randomUUID(), db), 409, 'VERSION_CONFLICT');
+    expect(await counts()).toMatchObject({ revisions: before.revisions! + 1, change_sets: before.change_sets! + 1, idempotency_keys: before.idempotency_keys! + 1, mutation_guards: 0 });
+  });
+  it('same-key different fingerprint batch loser is idempotency conflict before version conflict', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t), key = crypto.randomUUID();
+    const db = batchDB(async statements => { await data(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, review: 'winner' }, 'PATCH', key)); return env.DB.batch(statements); });
+    await error(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, review: 'loser' }, 'PATCH', key, db), 409, 'IDEMPOTENCY_CONFLICT');
+    expect(await counts()).toMatchObject({ revisions: 2, change_sets: 2, mutation_guards: 0 });
+  });
+  it('batch deletion of target is NOT_FOUND before any version conflict', async () => {
+    const a = await account(), t = a.access_token, r = await restaurant(t);
+    const db = batchDB(async statements => { await data(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1 }, 'DELETE')); return env.DB.batch(statements); });
+    await error(await request(`/restaurants/${r.entity.id}`, t, { expected_version: 1, review: 'stale' }, 'PATCH', crypto.randomUUID(), db), 404, 'NOT_FOUND');
+    expect(await counts()).toMatchObject({ revisions: 2, change_sets: 2, mutation_guards: 0 });
+  });
+});
