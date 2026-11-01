@@ -241,6 +241,10 @@ class ProductVisualTest {
         var state by mutableStateOf(ListUiState(localScope = false))
         compose.setContent { QuietGridTheme(true) { listScreen(state) } }
         compose.onNodeWithTag("empty-state").assertExists()
+        compose.runOnIdle { state = ListUiState(query = ListQuery(query = "尚未取得服务器结果"), localScope = true) }
+        compose.onNodeWithTag("cache-empty").assertExists()
+        compose.onNodeWithText("已缓存内容中没有匹配；服务器范围未确认").assertExists()
+        compose.onNodeWithTag("no-results").assertDoesNotExist()
         compose.runOnIdle { state = ListUiState(query = ListQuery(query = "不存在"), localScope = false) }
         compose.onNodeWithTag("no-results").assertExists()
         compose.runOnIdle { state = ListUiState(items = listOf(summary), isOffline = true, query = ListQuery(query = "辣子鸡"), fetchedAt = 100, localScope = true) }

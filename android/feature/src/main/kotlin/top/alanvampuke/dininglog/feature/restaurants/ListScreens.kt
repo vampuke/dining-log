@@ -59,13 +59,17 @@ import top.alanvampuke.dininglog.feature.theme.*
             if (state.items.isEmpty()) item {
                 val text = when {
                     state.isRefreshing -> "正在读取记录…"
-                    state.isOffline || state.localScope && state.error != null -> if (isSearch) "已缓存内容中没有匹配；服务器范围未确认" else "此设备没有可用缓存，请联网后重试"
+                    state.isOffline || state.localScope -> when {
+                        isSearch -> "已缓存内容中没有匹配；服务器范围未确认"
+                        state.isOffline -> "此设备没有可用缓存，请联网后重试"
+                        else -> "此设备还没有缓存，服务器范围尚未确认；可刷新重试"
+                    }
                     state.error != null -> "加载失败，请重试"
                     isSearch || filters != ListFilters() -> "没有符合条件的结果"
                     state.query.deleted == DeletedFilter.ONLY -> "这里没有可恢复的记录"
                     else -> when (kind) { RecordKind.RESTAURANT -> "还没有餐厅，记下第一家吧"; RecordKind.DISH -> "这家餐厅还没有菜品"; RecordKind.VISIT -> "还没有到店记录"; RecordKind.REVISION -> "还没有修改历史" }
                 }
-                val emptyTag = when { state.isOffline -> "cache-empty"; isSearch && !state.localScope && state.error == null -> "no-results"; else -> "empty-state" }
+                val emptyTag = when { state.isOffline || state.localScope -> "cache-empty"; isSearch && state.error == null -> "no-results"; else -> "empty-state" }
                 GridText(text, Modifier.fillMaxWidth().testTag(emptyTag), color = LocalQuietGridColors.current.secondary)
             }
             items(state.items, key = { it.ref.id }) { record -> RecordRow(record, onRecord) }
