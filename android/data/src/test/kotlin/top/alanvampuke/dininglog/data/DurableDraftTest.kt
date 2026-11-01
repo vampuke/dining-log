@@ -145,6 +145,25 @@ class DurableDraftTest {
             assertEquals(first.body.readUtf8(), retry.body.readUtf8())
         }
     }
+    @Test fun deletingAChildAlsoRefreshesItsParentsCachedCounts() = runBlocking {
+        Fixture().use { f ->
+            val childRef = RecordRef(RecordKind.DISH, "20000000-0000-4000-8000-000000000001", ref.id)
+            val child = RecordSnapshot(childRef, 1, mapOf("name" to "辣子鸡", "rating_tenths" to "43", "review" to null), base().updatedAt)
+            val pending = SavedDraft("A", "delete:child", childRef, WriteAction.DELETE, child, child.editable)
+            f.server.enqueue(MockResponse().setBody("{\"data\":{\"entity\":{\"id\":\"${childRef.id}\",\"version\":2,\"deleted_at\":\"2026-11-01T00:00:01.000Z\"},\"changed\":true,\"revisions\":[]}}"))
+            val parent = Json.parseToJsonElement(entity(1, "4.0")).jsonObject
+            f.server.enqueue(MockResponse().setBody(buildJsonObject {
+                put("data", JsonObject(parent + ("stats" to buildJsonObject { put("dish_count", 0); put("visit_count", 2) })))
+            }.toString()))
+            assertIs<SaveOutcome.Saved>(f.repository.submit(pending))
+            assertEquals("DELETE", f.server.takeRequest().method)
+            val refresh = f.server.takeRequest(5, TimeUnit.SECONDS)!!
+            assertEquals("GET", refresh.method); assertEquals("/api/v1/restaurants/${ref.id}?deleted=include", refresh.path)
+            val cached = f.repository.observeDetail("A", ref).first().snapshot!!
+            assertEquals("0", cached.fields["dish_count"]); assertEquals("2", cached.fields["visit_count"])
+            assertNull(f.repository.findDraft("A", pending.id))
+        }
+    }
     @Test fun acknowledgedSaveDoesNotBecomeUnknownWhenParentStatisticsGetFails() = runBlocking {
         Fixture().use { f ->
             f.server.enqueue(mutation())

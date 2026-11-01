@@ -155,7 +155,8 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         // A failed statistics GET cannot turn an acknowledged write into an
         // unknown result or reinsert a successfully deleted draft.
         val parent = if (pending.ref.kind == RecordKind.RESTAURANT) pending.ref.id else pending.ref.restaurantId
-        if (parent != null && saved.deletedAt == null && pending.ref.kind != RecordKind.REVISION) {
+        if (parent != null && pending.ref.kind != RecordKind.REVISION &&
+            (pending.ref.kind != RecordKind.RESTAURANT || saved.deletedAt == null)) {
             try { refreshDetail(pending.accountId, RecordRef(RecordKind.RESTAURANT, parent)) }
             catch (e: CancellationException) { throw e }
             catch (e: AuthFailure) { if (e.code !in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE", "RATE_LIMITED")) throw e }
