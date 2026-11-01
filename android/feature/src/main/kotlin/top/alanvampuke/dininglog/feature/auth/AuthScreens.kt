@@ -6,7 +6,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
@@ -31,12 +34,14 @@ fun authErrorText(error: AuthFailure): String = when (error.code) {
 }
 @Composable
 fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend () -> Unit,
-    onLogout: suspend () -> String?, onCopyRecoveryCodes: (List<String>) -> Unit) {
-    val session by account.session.collectAsState()
+    onLogout: suspend () -> String?, onCopyRecoveryCodes: (List<String>) -> Unit,
+    onAuthenticated: (@Composable (AuthSession, () -> Unit) -> Unit)? = null) {
+    val session by account.session.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var page by remember { mutableStateOf(AuthPage.LOGIN) }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var acknowledgedFor by rememberSaveable { mutableStateOf<String?>(null) }
     fun launchAction(action: suspend () -> Unit) {
         if (loading) return
         scope.launch {
@@ -53,6 +58,14 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
         catch (e: AuthFailure) { message = authErrorText(e) }
         catch (_: Exception) { message = "安全存储不可用，请重新登录。" }
         finally { loading = false }
+    }
+    // A later session revocation must return to login even when this session
+    // originally entered through registration or account recovery.
+    LaunchedEffect(session?.sessionId) { if (session != null) page = AuthPage.LOGIN }
+    val authenticated = session
+    if (authenticated != null && (authenticated.recoveryCodes.isEmpty() || acknowledgedFor == authenticated.sessionId) && onAuthenticated != null) {
+        key(authenticated.userId) { onAuthenticated(authenticated) { launchAction { message = onLogout(); page = AuthPage.LOGIN } } }
+        return
     }
     Surface(color = LocalQuietGridColors.current.bg, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
@@ -79,17 +92,16 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
                 if (message != null) TextButton(onClick = { launchAction { onRestore() } }, enabled = !loading) { Text("重试恢复已保存的登录") }
             } else {
                 key(current.sessionId) {
-                    var acknowledged by remember { mutableStateOf(false) }
                     Text("${current.username} 的账号", style = MaterialTheme.typography.headlineMedium)
                     Text("已登录", color = LocalQuietGridColors.current.accentInk)
-                    if (current.recoveryCodes.isNotEmpty() && !acknowledged) {
+                    if (current.recoveryCodes.isNotEmpty() && acknowledgedFor != current.sessionId) {
                         Text("请安全保存这 8 个一次性恢复码", style = MaterialTheme.typography.titleMedium)
                         Text("此页面只显示一次。恢复账号后，所有旧恢复码与旧会话都会失效。")
                         current.recoveryCodes.forEachIndexed { index, code ->
                             Text("${index + 1}. $code", style = QuietGridText.date, modifier = Modifier.fillMaxWidth())
                         }
                         TextButton(onClick = { onCopyRecoveryCodes(current.recoveryCodes) }) { Text("复制恢复码") }
-                        Button(onClick = { acknowledged = true }, modifier = Modifier.fillMaxWidth()) { Text("我已安全保存") }
+                        Button(onClick = { acknowledgedFor = current.sessionId }, modifier = Modifier.fillMaxWidth()) { Text("我已安全保存") }
                     }
                     if (message != null) PersistentError(message!!)
                     TextButton(onClick = { launchAction { message = onLogout(); page = AuthPage.LOGIN } }, enabled = !loading) { Text(if (loading) "正在退出…" else "退出账号") }
@@ -108,19 +120,19 @@ fun AuthForm(page: AuthPage, loading: Boolean, error: String?, onSubmit: (String
     Text(if (page == AuthPage.LOGIN) "使用独立账号保存你的食记。" else if (page == AuthPage.REGISTER) "注册后会显示 8 个一次性恢复码，请安全保存。" else "输入一个有效恢复码，新密码生效后所有旧会话都会退出。",
         color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodyMedium)
     OutlinedTextField(username, { username = it }, label = { Text("用户名") }, enabled = !loading,
-        singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = QuietGridText.input,
+        singleLine = true, modifier = Modifier.fillMaxWidth().testTag("auth-username"), textStyle = QuietGridText.input,
         supportingText = { Text("3–32 位字母、数字或下划线，以字母开头。") })
     if (page == AuthPage.RECOVER) OutlinedTextField(recoveryCode, { recoveryCode = it }, label = { Text("一次性恢复码") },
-        enabled = !loading, modifier = Modifier.fillMaxWidth(), textStyle = QuietGridText.date)
+        enabled = !loading, modifier = Modifier.fillMaxWidth().testTag("auth-recovery"), textStyle = QuietGridText.date)
     OutlinedTextField(password, { password = it }, label = { Text(if (page == AuthPage.RECOVER) "新密码" else "密码") },
-        enabled = !loading, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = QuietGridText.input,
+        enabled = !loading, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("auth-password"), textStyle = QuietGridText.input,
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
     TextButton(onClick = { visible = !visible }, enabled = !loading) { Text(if (visible) "隐藏密码" else "显示密码") }
     if (page != AuthPage.LOGIN) Text("密码需 12–128 个字符；允许空格和 Unicode，不能全为空白或使用常见弱密码。", style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary)
     if (error != null) PersistentError(error)
     Button(onClick = { onSubmit(username, password, recoveryCode) }, enabled = !loading && username.isNotBlank() && password.isNotEmpty() && (page != AuthPage.RECOVER || recoveryCode.isNotBlank()),
-        colors = ButtonDefaults.buttonColors(containerColor = LocalQuietGridColors.current.cta), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        colors = ButtonDefaults.buttonColors(containerColor = LocalQuietGridColors.current.cta), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("auth-submit")) {
         Text(if (loading) "正在处理…" else page.title)
     }
 }

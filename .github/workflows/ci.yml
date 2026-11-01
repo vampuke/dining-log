@@ -71,9 +71,9 @@ jobs:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
       - name: Install Android SDK packages
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-      - name: Build debug APK and write dependency locks
+      - name: Build, lint and test using committed dependency locks
         working-directory: android
-        run: ./gradlew :app:assembleDebug :core:test :app:testDebugUnitTest :app:lintDebug --write-locks --no-daemon
+        run: ./gradlew :app:assembleDebug :app:assembleRelease :app:assembleDebugAndroidTest :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --no-daemon
       - name: Verify debug APK identity and checksums
         working-directory: android/app/build/outputs/apk/debug
         run: |
@@ -96,6 +96,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: android-build
           path: |
@@ -103,17 +104,32 @@ jobs:
             android/**/gradle.lockfile
             android/core/build/test-results/test/
             android/core/build/reports/tests/test/
+            android/data/build/test-results/testDebugUnitTest/
+            android/data/build/reports/tests/testDebugUnitTest/
+            android/feature/build/test-results/testDebugUnitTest/
+            android/feature/build/reports/tests/testDebugUnitTest/
+            android/data/schemas/
           retention-days: 7
 
   android-auth-instrumentation:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 55
     strategy:
       fail-fast: false
       matrix:
         api: [26, 35]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install the local Worker test runtime
+        working-directory: backend
+        run: npm ci
+      - name: Start isolated local API and D1 for Android E2E
+        run: bash .github/scripts/start-android-api.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -129,18 +145,27 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Keystore and authentication Compose tests (emulator)
+      - name: Keystore, authentication and product Compose tests (emulator)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: cd android && ./gradlew :app:connectedDebugAndroidTest --no-daemon
+          script: bash .github/scripts/android-test.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: android-auth-api-${{ matrix.api }}
-          path: android/app/build/reports/androidTests/connected/
+          path: |
+            android/app/build/reports/androidTests/connected/
+            android/app/build/outputs/p4-screenshots/
           if-no-files-found: warn
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-api-log-${{ matrix.api }}
+          path: /tmp/android-worker.log
+          if-no-files-found: error
           retention-days: 14

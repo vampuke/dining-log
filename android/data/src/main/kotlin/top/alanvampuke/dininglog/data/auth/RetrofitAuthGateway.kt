@@ -1,6 +1,7 @@
 package top.alanvampuke.dininglog.data.auth
 
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -33,14 +34,14 @@ interface AuthApi {
     @POST("auth/register") suspend fun register(@Body body: LoginBody, @Header("Idempotency-Key") key: String): AuthEnvelope
     @POST("auth/recover") suspend fun recover(@Body body: RecoveryBody, @Header("Idempotency-Key") key: String): AuthEnvelope
     @POST("auth/refresh") suspend fun refresh(@Body body: RefreshBody, @Header("X-Refresh-Request-Id") requestId: String): AuthEnvelope
-    @POST("auth/logout") suspend fun logout(@Body body: RefreshBody)
+    @POST("auth/logout") suspend fun logout(@Body body: RefreshBody, @Header("Idempotency-Key") key: String)
 }
 class RetrofitAuthGateway(private val api: AuthApi) : AuthGateway {
     override suspend fun login(username: String, password: String) = call { api.login(LoginBody(username, password), java.util.UUID.randomUUID().toString()).data.domain() }
     override suspend fun register(username: String, password: String) = call { api.register(LoginBody(username, password), java.util.UUID.randomUUID().toString()).data.domain() }
     override suspend fun recover(username: String, code: String, password: String) = call { api.recover(RecoveryBody(username, code, password), java.util.UUID.randomUUID().toString()).data.domain() }
     override suspend fun refresh(token: String, requestId: String) = call { api.refresh(RefreshBody(token), requestId).data.domain() }
-    override suspend fun logout(token: String) = call { api.logout(RefreshBody(token)) }
+    override suspend fun logout(token: String) = call { api.logout(RefreshBody(token), java.util.UUID.randomUUID().toString()) }
     private suspend fun <T> call(block: suspend () -> T): T = try { block() } catch (e: IOException) {
         throw AuthFailure("NETWORK_ERROR")
     } catch (e: HttpException) {
@@ -50,10 +51,13 @@ class RetrofitAuthGateway(private val api: AuthApi) : AuthGateway {
             response?.headers()?.get("Retry-After")?.toIntOrNull())
     }
     companion object {
-        fun create(): RetrofitAuthGateway {
-            val json = Json { ignoreUnknownKeys = true }
-            return RetrofitAuthGateway(Retrofit.Builder().baseUrl(ApiConfiguration.BASE_URL)
-                .client(OkHttpClient.Builder().build())
+        fun create(baseUrl: String = ApiConfiguration.BASE_URL): RetrofitAuthGateway {
+            // device_name is required by the auth contract even when the caller
+            // uses LoginBody/RecoveryBody's Android default.
+            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+            return RetrofitAuthGateway(Retrofit.Builder().baseUrl(baseUrl)
+                .client(OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS)
+                    .retryOnConnectionFailure(false).build())
                 .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
                 .build().create(AuthApi::class.java))
         }

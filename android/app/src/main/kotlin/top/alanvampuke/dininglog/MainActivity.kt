@@ -7,30 +7,58 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PersistableBundle
 import android.view.WindowManager
+import android.view.Window
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.*
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
+import androidx.lifecycle.viewmodel.CreationExtras
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.launch
 import top.alanvampuke.dininglog.core.auth.*
+import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.data.auth.*
 import top.alanvampuke.dininglog.feature.auth.AuthRoot
 import top.alanvampuke.dininglog.feature.theme.QuietGridTheme
+import top.alanvampuke.dininglog.feature.ProductRoot
+import top.alanvampuke.dininglog.feature.ProductViewModel
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject lateinit var store: SecureTokenStore
+    @Inject lateinit var account: AccountSession
+    @Inject lateinit var gateway: AuthGateway
+    @Inject lateinit var refresh: RefreshCoordinator
+    @Inject lateinit var repository: ProductRepository
+    @Inject lateinit var security: AccountSecurity
+    @Inject lateinit var preferences: ThemePreferences
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        val store = secureTokenStore(applicationContext)
-        val account = AccountSession(store, AndroidAccountLocalData(applicationContext, AccountMemory()))
-        val gateway = RetrofitAuthGateway.create()
-        val refresh = RefreshCoordinator(store, account, gateway)
+        if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
         setContent {
-            QuietGridTheme {
+            val choice by preferences.theme.collectAsStateWithLifecycle(ThemeChoice.SYSTEM)
+            val dark = when (choice) { ThemeChoice.SYSTEM -> isSystemInDarkTheme(); ThemeChoice.DARK -> true; ThemeChoice.LIGHT -> false }
+            val scope = rememberCoroutineScope()
+            SideEffect { applySystemBarTheme(window, dark) }
+            QuietGridTheme(dark) {
                 AuthRoot(account, gateway,
-                    onRestore = { withContext(Dispatchers.IO) { if (store.read() != null) refresh.refreshAfter401(null) else account.clear() } },
+                    onRestore = { withContext(Dispatchers.IO) {
+                        val saved = store.read()
+                        if (saved != null) { account.restoreCachedSession(saved); refresh.refreshAfter401(null) } else account.clear()
+                    } },
                     onLogout = {
                         withContext(Dispatchers.IO) {
                             val token = account.session.value?.refreshToken
@@ -45,8 +73,30 @@ class MainActivity : ComponentActivity() {
                         val clip = ClipData.newPlainText("食记恢复码", codes.joinToString("\n"))
                         if (Build.VERSION.SDK_INT >= 33) clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
                         (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
+                    }, onAuthenticated = { session, logout ->
+                        val generation = account.generation
+                        val factory = remember(session.userId, generation) { object : ViewModelProvider.Factory {
+                            @Suppress("UNCHECKED_CAST")
+                            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
+                                ProductViewModel(session.userId, repository, security, account, extras.createSavedStateHandle()) as T
+                        } }
+                        val vm: ProductViewModel = viewModel(key = "product:${session.userId}:$generation", factory = factory)
+                        ProductRoot(vm, session.username, choice, onTheme = { next -> scope.launch { preferences.setTheme(next) } }, onLogout = logout)
                     })
             }
         }
+    }
+}
+
+@Suppress("DEPRECATION")
+fun applySystemBarTheme(window: Window, dark: Boolean) {
+    // API 26 otherwise keeps the light scrim chosen before an in-app theme
+    // switch. Let the approved Compose background paint both system bars.
+    window.statusBarColor = android.graphics.Color.TRANSPARENT
+    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+    if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
+    WindowInsetsControllerCompat(window, window.decorView).apply {
+        isAppearanceLightStatusBars = !dark
+        isAppearanceLightNavigationBars = !dark
     }
 }
