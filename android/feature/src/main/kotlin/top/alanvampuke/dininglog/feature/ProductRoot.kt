@@ -35,7 +35,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Serializable data class ChooseRestaurantRoute(val purpose: String)
 
 @Composable fun ProductRoot(vm: ProductViewModel, username: String, theme: ThemeChoice, onTheme: (ThemeChoice) -> Unit,
-    onLogout: () -> Unit, version: String = "0.4.0 debug") {
+    onLogout: () -> Unit, version: String) {
     val nav = rememberNavController()
     val list by vm.list.collectAsStateWithLifecycle()
     val search by vm.search.collectAsStateWithLifecycle()

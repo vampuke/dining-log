@@ -12,6 +12,7 @@ captures/
 *.apk
 *.aab
 *.jks
+*.jks.b64
 *.keystore
 *.p12
 *.pfx
@@ -28,6 +29,9 @@ coverage/
 *.local
 # Credentials, private exports and run logs
 .git-credentials
+.cloudflare_env
+signing.env
+worker_secrets.json
 .npmrc
 service-account*.json
 *credentials*.json

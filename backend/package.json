@@ -11,6 +11,7 @@
     "check": "tsc --noEmit && eslint .",
     "test": "node tests/password-vectors.mjs && vitest run",
     "db:verify": "vitest run tests/migrations.test.ts",
+    "smoke:production": "node scripts/smoke-production.mjs",
     "test:capacity": "vitest run --config vitest.capacity.config.ts -t p1-4500 && vitest run --config vitest.capacity.config.ts -t plan-6000"
   },
   "dependencies": {

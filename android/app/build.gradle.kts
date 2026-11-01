@@ -7,6 +7,33 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val releaseSigningEnvironment = listOf(
+    "DINING_SIGNING_STORE_FILE",
+    "DINING_SIGNING_STORE_PASSWORD",
+    "DINING_SIGNING_KEY_ALIAS",
+    "DINING_SIGNING_KEY_PASSWORD",
+).associateWith { System.getenv(it)?.takeIf(String::isNotBlank) }
+
+fun requireReleaseSigning() {
+    val missing = releaseSigningEnvironment.filterValues { it == null }.keys
+    if (missing.isNotEmpty()) {
+        error("Release signing requires environment variables: ${missing.joinToString()}")
+    }
+    if (!file(releaseSigningEnvironment.getValue("DINING_SIGNING_STORE_FILE")!!).isFile) {
+        error("Release signing keystore file does not exist")
+    }
+}
+
+// Fail before tasks execute, including when an aggregate build selects release.
+if (gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }) {
+    requireReleaseSigning()
+}
+gradle.taskGraph.whenReady {
+    if (allTasks.any { it.project.path == ":app" && it.name.contains("release", ignoreCase = true) }) {
+        requireReleaseSigning()
+    }
+}
+
 android {
     namespace = "top.alanvampuke.dininglog"
     compileSdk = 35
@@ -14,20 +41,35 @@ android {
         minSdk = 26
         applicationId = "top.alanvampuke.dininglog"
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+    signingConfigs {
+        create("release") {
+            storeFile = releaseSigningEnvironment["DINING_SIGNING_STORE_FILE"]?.let { file(it) }
+            storePassword = releaseSigningEnvironment["DINING_SIGNING_STORE_PASSWORD"]
+            keyAlias = releaseSigningEnvironment["DINING_SIGNING_KEY_ALIAS"]
+            keyPassword = releaseSigningEnvironment["DINING_SIGNING_KEY_PASSWORD"]
+            enableV2Signing = true
+        }
+    }
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+        }
         release {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // P5 adds environment-based release signing; no fallback to debug keys.
         }
     }
 }

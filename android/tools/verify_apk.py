@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Read the actual APK binary manifest; no Android build or dependencies required."""
+import argparse
 import json
 from pathlib import Path
 import struct
@@ -56,7 +57,11 @@ def manifest_attributes(data):
 
 
 def main():
-    path = Path(sys.argv[1])
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('apk', type=Path)
+    parser.add_argument('--expected-package', default='top.alanvampuke.dininglog')
+    args = parser.parse_args()
+    path = args.apk
     with zipfile.ZipFile(path) as apk:
         names = apk.namelist()
         if 'classes.dex' not in names or 'AndroidManifest.xml' not in names:
@@ -78,7 +83,7 @@ def main():
         'sizeBytes': path.stat().st_size,
     }
     print(json.dumps(metadata, ensure_ascii=False, indent=2))
-    expected = {'packageName': 'top.alanvampuke.dininglog', 'minSdk': 26, 'targetSdk': 35}
+    expected = {'packageName': args.expected_package, 'minSdk': 26, 'targetSdk': 35}
     for field, value in expected.items():
         if metadata[field] != value:
             raise ValueError(f'APK {field}={metadata[field]!r}; expected {value!r}')

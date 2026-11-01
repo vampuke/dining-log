@@ -1,12 +1,199 @@
 name: release
+
 on:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Full reviewed 40-character commit SHA on master
+        required: true
+        type: string
+      release_tag:
+        description: Release tag matching the source version, for example v0.5.0
+        required: true
+        type: string
+
 permissions:
   contents: read
+
+concurrency:
+  group: dining-production
+  cancel-in-progress: false
+
 jobs:
-  placeholder:
+  release:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    permissions:
+      contents: write
+      actions: read
+    env:
+      RELEASE_COMMIT: ${{ inputs.commit_sha }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      WRANGLER_SEND_METRICS: 'false'
     steps:
-      # P5: reviewed master SHA, protected environment, signing, migration,
-      # deployment, private smoke and APK publication. No deploy command in P1.
-      - run: echo 'Release workflow will be implemented in P5.'
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate source, unused tag and successful master/API 26/35 candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/validate-release.mjs
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Verify backend candidate before accessing production
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          npm ci
+          node --test ../.github/scripts/release-guards.test.mjs
+          npm run check
+          node tests/contracts.mjs
+          npm test
+          npm run db:verify
+          npx --no-install wrangler deploy --dry-run
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: true
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Build and test the signed release with temporary keystore
+        working-directory: android
+        shell: bash
+        env:
+          DINING_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          DINING_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          DINING_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          DINING_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          : "${DINING_KEYSTORE_B64:?Missing ANDROID_KEYSTORE_B64}"
+          : "${DINING_SIGNING_STORE_PASSWORD:?Missing ANDROID_STORE_PASSWORD}"
+          : "${DINING_SIGNING_KEY_ALIAS:?Missing ANDROID_KEY_ALIAS}"
+          : "${DINING_SIGNING_KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD}"
+          export DINING_SIGNING_STORE_FILE="$RUNNER_TEMP/dining-release.jks"
+          trap 'rm -f "$DINING_SIGNING_STORE_FILE"' EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
+          printf '%s' "$DINING_KEYSTORE_B64" | base64 --decode > "$DINING_SIGNING_STORE_FILE"
+          test -s "$DINING_SIGNING_STORE_FILE"
+          unset DINING_KEYSTORE_B64
+          ./gradlew :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug :app:lintRelease :app:assembleRelease --no-daemon
+      - name: Assert APK v2 signature, fixed certificate, source/tag and increasing versionCode
+        run: python3 .github/scripts/verify-release-apk.py
+      - name: Generate and check stable APK SHA-256 checksum
+        working-directory: android/app/build/outputs/apk/release
+        run: |
+          set -euo pipefail
+          sha256sum app-release.apk > app-release.apk.sha256
+          sha256sum --check app-release.apk.sha256
+      - name: Enable KVM for signed APK installation checks
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and launch signed APK on API 26
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 26
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: bash .github/scripts/release-install.sh
+      - name: Install and launch signed APK on API 35
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: bash .github/scripts/release-install.sh
+      - name: Record current Worker deployment/version IDs and D1 Time Travel checkpoint
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node .github/scripts/production-d1.mjs checkpoint
+      - name: Verify immutable migrations and compatibility with the current schema
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node .github/scripts/production-d1.mjs pre-migration
+      - name: Reject Custom Domain and DNS conflicts before production writes
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node .github/scripts/production-d1.mjs domain
+      - name: Apply production migrations
+        working-directory: backend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --no-install wrangler d1 migrations apply DB --remote
+      - name: Assert 14 tables, migration records, foreign_key_check and quick_check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node .github/scripts/production-d1.mjs verify
+      - name: Deploy Worker to the sole Custom Domain
+        working-directory: backend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: npx --no-install wrangler deploy
+      - name: Assert production health status 200 and exact JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --fail --silent --show-error --max-time 20 --output "$RUNNER_TEMP/dining-health.json" --write-out '%{http_code}' https://dining.alanvampuke.top/api/v1/health)"
+          test "$status" = 200
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          body = json.loads((Path(os.environ['RUNNER_TEMP']) / 'dining-health.json').read_text())
+          assert body == {'status': 'ok', 'api_version': 'v1'}, body
+          print('HTTP 200', json.dumps(body, separators=(',', ':')))
+          PY
+      - name: Independently smoke auth, CRUD, history, deletion, restore and logout
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          npm run smoke:production | tee "$RUNNER_TEMP/dining-production-smoke.txt"
+      - name: Publish signed APK and checksum only after production smoke passes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/validate-release.mjs publish
+          gh release create "$RELEASE_TAG" \
+            android/app/build/outputs/apk/release/app-release.apk \
+            android/app/build/outputs/apk/release/app-release.apk.sha256 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_COMMIT" \
+            --title "$RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/dining-release-notes.md"
+      - name: Retain non-sensitive release diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-evidence
+          path: |
+            ${{ runner.temp }}/dining-release-selection.json
+            ${{ runner.temp }}/dining-apk-signature.txt
+            ${{ runner.temp }}/dining-apk-metadata.json
+            ${{ runner.temp }}/dining-production-checkpoint.json
+            ${{ runner.temp }}/dining-production-domain-check.json
+            ${{ runner.temp }}/dining-production-integrity.json
+            ${{ runner.temp }}/dining-health.json
+            ${{ runner.temp }}/dining-production-smoke.txt
+            ${{ runner.temp }}/dining-release-launch-api-*.txt
+            android/app/build/outputs/apk/release/app-release.apk.sha256
+          if-no-files-found: warn
+          retention-days: 30

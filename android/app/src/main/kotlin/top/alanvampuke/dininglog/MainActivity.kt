@@ -81,7 +81,8 @@ class MainActivity : ComponentActivity() {
                                 ProductViewModel(session.userId, repository, security, account, extras.createSavedStateHandle()) as T
                         } }
                         val vm: ProductViewModel = viewModel(key = "product:${session.userId}:$generation", factory = factory)
-                        ProductRoot(vm, session.username, choice, onTheme = { next -> scope.launch { preferences.setTheme(next) } }, onLogout = logout)
+                        ProductRoot(vm, session.username, choice, onTheme = { next -> scope.launch { preferences.setTheme(next) } }, onLogout = logout,
+                            version = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) " debug" else "")
                     })
             }
         }

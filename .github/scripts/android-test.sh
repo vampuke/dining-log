@@ -12,12 +12,12 @@ mkdir -p app/build/outputs/p4-screenshots
 ./gradlew :app:connectedDebugAndroidTest --no-daemon &
 gradle_pid=$!
 while kill -0 "$gradle_pid" 2>/dev/null; do
-  adb pull /sdcard/Android/data/top.alanvampuke.dininglog/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1
+  adb pull /sdcard/Android/data/top.alanvampuke.dininglog.debug/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1
   sleep 1
 done
 wait "$gradle_pid"
 test_status=$?
-adb pull /sdcard/Android/data/top.alanvampuke.dininglog/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1
+adb pull /sdcard/Android/data/top.alanvampuke.dininglog.debug/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1
 adb logcat -d -s AndroidRuntime:E DiningP4:I System.out:I > app/build/outputs/p4-screenshots/android-runtime.log
 set -e
 exit "$test_status"
