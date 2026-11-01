@@ -103,7 +103,6 @@ org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:2.1.21=kotlinBuildTool
 org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:2.1.21=kotlinBuildToolsApiClasspath
 org.jetbrains.kotlin:kotlin-scripting-jvm:2.1.21=kotlinBuildToolsApiClasspath
 org.jetbrains.kotlin:kotlin-serialization-compiler-plugin-embeddable:2.1.21=kotlinCompilerPluginClasspathDebug,kotlinCompilerPluginClasspathDebugUnitTest,kotlinCompilerPluginClasspathRelease
-org.jetbrains.kotlin:kotlin-stdlib-common:2.1.21=debugAndroidTestRuntimeClasspath,debugRuntimeClasspath,debugUnitTestRuntimeClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-stdlib:2.1.21=debugAndroidTestCompileClasspath,debugAndroidTestRuntimeClasspath,debugCompileClasspath,debugRuntimeClasspath,debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath,kotlinBuildToolsApiClasspath,kotlinCompilerClasspath,releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-test-junit:2.1.21=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
 org.jetbrains.kotlin:kotlin-test:2.1.21=debugUnitTestCompileClasspath,debugUnitTestRuntimeClasspath
