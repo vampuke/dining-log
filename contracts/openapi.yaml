@@ -4225,6 +4225,30 @@ paths:
           default: 10
       description: Unknown or repeated query parameters return 400. Changing filters requires resetting cursor.
         All SQL is parameterized and owner scoped.
+  /app/version:
+    get:
+      operationId: get_app_version
+      summary: 最新已发布版本；公开访问，不读取账号或 D1
+      x-auth: Public
+      security: []
+      responses:
+        '200':
+          description: Public release metadata from Worker vars.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: public, max-age=300
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppVersion'
+        '503':
+          description: Release configuration is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
   /health:
     get:
       operationId: get_health
@@ -4334,6 +4358,48 @@ components:
       description: 可选 UUID v4。同账号、同 key、同 method/path/payload 在 120 秒内返回相同加密缓存结果；不同 payload 或过期 key 返回 409。鉴权响应仅存
         AES-GCM 密文；密码仅参与 HMAC 请求指纹。
   schemas:
+    AppVersion:
+      type: object
+      additionalProperties: false
+      required:
+      - latest
+      properties:
+        latest:
+          $ref: '#/components/schemas/AppRelease'
+    AppRelease:
+      type: object
+      additionalProperties: false
+      required:
+      - version_code
+      - version_name
+      - url
+      - sha256
+      - notes
+      - released_at
+      properties:
+        version_code:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        version_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        url:
+          type: string
+          format: uri
+          description: HTTPS download URL without credentials; opened in the system browser.
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        notes:
+          type: string
+          maxLength: 4000
+        released_at:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
+          description: UTC Unix seconds.
     User:
       type: object
       properties:
