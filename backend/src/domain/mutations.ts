@@ -4,7 +4,7 @@ import { type BusinessIdempotency } from '../auth/idempotency';
 import { owned, parent, checkVersion, classify } from '../repositories/domain';
 import { entity, diff, fields, tables, toStorage, type Kind, type Row, type Diff, type Value } from './model';
 import { normalizeSearch, parse, patches } from './schemas';
-import { type C } from './http';
+import { notFound, type C } from './http';
 import { rebuild } from './search-index';
 import { revisionDetail, revisionSummary } from '../repositories/history';
 export type Action = 'create' | 'update' | 'delete' | 'restore';
@@ -49,7 +49,11 @@ export async function create(c: C, kind: Kind, payload: Record<string, unknown>,
   statements.push(...cleanup);
   return commit(c, statements, result, 201, idem, async () => {
     if (kind !== 'restaurant') await parent(db, userId, restaurantId!);
-    for (const item of entities) { const existing = await db.prepare(`SELECT id FROM ${tables[item.kind]} WHERE user_id=? AND id=?`).bind(userId, item.row.id).first(); if (existing) throw new AuthError(409, 'ID_CONFLICT', 'ID is already in use.'); }
+    for (const item of entities) {
+      const existing = await db.prepare(`SELECT user_id FROM ${tables[item.kind]} WHERE id=?`).bind(item.row.id).first<{ user_id: string }>();
+      if (existing && existing.user_id !== userId) throw notFound();
+      if (existing) throw new AuthError(409, 'ID_CONFLICT', 'ID is already in use.');
+    }
     throw new Error('Creation batch failed');
   }, true);
 }
