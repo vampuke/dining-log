@@ -116,7 +116,7 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             if (e.code == "VERSION_CONFLICT" && e.current != null) {
                 val preserved = pending.copy(status = DraftStatus.EDITING, original = null)
                 storeDraft(preserved)
-                SaveOutcome.Conflict(preserved, compareConflict(preserved, e.current.copy(ref = pending.ref)))
+                SaveOutcome.Conflict(preserved, compareConflict(preserved, requireNotNull(e.current).copy(ref = pending.ref)))
             } else {
                 val unknown = e.offline || e.status >= 500
                 val kept = pending.copy(status = if (unknown) DraftStatus.RESULT_UNKNOWN else DraftStatus.EDITING,
