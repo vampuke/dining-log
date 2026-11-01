@@ -1,1 +1,1 @@
-settings 功能目录；P1 不实现页面。源码将放在 feature/src/main/kotlin 下，仍为单个 feature Gradle 模块。
+“我的”在 [SettingsScreen.kt](../src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt)：账号、会话撤销、修改密码、退出、本机草稿、主题和版本。密码输入只保存在当前账号 ViewModel 的内存中，不进入 Room 或 SavedStateHandle；退出前说明缓存与草稿清理。

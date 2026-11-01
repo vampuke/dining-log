@@ -29,7 +29,7 @@ SOFT_DELETE_RETENTION_DAYS = "30"
 [[d1_databases]]
 binding = "DB"
 database_name = "dining-log-prod"
-database_id = "REPLACE_WITH_CREATED_D1_DATABASE_ID"
+database_id = "90d3c1ef-5ea0-4308-a866-89a96e0411d8"
 migrations_dir = "migrations"
 
 [triggers]
