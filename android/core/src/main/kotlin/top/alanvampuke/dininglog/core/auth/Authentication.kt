@@ -54,6 +54,11 @@ class AccountSession(private val store: SecureTokenStore, private val local: Acc
             _session.value = value
         } catch (error: Exception) { clearLocked(); throw error }
     }
+    suspend fun replaceAfterPassword(value: AuthSession, expected: Long) = transition.withLock {
+        if (generation != expected || _session.value?.userId != value.userId) throw AuthFailure("SESSION_REVOKED")
+        store.write(StoredSession(value.userId, value.sessionId, value.refreshToken))
+        _session.value = value
+    }
     internal suspend fun persistPending(value: StoredSession, expected: Long) = transition.withLock {
         if (generation != expected) throw AuthFailure("SESSION_REVOKED")
         store.write(value)

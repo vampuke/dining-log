@@ -6,6 +6,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -31,12 +33,14 @@ fun authErrorText(error: AuthFailure): String = when (error.code) {
 }
 @Composable
 fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend () -> Unit,
-    onLogout: suspend () -> String?, onCopyRecoveryCodes: (List<String>) -> Unit) {
-    val session by account.session.collectAsState()
+    onLogout: suspend () -> String?, onCopyRecoveryCodes: (List<String>) -> Unit,
+    onAuthenticated: (@Composable (AuthSession) -> Unit)? = null) {
+    val session by account.session.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var page by remember { mutableStateOf(AuthPage.LOGIN) }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var acknowledgedFor by rememberSaveable { mutableStateOf<String?>(null) }
     fun launchAction(action: suspend () -> Unit) {
         if (loading) return
         scope.launch {
@@ -53,6 +57,11 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
         catch (e: AuthFailure) { message = authErrorText(e) }
         catch (_: Exception) { message = "安全存储不可用，请重新登录。" }
         finally { loading = false }
+    }
+    val authenticated = session
+    if (authenticated != null && (authenticated.recoveryCodes.isEmpty() || acknowledgedFor == authenticated.sessionId) && onAuthenticated != null) {
+        key(authenticated.userId) { onAuthenticated(authenticated) }
+        return
     }
     Surface(color = LocalQuietGridColors.current.bg, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
@@ -79,17 +88,16 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
                 if (message != null) TextButton(onClick = { launchAction { onRestore() } }, enabled = !loading) { Text("重试恢复已保存的登录") }
             } else {
                 key(current.sessionId) {
-                    var acknowledged by remember { mutableStateOf(false) }
                     Text("${current.username} 的账号", style = MaterialTheme.typography.headlineMedium)
                     Text("已登录", color = LocalQuietGridColors.current.accentInk)
-                    if (current.recoveryCodes.isNotEmpty() && !acknowledged) {
+                    if (current.recoveryCodes.isNotEmpty() && acknowledgedFor != current.sessionId) {
                         Text("请安全保存这 8 个一次性恢复码", style = MaterialTheme.typography.titleMedium)
                         Text("此页面只显示一次。恢复账号后，所有旧恢复码与旧会话都会失效。")
                         current.recoveryCodes.forEachIndexed { index, code ->
                             Text("${index + 1}. $code", style = QuietGridText.date, modifier = Modifier.fillMaxWidth())
                         }
                         TextButton(onClick = { onCopyRecoveryCodes(current.recoveryCodes) }) { Text("复制恢复码") }
-                        Button(onClick = { acknowledged = true }, modifier = Modifier.fillMaxWidth()) { Text("我已安全保存") }
+                        Button(onClick = { acknowledgedFor = current.sessionId }, modifier = Modifier.fillMaxWidth()) { Text("我已安全保存") }
                     }
                     if (message != null) PersistentError(message!!)
                     TextButton(onClick = { launchAction { message = onLogout(); page = AuthPage.LOGIN } }, enabled = !loading) { Text(if (loading) "正在退出…" else "退出账号") }

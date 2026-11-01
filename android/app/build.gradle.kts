@@ -14,8 +14,8 @@ android {
         minSdk = 26
         applicationId = "top.alanvampuke.dininglog"
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.2.0"
+        versionCode = 4
+        versionName = "0.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     compileOptions {
@@ -37,16 +37,25 @@ dependencies {
     implementation(project(":core"))
     implementation(libs.coroutines.core)
     implementation(project(":data"))
+    implementation(libs.room.runtime)
     implementation(project(":feature"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.activity.compose)
+    implementation(libs.lifecycle.runtime.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.coroutines.test)
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.room.runtime)
+    androidTestImplementation(libs.mockwebserver)
+    androidTestImplementation(libs.serialization.json)
+    androidTestImplementation(libs.okhttp)
     debugImplementation(libs.compose.ui.test.manifest)
 }
