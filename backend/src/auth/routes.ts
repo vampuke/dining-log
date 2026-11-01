@@ -1,5 +1,6 @@
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
+import type { StatusCode } from 'hono/utils/http-status';
 import type { AppEnv } from '../env';
 import { AuthError, guard, invalidCredentials, nowSeconds, passwordConfig, revoked } from './config';
 import { base64UrlEncode } from './encoding';
@@ -14,7 +15,7 @@ import { loginSchema, passwordSchema, recoverSchema, refreshSchema, registerSche
 
 type C = Context<AppEnv>;
 const envelope = (data: unknown) => ({ data, meta: { request_id: crypto.randomUUID() } });
-function json(c: C, response: unknown, status = 200): Response { return new Response(JSON.stringify(response), { status, headers: { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store', ...Object.fromEntries(c.res.headers) } }); }
+function json(c: C, response: unknown, status = 200): Response { return c.newResponse(JSON.stringify(response), status as StatusCode, { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store' }); }
 function ip(c: C) { return c.req.header('CF-Connecting-IP') ?? 'unknown'; }
 async function body<T extends z.ZodTypeAny>(c: C, schema: T): Promise<z.infer<T>> {
   if (c.req.header('Content-Type')?.split(';')[0].trim().toLowerCase() !== 'application/json') throw new AuthError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use application/json.');
@@ -36,7 +37,7 @@ async function commit(c: C, statements: D1PreparedStatement[], data: unknown, st
   try { await c.env.DB.batch(statements); }
   catch (error) {
     const replay = await cached(c, idem); if (replay) return replay;
-    if (failure) return failure();
+    if (failure && error instanceof Error && /constraint failed/i.test(error.message)) return failure();
     throw error;
   }
   return status === 204 ? c.body(null, 204) : json(c, response, status);
@@ -53,18 +54,7 @@ async function verifyLoginPassword(c: C, name: string, password: string, user: U
   return key;
 }
 const auth = new Hono<AppEnv>();
-auth.use('*', async (c, next) => {
-  c.header('Cache-Control', 'no-store');
-  try { await next(); } catch (error) {
-    if (error instanceof AuthError) {
-      if (error.retryAfter) c.header('Retry-After', String(error.retryAfter));
-      c.res = json(c, { error: { code: error.code, message: error.message, field_errors: {} }, meta: { request_id: crypto.randomUUID() } }, error.status);
-    } else {
-      // Never log auth request/response bodies, credentials or underlying errors.
-      c.res = json(c, { error: { code: 'TEMPORARILY_UNAVAILABLE', message: 'Please try again later.', field_errors: {} }, meta: { request_id: crypto.randomUUID() } }, 503);
-    }
-  }
-});
+auth.use('*', async (c, next) => { c.header('Cache-Control', 'no-store'); await next(); });
 auth.post('/auth/register', async c => {
   const input = await body(c, registerSchema); idemKey(c);
   if (c.env.REGISTRATION_ENABLED !== 'true') throw new AuthError(503, 'TEMPORARILY_UNAVAILABLE', 'Registration is currently disabled.');

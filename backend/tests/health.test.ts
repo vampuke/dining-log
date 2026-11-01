@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import app from '../src';
 
-// Every method/path is copied from PLAN.md 4.3-4.8; P1 implements only health.
-const placeholders = [
+// Every method/path is copied from PLAN.md 4.3-4.8; P2 promotes auth routes.
+const routes = [
   [
     "POST",
     "/api/v1/auth/register"
@@ -173,15 +173,21 @@ const placeholders = [
   ]
 ] as const;
 
-describe('P1 routing', () => {
+describe('versioned routing', () => {
   it('returns the PLAN health response without querying D1', async () => {
     const res = await app.request('/api/v1/health');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: 'ok', api_version: 'v1' });
   });
-  it.each(placeholders)('keeps %s %s a 501 placeholder', async (method, path) => {
+  it.each(routes)('checks %s %s routing and error semantics', async (method, path) => {
     const response = await app.request(path, { method });
-    expect(response.status).toBe(501);
+    const promotedWrites = ['/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout', '/api/v1/auth/password', '/api/v1/auth/recover'];
+    const promotedAccess = ['/api/v1/auth/sessions', '/api/v1/auth/sessions/00000000-0000-4000-8000-000000000001'];
+    const status = promotedWrites.includes(path) ? 415 : promotedAccess.includes(path) ? 401 : 501;
+    expect(response.status).toBe(status);
+    const body = await response.json() as { error: { code: string; message: string } };
+    expect(body.error.code).toBe(status === 415 ? 'UNSUPPORTED_MEDIA_TYPE' : status === 401 ? 'SESSION_REVOKED' : 'NOT_IMPLEMENTED');
+    expect(body.error.message.length).toBeGreaterThan(0);
     expect(response.headers.get('Cache-Control')).toBe('no-store');
   });
   it('does not expose a global dishes list or an unversioned API', async () => {
