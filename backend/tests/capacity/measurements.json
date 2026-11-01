@@ -1,0 +1,6811 @@
+{
+  "metadata": {
+    "runId": "41275936653",
+    "runAttempt": "1",
+    "headSha": "6cce7953c17c71c2367e6f33a0ae4a5c73c28a64",
+    "repository": "vampuke/dining-log",
+    "ref": "refs/heads/master",
+    "runUrl": "https://github.com/vampuke/dining-log/actions/runs/41275936653",
+    "measuredAtUtc": "2026-11-01T05:12:16.314Z",
+    "node": "v22.23.4",
+    "runnerOs": "Linux",
+    "runnerImage": "20261026.354.1",
+    "vitest": "3.2.4",
+    "workersPool": "0.8.49",
+    "miniflare": "4.20250617.5",
+    "workerd": "1.20250617.0",
+    "compatibilityDate": "2025-06-17",
+    "testSha256": "8322a4c62d713fc703723506ca5f6218a237842e1dbacc4f1535f2d9f89e1e0d",
+    "migrationSha256": "191d1a80a7411ba828effc9041fbd144fa4d10abb372f61c793a8f6dc1a5b80b"
+  },
+  "scenarios": [
+    {
+      "schemaVersion": 1,
+      "scenario": {
+        "name": "p1-4500",
+        "restaurants": 500,
+        "dishesPerRestaurant": 5,
+        "visitsPerRestaurant": 3,
+        "restaurantRevisions": 11,
+        "childRevisions": 2,
+        "objects": 4500,
+        "history": 13500
+      },
+      "runtime": {
+        "sqlite_version": null,
+        "sqliteVersionUnavailable": "Error: D1_ERROR: not authorized to use function: sqlite_version at offset 7: SQLITE_ERROR"
+      },
+      "repetitions": 30,
+      "p95LimitMs": 100,
+      "wallClock": "Date.now (1 ms resolution; Workers performance.now is not used)",
+      "seed": {
+        "seed": 5351196,
+        "seedHex": "0x51a71c",
+        "fixedTimeUtc": "2026-10-31T12:00:00.000Z",
+        "fixtureSha256": "a6202ed79adcda8fc06d1f51f9d590060777a6228e2e10a8dcbc55c993d4ef10",
+        "rowsWritten": 194003,
+        "rowsRead": 29000,
+        "statements": 32001,
+        "batches": 1001,
+        "wallMs": 15783,
+        "textCounts": {
+          "restaurant": {
+            "english_short": 167,
+            "chinese_short": 167,
+            "near_limit": 166
+          },
+          "dish": {
+            "english_short": 833,
+            "chinese_short": 834,
+            "near_limit": 833
+          },
+          "visit": {
+            "english_short": 500,
+            "chinese_short": 500,
+            "near_limit": 500
+          }
+        }
+      },
+      "rowCounts": {
+        "users": 1,
+        "sessions": 0,
+        "refresh_tokens": 0,
+        "refresh_rotation_results": 0,
+        "recovery_codes": 0,
+        "auth_rate_limits": 0,
+        "restaurants": 500,
+        "dishes": 2500,
+        "restaurant_search": 500,
+        "visits": 1500,
+        "change_sets": 13500,
+        "revisions": 13500,
+        "idempotency_keys": 0,
+        "mutation_guards": 0
+      },
+      "restaurantRevisionRange": {
+        "min": 11,
+        "max": 11
+      },
+      "storage": {
+        "method": "length(CAST(TEXT/BLOB AS BLOB))",
+        "dbstatBytes": null,
+        "dbstatUnavailable": "Error: D1_ERROR: no such table: dbstat: SQLITE_ERROR",
+        "allocatedBytes": 196009984,
+        "pagesByObject": [],
+        "tableStats": [
+          {
+            "table": "auth_rate_limits",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "change_sets",
+            "rows": 13500,
+            "textUtf8Bytes": 1458000
+          },
+          {
+            "table": "d1_migrations",
+            "rows": 1,
+            "textUtf8Bytes": 16
+          },
+          {
+            "table": "dishes",
+            "rows": 2500,
+            "textUtf8Bytes": 5576257
+          },
+          {
+            "table": "idempotency_keys",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "mutation_guards",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "recovery_codes",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "refresh_rotation_results",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "refresh_tokens",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "restaurant_search",
+            "rows": 500,
+            "textUtf8Bytes": 9673935
+          },
+          {
+            "table": "restaurants",
+            "rows": 500,
+            "textUtf8Bytes": 4387108
+          },
+          {
+            "table": "revisions",
+            "rows": 13500,
+            "textUtf8Bytes": 140458518
+          },
+          {
+            "table": "sessions",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "users",
+            "rows": 1,
+            "textUtf8Bytes": 182
+          },
+          {
+            "table": "visits",
+            "rows": 1500,
+            "textUtf8Bytes": 6190964
+          }
+        ],
+        "protectedTables": [
+          "_cf_METADATA"
+        ],
+        "textUtf8Bytes": 167744980
+      },
+      "queries": [
+        {
+          "id": "updated_page",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL ORDER BY updated_at DESC,id DESC LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_updated (user_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 20,
+            "p50": 20,
+            "p95": 20,
+            "max": 20
+          }
+        },
+        {
+          "id": "rating_page",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL ORDER BY rating_tenths DESC,id DESC LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_rating (user_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 14,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 14
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 20,
+            "p50": 20,
+            "p95": 20,
+            "max": 20
+          }
+        },
+        {
+          "id": "aggregate_search_hit",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL AND instr((SELECT content FROM restaurant_search WHERE restaurant_id=restaurants.id),?)>0 LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "招牌测试"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_rating (user_id=?)",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH restaurant_search USING INDEX sqlite_autoindex_restaurant_search_1 (restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 12,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 18,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 14,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 10,
+              "rowsRead": 998,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 10,
+            "p50": 11,
+            "p95": 14,
+            "max": 18
+          },
+          "sqlMs": {
+            "min": 9,
+            "p50": 10,
+            "p95": 10,
+            "max": 11
+          },
+          "rowsRead": {
+            "min": 998,
+            "p50": 998,
+            "p95": 998,
+            "max": 998
+          }
+        },
+        {
+          "id": "aggregate_search_miss",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL AND instr((SELECT content FROM restaurant_search WHERE restaurant_id=restaurants.id),?)>0 LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "capacity_missing_51a71c"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_rating (user_id=?)",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH restaurant_search USING INDEX sqlite_autoindex_restaurant_search_1 (restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 21,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 10,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 10,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 15,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 9,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 10,
+            "p50": 10,
+            "p95": 15,
+            "max": 21
+          },
+          "sqlMs": {
+            "min": 9,
+            "p50": 9,
+            "p95": 10,
+            "max": 10
+          },
+          "rowsRead": {
+            "min": 1000,
+            "p50": 1000,
+            "p95": 1000,
+            "max": 1000
+          }
+        },
+        {
+          "id": "restaurant_detail",
+          "statements": [
+            {
+              "sql": "SELECT * FROM restaurants WHERE user_id=? AND id=? AND deleted_at IS NULL",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX sqlite_autoindex_restaurants_2 (user_id=? AND id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 1,
+            "p50": 1,
+            "p95": 1,
+            "max": 1
+          }
+        },
+        {
+          "id": "restaurant_dishes",
+          "statements": [
+            {
+              "sql": "SELECT * FROM dishes WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY updated_at DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH dishes USING INDEX idx_dishes_restaurant_live (user_id=? AND restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 6,
+              "rowsWritten": 0,
+              "returnedRows": [
+                5
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 6,
+            "p50": 6,
+            "p95": 6,
+            "max": 6
+          }
+        },
+        {
+          "id": "restaurant_visits",
+          "statements": [
+            {
+              "sql": "SELECT * FROM visits WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY dining_date DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH visits USING INDEX idx_visits_restaurant_date (user_id=? AND restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 4,
+            "p50": 4,
+            "p95": 4,
+            "max": 4
+          }
+        },
+        {
+          "id": "detail_children_batch",
+          "statements": [
+            {
+              "sql": "SELECT * FROM restaurants WHERE user_id=? AND id=? AND deleted_at IS NULL",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            },
+            {
+              "sql": "SELECT * FROM dishes WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY updated_at DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            },
+            {
+              "sql": "SELECT * FROM visits WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY dining_date DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX sqlite_autoindex_restaurants_2 (user_id=? AND id=?)"
+            ],
+            [
+              "SEARCH dishes USING INDEX idx_dishes_restaurant_live (user_id=? AND restaurant_id=?)"
+            ],
+            [
+              "SEARCH visits USING INDEX idx_visits_restaurant_date (user_id=? AND restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 16,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 4,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 11,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                5,
+                3
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 2,
+            "p95": 4,
+            "max": 16
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 11,
+            "p50": 11,
+            "p95": 11,
+            "max": 11
+          }
+        },
+        {
+          "id": "entity_revisions_10",
+          "statements": [
+            {
+              "sql": "SELECT * FROM revisions WHERE user_id=? AND entity_type=? AND entity_id=? AND deleted_at IS NULL ORDER BY created_at DESC,id DESC LIMIT 10",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "restaurant",
+                "36b96093-b118-4f24-9243-c225d2902229"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH revisions USING INDEX idx_revisions_entity_time (user_id=? AND entity_type=? AND entity_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 19,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 7,
+            "p50": 8,
+            "p95": 13,
+            "max": 19
+          },
+          "sqlMs": {
+            "min": 2,
+            "p50": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "rowsRead": {
+            "min": 10,
+            "p50": 10,
+            "p95": 10,
+            "max": 10
+          }
+        }
+      ],
+      "write": {
+        "statements": [
+          {
+            "sql": "INSERT INTO restaurants (id,user_id,name,category,cuisine,address,rating_tenths,note,review,version,created_at,updated_at,cuisine_normalized) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              306,
+              5,
+              135,
+              1443,
+              2,
+              11830,
+              11909,
+              1,
+              13,
+              13,
+              135
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              317,
+              2,
+              5882,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              35,
+              2,
+              41,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              44,
+              2,
+              50,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              317,
+              2,
+              5900,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              35,
+              2,
+              41,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO visits (id,user_id,dining_date,meal,note,version,created_at,updated_at,restaurant_id,search_text) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              10,
+              5,
+              5925,
+              1,
+              13,
+              13,
+              36,
+              5942
+            ]
+          },
+          {
+            "sql": "INSERT INTO visits (id,user_id,dining_date,meal,note,version,created_at,updated_at,restaurant_id,search_text) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              10,
+              9,
+              42,
+              1,
+              13,
+              13,
+              36,
+              63
+            ]
+          },
+          {
+            "sql": "INSERT INTO visits (id,user_id,dining_date,meal,note,version,created_at,updated_at,restaurant_id,search_text) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              10,
+              6,
+              51,
+              1,
+              13,
+              13,
+              36,
+              69
+            ]
+          },
+          {
+            "sql": "UPDATE restaurants SET review=?,version=2,updated_at=? WHERE user_id=? AND id=? AND version=1",
+            "parameterUtf8Bytes": [
+              11705,
+              13,
+              36,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO change_sets (id,user_id,request_id,created_at) VALUES (?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              10,
+              36,
+              0,
+              0,
+              6,
+              1,
+              1,
+              25944,
+              25692,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              10,
+              36,
+              0,
+              0,
+              6,
+              1,
+              1,
+              23657,
+              23622,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              6337,
+              6229,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              214,
+              106,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              232,
+              124,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              6355,
+              6247,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              214,
+              106,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              5,
+              36,
+              0,
+              36,
+              6,
+              1,
+              1,
+              6074,
+              5964,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              5,
+              36,
+              0,
+              36,
+              6,
+              1,
+              1,
+              195,
+              85,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              5,
+              36,
+              0,
+              36,
+              6,
+              1,
+              1,
+              201,
+              91,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO restaurant_search (restaurant_id,user_id,content,updated_at) VALUES (?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              38119,
+              13
+            ]
+          }
+        ],
+        "wallMs": 25,
+        "sqlMs": 1,
+        "rowsWritten": 143,
+        "rowsRead": 25,
+        "changes": 22,
+        "rowDeltas": {
+          "users": 0,
+          "sessions": 0,
+          "refresh_tokens": 0,
+          "refresh_rotation_results": 0,
+          "recovery_codes": 0,
+          "auth_rate_limits": 0,
+          "restaurants": 1,
+          "dishes": 5,
+          "restaurant_search": 1,
+          "visits": 3,
+          "change_sets": 1,
+          "revisions": 10,
+          "idempotency_keys": 0,
+          "mutation_guards": 0
+        }
+      },
+      "integrity": {
+        "foreignKeyViolations": 0,
+        "quickCheck": "ok"
+      },
+      "overLimit": []
+    },
+    {
+      "schemaVersion": 1,
+      "scenario": {
+        "name": "plan-6000",
+        "restaurants": 500,
+        "dishesPerRestaurant": 8,
+        "visitsPerRestaurant": 3,
+        "restaurantRevisions": 14,
+        "childRevisions": 2,
+        "objects": 6000,
+        "history": 18000
+      },
+      "runtime": {
+        "sqlite_version": null,
+        "sqliteVersionUnavailable": "Error: D1_ERROR: not authorized to use function: sqlite_version at offset 7: SQLITE_ERROR"
+      },
+      "repetitions": 30,
+      "p95LimitMs": 100,
+      "wallClock": "Date.now (1 ms resolution; Workers performance.now is not used)",
+      "seed": {
+        "seed": 5351196,
+        "seedHex": "0x51a71c",
+        "fixedTimeUtc": "2026-10-31T12:00:00.000Z",
+        "fixtureSha256": "e2d353013c84f8b839cc283ed1b43b399a73482a0d5a9cacb5f200aec03b70d5",
+        "rowsWritten": 258503,
+        "rowsRead": 38000,
+        "statements": 42501,
+        "batches": 1501,
+        "wallMs": 20964,
+        "textCounts": {
+          "restaurant": {
+            "english_short": 167,
+            "chinese_short": 167,
+            "near_limit": 166
+          },
+          "dish": {
+            "english_short": 1333,
+            "chinese_short": 1334,
+            "near_limit": 1333
+          },
+          "visit": {
+            "english_short": 500,
+            "chinese_short": 500,
+            "near_limit": 500
+          }
+        }
+      },
+      "rowCounts": {
+        "users": 1,
+        "sessions": 0,
+        "refresh_tokens": 0,
+        "refresh_rotation_results": 0,
+        "recovery_codes": 0,
+        "auth_rate_limits": 0,
+        "restaurants": 500,
+        "dishes": 4000,
+        "restaurant_search": 500,
+        "visits": 1500,
+        "change_sets": 18000,
+        "revisions": 18000,
+        "idempotency_keys": 0,
+        "mutation_guards": 0
+      },
+      "restaurantRevisionRange": {
+        "min": 14,
+        "max": 14
+      },
+      "storage": {
+        "method": "length(CAST(TEXT/BLOB AS BLOB))",
+        "dbstatBytes": null,
+        "dbstatUnavailable": "Error: D1_ERROR: no such table: dbstat: SQLITE_ERROR",
+        "allocatedBytes": 255528960,
+        "pagesByObject": [],
+        "tableStats": [
+          {
+            "table": "auth_rate_limits",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "change_sets",
+            "rows": 18000,
+            "textUtf8Bytes": 1944000
+          },
+          {
+            "table": "d1_migrations",
+            "rows": 1,
+            "textUtf8Bytes": 16
+          },
+          {
+            "table": "dishes",
+            "rows": 4000,
+            "textUtf8Bytes": 8926780
+          },
+          {
+            "table": "idempotency_keys",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "mutation_guards",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "recovery_codes",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "refresh_rotation_results",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "refresh_tokens",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "restaurant_search",
+            "rows": 500,
+            "textUtf8Bytes": 12869833
+          },
+          {
+            "table": "restaurants",
+            "rows": 500,
+            "textUtf8Bytes": 4386992
+          },
+          {
+            "table": "revisions",
+            "rows": 18000,
+            "textUtf8Bytes": 183927400
+          },
+          {
+            "table": "sessions",
+            "rows": 0,
+            "textUtf8Bytes": 0
+          },
+          {
+            "table": "users",
+            "rows": 1,
+            "textUtf8Bytes": 182
+          },
+          {
+            "table": "visits",
+            "rows": 1500,
+            "textUtf8Bytes": 6192902
+          }
+        ],
+        "protectedTables": [
+          "_cf_METADATA"
+        ],
+        "textUtf8Bytes": 218248105
+      },
+      "queries": [
+        {
+          "id": "updated_page",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL ORDER BY updated_at DESC,id DESC LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_updated (user_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 20,
+            "p50": 20,
+            "p95": 20,
+            "max": 20
+          }
+        },
+        {
+          "id": "rating_page",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL ORDER BY rating_tenths DESC,id DESC LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_rating (user_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 16,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 20,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 16
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 20,
+            "p50": 20,
+            "p95": 20,
+            "max": 20
+          }
+        },
+        {
+          "id": "aggregate_search_hit",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL AND instr((SELECT content FROM restaurant_search WHERE restaurant_id=restaurants.id),?)>0 LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "招牌测试"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_rating (user_id=?)",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH restaurant_search USING INDEX sqlite_autoindex_restaurant_search_1 (restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 14,
+              "sqlMs": 13,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 14,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 25,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 23,
+              "sqlMs": 11,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 974,
+              "rowsWritten": 0,
+              "returnedRows": [
+                20
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 12,
+            "p50": 13,
+            "p95": 23,
+            "max": 25
+          },
+          "sqlMs": {
+            "min": 11,
+            "p50": 12,
+            "p95": 12,
+            "max": 13
+          },
+          "rowsRead": {
+            "min": 974,
+            "p50": 974,
+            "p95": 974,
+            "max": 974
+          }
+        },
+        {
+          "id": "aggregate_search_miss",
+          "statements": [
+            {
+              "sql": "SELECT id,name,category,cuisine,address,rating_tenths,updated_at FROM restaurants WHERE user_id=? AND deleted_at IS NULL AND instr((SELECT content FROM restaurant_search WHERE restaurant_id=restaurants.id),?)>0 LIMIT 20",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "capacity_missing_51a71c"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX idx_restaurants_live_rating (user_id=?)",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH restaurant_search USING INDEX sqlite_autoindex_restaurant_search_1 (restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 27,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 26,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 28,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 13,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 24,
+              "sqlMs": 12,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            },
+            {
+              "wallMs": 12,
+              "sqlMs": 11,
+              "rowsRead": 1000,
+              "rowsWritten": 0,
+              "returnedRows": [
+                0
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 12,
+            "p50": 13,
+            "p95": 27,
+            "max": 28
+          },
+          "sqlMs": {
+            "min": 11,
+            "p50": 12,
+            "p95": 12,
+            "max": 12
+          },
+          "rowsRead": {
+            "min": 1000,
+            "p50": 1000,
+            "p95": 1000,
+            "max": 1000
+          }
+        },
+        {
+          "id": "restaurant_detail",
+          "statements": [
+            {
+              "sql": "SELECT * FROM restaurants WHERE user_id=? AND id=? AND deleted_at IS NULL",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX sqlite_autoindex_restaurants_2 (user_id=? AND id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 1,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 1,
+            "p50": 1,
+            "p95": 1,
+            "max": 1
+          }
+        },
+        {
+          "id": "restaurant_dishes",
+          "statements": [
+            {
+              "sql": "SELECT * FROM dishes WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY updated_at DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH dishes USING INDEX idx_dishes_restaurant_live (user_id=? AND restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 9,
+              "rowsWritten": 0,
+              "returnedRows": [
+                8
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 2,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 9,
+            "p50": 9,
+            "p95": 9,
+            "max": 9
+          }
+        },
+        {
+          "id": "restaurant_visits",
+          "statements": [
+            {
+              "sql": "SELECT * FROM visits WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY dining_date DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH visits USING INDEX idx_visits_restaurant_date (user_id=? AND restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 1,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 4,
+              "rowsWritten": 0,
+              "returnedRows": [
+                3
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 1,
+            "p95": 1,
+            "max": 2
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 4,
+            "p50": 4,
+            "p95": 4,
+            "max": 4
+          }
+        },
+        {
+          "id": "detail_children_batch",
+          "statements": [
+            {
+              "sql": "SELECT * FROM restaurants WHERE user_id=? AND id=? AND deleted_at IS NULL",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            },
+            {
+              "sql": "SELECT * FROM dishes WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY updated_at DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            },
+            {
+              "sql": "SELECT * FROM visits WHERE user_id=? AND restaurant_id=? AND deleted_at IS NULL ORDER BY dining_date DESC,id DESC",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH restaurants USING INDEX sqlite_autoindex_restaurants_2 (user_id=? AND id=?)"
+            ],
+            [
+              "SEARCH dishes USING INDEX idx_dishes_restaurant_live (user_id=? AND restaurant_id=?)"
+            ],
+            [
+              "SEARCH visits USING INDEX idx_visits_restaurant_date (user_id=? AND restaurant_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 15,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 20,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 3,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 1,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 1,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            },
+            {
+              "wallMs": 2,
+              "sqlMs": 0,
+              "rowsRead": 14,
+              "rowsWritten": 0,
+              "returnedRows": [
+                1,
+                8,
+                3
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 1,
+            "p50": 2,
+            "p95": 15,
+            "max": 20
+          },
+          "sqlMs": {
+            "min": 0,
+            "p50": 0,
+            "p95": 1,
+            "max": 1
+          },
+          "rowsRead": {
+            "min": 14,
+            "p50": 14,
+            "p95": 14,
+            "max": 14
+          }
+        },
+        {
+          "id": "entity_revisions_10",
+          "statements": [
+            {
+              "sql": "SELECT * FROM revisions WHERE user_id=? AND entity_type=? AND entity_id=? AND deleted_at IS NULL ORDER BY created_at DESC,id DESC LIMIT 10",
+              "params": [
+                "00000000-0000-4000-8000-000000000001",
+                "restaurant",
+                "7900e620-0083-4b1b-90b1-18f0665e228b"
+              ]
+            }
+          ],
+          "plans": [
+            [
+              "SEARCH revisions USING INDEX idx_revisions_entity_time (user_id=? AND entity_type=? AND entity_id=?)"
+            ]
+          ],
+          "samples": [
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 10,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 9,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 25,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 11,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 7,
+              "sqlMs": 3,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            },
+            {
+              "wallMs": 8,
+              "sqlMs": 2,
+              "rowsRead": 10,
+              "rowsWritten": 0,
+              "returnedRows": [
+                10
+              ]
+            }
+          ],
+          "wallMs": {
+            "min": 7,
+            "p50": 8,
+            "p95": 11,
+            "max": 25
+          },
+          "sqlMs": {
+            "min": 2,
+            "p50": 3,
+            "p95": 3,
+            "max": 3
+          },
+          "rowsRead": {
+            "min": 10,
+            "p50": 10,
+            "p95": 10,
+            "max": 10
+          }
+        }
+      ],
+      "write": {
+        "statements": [
+          {
+            "sql": "INSERT INTO restaurants (id,user_id,name,category,cuisine,address,rating_tenths,note,review,version,created_at,updated_at,cuisine_normalized) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              306,
+              5,
+              135,
+              1443,
+              2,
+              11830,
+              11909,
+              1,
+              13,
+              13,
+              135
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              317,
+              2,
+              5882,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              35,
+              2,
+              41,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              44,
+              2,
+              50,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              317,
+              2,
+              5900,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO dishes (id,user_id,name,rating_tenths,review,version,created_at,updated_at,restaurant_id) VALUES (?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              35,
+              2,
+              41,
+              1,
+              13,
+              13,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO visits (id,user_id,dining_date,meal,note,version,created_at,updated_at,restaurant_id,search_text) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              10,
+              5,
+              5925,
+              1,
+              13,
+              13,
+              36,
+              5942
+            ]
+          },
+          {
+            "sql": "INSERT INTO visits (id,user_id,dining_date,meal,note,version,created_at,updated_at,restaurant_id,search_text) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              10,
+              9,
+              42,
+              1,
+              13,
+              13,
+              36,
+              63
+            ]
+          },
+          {
+            "sql": "INSERT INTO visits (id,user_id,dining_date,meal,note,version,created_at,updated_at,restaurant_id,search_text) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              10,
+              6,
+              51,
+              1,
+              13,
+              13,
+              36,
+              69
+            ]
+          },
+          {
+            "sql": "UPDATE restaurants SET review=?,version=2,updated_at=? WHERE user_id=? AND id=? AND version=1",
+            "parameterUtf8Bytes": [
+              11705,
+              13,
+              36,
+              36
+            ]
+          },
+          {
+            "sql": "INSERT INTO change_sets (id,user_id,request_id,created_at) VALUES (?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              10,
+              36,
+              0,
+              0,
+              6,
+              1,
+              1,
+              25944,
+              25692,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              10,
+              36,
+              0,
+              0,
+              6,
+              1,
+              1,
+              23657,
+              23622,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              6337,
+              6229,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              214,
+              106,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              232,
+              124,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              6355,
+              6247,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              4,
+              36,
+              36,
+              0,
+              6,
+              1,
+              1,
+              214,
+              106,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              5,
+              36,
+              0,
+              36,
+              6,
+              1,
+              1,
+              6074,
+              5964,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              5,
+              36,
+              0,
+              36,
+              6,
+              1,
+              1,
+              195,
+              85,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO revisions (id,user_id,change_set_id,restaurant_id,entity_type,entity_id,dish_id,visit_id,action,entity_version_before,entity_version_after,diff_json,search_text,metadata_updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              36,
+              36,
+              5,
+              36,
+              0,
+              36,
+              6,
+              1,
+              1,
+              201,
+              91,
+              13,
+              13
+            ]
+          },
+          {
+            "sql": "INSERT INTO restaurant_search (restaurant_id,user_id,content,updated_at) VALUES (?,?,?,?)",
+            "parameterUtf8Bytes": [
+              36,
+              36,
+              38119,
+              13
+            ]
+          }
+        ],
+        "wallMs": 8,
+        "sqlMs": 3,
+        "rowsWritten": 143,
+        "rowsRead": 25,
+        "changes": 22,
+        "rowDeltas": {
+          "users": 0,
+          "sessions": 0,
+          "refresh_tokens": 0,
+          "refresh_rotation_results": 0,
+          "recovery_codes": 0,
+          "auth_rate_limits": 0,
+          "restaurants": 1,
+          "dishes": 5,
+          "restaurant_search": 1,
+          "visits": 3,
+          "change_sets": 1,
+          "revisions": 10,
+          "idempotency_keys": 0,
+          "mutation_guards": 0
+        }
+      },
+      "integrity": {
+        "foreignKeyViolations": 0,
+        "quickCheck": "ok"
+      },
+      "overLimit": []
+    }
+  ]
+}
