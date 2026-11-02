@@ -161,9 +161,12 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
     val source = remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val labelColor = when { isError -> c.danger; !enabled -> c.secondary; focused -> c.ink; else -> c.secondary }
+    val supportingSlot: (@Composable () -> Unit)? = supportingText?.let { content ->
+        { Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) { content() } }
+    }
     // Always keep the label above the box. Material's collapsed empty label hides placeholders.
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (label != null) Box(Modifier.clearAndSetSemantics {}) {
+        if (label != null) Box(Modifier.fillMaxWidth().clearAndSetSemantics {}, propagateMinConstraints = true) {
             CompositionLocalProvider(LocalContentColor provides labelColor, LocalFieldForeground provides labelColor) { label() }
         }
         OutlinedTextField(value, onValueChange,
@@ -171,11 +174,13 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
                 .border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
             enabled = enabled, interactionSource = source, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
             placeholder = {
-                CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {
-                    if (placeholder != null) placeholder() else Text("请输入", style = textStyle)
+                Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) {
+                    CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {
+                        if (placeholder != null) placeholder() else Text("请输入", style = textStyle)
+                    }
                 }
             },
-            isError = isError, supportingText = supportingText, visualTransformation = visualTransformation,
+            isError = isError, supportingText = supportingSlot, visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions, leadingIcon = leadingIcon, shape = RoundedCornerShape(10.dp),
             colors = OutlinedTextFieldDefaults.colors(focusedTextColor = c.ink, unfocusedTextColor = c.ink,
                 disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = c.surface,

@@ -350,7 +350,7 @@ class P8VisualTest {
         assertTrue("$description must expose its rendered text layout", layouts.isNotEmpty())
         layouts.forEach {
             assertEquals("$description renders the requested font scale", expectedScale, it.layoutInput.density.fontScale, 0.001f)
-            assertFalse("$description must not overflow: ${it.layoutInput.text}", it.hasVisualOverflow)
+            assertFalse("$description must not overflow: ${it.layoutInput.text}, size=${it.size}, widthOverflow=${it.didOverflowWidth}, heightOverflow=${it.didOverflowHeight}, scale=$expectedScale", it.hasVisualOverflow)
         }
     }
     private fun assertContained(description: String, bounds: DpRect, parent: DpRect) {
