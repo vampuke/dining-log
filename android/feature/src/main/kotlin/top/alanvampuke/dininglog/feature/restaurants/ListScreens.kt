@@ -7,8 +7,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.contentDescription
 import top.alanvampuke.dininglog.feature.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,8 +29,8 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable fun RecordListScreen(state: ListUiState, searchText: String, filters: ListFilters,
     onSearch: (String) -> Unit, onFilters: (ListFilters) -> Unit, onRecord: (RecordSummary) -> Unit,
     onRefresh: () -> Unit, onMore: () -> Unit, onAdd: (() -> Unit)? = null, onTrash: (() -> Unit)? = null,
-    onBack: (() -> Unit)? = null, titleOverride: String? = null, onChooseRestaurant: (() -> Unit)? = null,
-    onClearRestaurant: (() -> Unit)? = null, bottomBar: @Composable () -> Unit = {}, listState: LazyListState = rememberLazyListState()) {
+    onBack: (() -> Unit)? = null, titleOverride: String? = null,
+    bottomBar: @Composable () -> Unit = {}, listState: LazyListState = rememberLazyListState()) {
     val kind = state.query.kind
     val isSearch = searchText.isNotBlank()
     val title = titleOverride ?: if (state.query.deleted == DeletedFilter.ONLY) if (kind == RecordKind.REVISION) "隐藏的修改历史" else "回收站" else when (kind) {
@@ -95,10 +93,6 @@ import top.alanvampuke.dininglog.feature.theme.*
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(text = { Text(if (state.isRefreshing) "正在刷新…" else "刷新") },
                                 onClick = { menu = false; onRefresh() }, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh"))
-                            if (onChooseRestaurant != null) DropdownMenuItem(text = { Text("按餐厅筛选") },
-                                onClick = { menu = false; onChooseRestaurant() }, modifier = Modifier.testTag("choose-restaurant"))
-                            if (onClearRestaurant != null) DropdownMenuItem(text = { Text("显示全部餐厅") },
-                                onClick = { menu = false; onClearRestaurant() }, modifier = Modifier.testTag("clear-restaurant"))
                             if (onTrash != null) DropdownMenuItem(text = { Text(if (kind == RecordKind.REVISION) "管理隐藏历史" else "回收站") },
                                 onClick = { menu = false; onTrash() }, modifier = Modifier.testTag("trash"))
                         }

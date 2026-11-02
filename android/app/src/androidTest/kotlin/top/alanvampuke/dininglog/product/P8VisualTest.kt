@@ -274,6 +274,26 @@ class P8VisualTest {
             assertFieldLayout(empty = false, invalid = invalid)
         }
     }
+    @Test fun removedChooserEntriesAreAbsentFromOpenRestaurantAndVisitMenusInBothThemes() {
+        var dark by mutableStateOf(false)
+        var kind by mutableStateOf(RecordKind.RESTAURANT)
+        compose.setContent {
+            QuietGridTheme(dark) {
+                RecordListScreen(ListUiState(query = ListQuery(kind, if (kind == RecordKind.VISIT) ref.id else null)),
+                    "", ListFilters(), {}, {}, {}, {}, {}, onTrash = {})
+            }
+        }
+        for (night in listOf(false, true)) for (recordKind in listOf(RecordKind.RESTAURANT, RecordKind.VISIT)) {
+            compose.runOnIdle { dark = night; kind = recordKind }
+            compose.onNodeWithTag("record-list").performScrollToNode(hasTestTag("list-more"))
+            compose.onNodeWithTag("list-more").performClick()
+            compose.onNodeWithTag("refresh").assertIsDisplayed()
+            compose.onNodeWithTag("trash").assertIsDisplayed()
+            compose.onNodeWithTag("choose-restaurant").assertDoesNotExist()
+            compose.onNodeWithTag("clear-restaurant").assertDoesNotExist()
+            compose.onNodeWithTag("refresh").performClick()
+        }
+    }
     private fun assertFieldLayout(empty: Boolean, invalid: Boolean) {
         val field = compose.onNodeWithTag("field:name")
         val fieldBounds = field.getUnclippedBoundsInRoot()

@@ -90,13 +90,25 @@ for res in (RES, FEATURE / 'res'):
     assert not [p for p in res.rglob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp')]
 # A checked-in baseline makes the same assertions work in shallow PR checkouts.
 baseline = json.loads((ROOT / 'android/tools/p7_baseline.json').read_text())
+permitted_tag_removals = {
+    'SettingsScreen.kt': {'"draft:${draft.id}"'},
+    'HistoryScreens.kt': {'"confirm-new-save"'},
+    'ListScreens.kt': {'"choose-restaurant"', '"clear-restaurant"'},
+}
 for relative, tags in baseline['testTags'].items():
     new_tags = set(re.findall(r'testTag\(("(?:[^"\\]|\\.)*"|tag)\)', (ROOT / relative).read_text()))
     removed = set(tags) - new_tags
-    allowed = {'"draft:${draft.id}"'} if relative.endswith('SettingsScreen.kt') else ({'"confirm-new-save"'} if relative.endswith('HistoryScreens.kt') else set())
+    allowed = permitted_tag_removals.get(Path(relative).name, set())
     assert removed <= allowed, (relative, removed)
     if relative.endswith('SettingsScreen.kt'):
         assert '未提交草稿' not in (ROOT / relative).read_text()
+
+lists = (FEATURE / 'kotlin/top/alanvampuke/dininglog/feature/restaurants/ListScreens.kt').read_text()
+for retired in ('onChooseRestaurant', 'onClearRestaurant', 'choose-restaurant', 'clear-restaurant'):
+    assert retired not in lists, retired
+detail = (FEATURE / 'kotlin/top/alanvampuke/dininglog/feature/restaurants/DetailEditScreens.kt').read_text()
+for reachable in ('visit-history', 'add-visit'):
+    assert f'testTag("{reachable}")' in detail, reachable
 
 protected_baseline = json.loads((ROOT / 'android/tools/p8_protected_hashes.json').read_text())
 for relative, expected in protected_baseline.items():

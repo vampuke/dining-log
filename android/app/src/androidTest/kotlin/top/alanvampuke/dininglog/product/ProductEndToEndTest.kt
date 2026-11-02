@@ -385,12 +385,14 @@ class ProductEndToEndTest {
     }
     private fun scroll(tag: String) {
         if (tag in setOf("save", "confirm", "apply-save", "confirm-merge", "password-save") || tag.startsWith("tab:")) return
-        if (tag in setOf("refresh", "trash", "choose-restaurant", "clear-restaurant")) {
+        if (tag in setOf("refresh", "trash")) {
             if (compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()) {
                 scroll("list-more")
                 compose.onNodeWithTag("list-more").performClick()
             }
             compose.onNodeWithTag(tag).assertIsDisplayed()
+            compose.onNodeWithTag("choose-restaurant").assertDoesNotExist()
+            compose.onNodeWithTag("clear-restaurant").assertDoesNotExist()
             return
         }
         val dialog = listOf("screen:apply", "screen:conflict", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
