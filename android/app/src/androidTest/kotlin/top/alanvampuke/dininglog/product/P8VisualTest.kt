@@ -167,10 +167,12 @@ class P8VisualTest {
                 it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 0f
             })
             compose.onNodeWithTag("update-scroll").performScrollToNode(hasTestTag("update-close"))
+            compose.onNodeWithTag("update-scroll").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
             compose.onNodeWithTag("update-close").assertIsDisplayed()
             val panel = compose.onNodeWithTag("screen:update").getUnclippedBoundsInRoot()
             val last = compose.onNodeWithTag("update-close").getUnclippedBoundsInRoot()
             assertTrue(last.top >= panel.top && last.bottom <= panel.bottom)
+            assertEquals("long panel retains bottom padding after scrolling to the end", 16f, (panel.bottom - last.bottom).value, 1f)
             assertTrue("panel remains within the available window", panel.top >= 0.dp && panel.bottom <=
                 compose.activity.resources.configuration.screenHeightDp.dp)
             save("p9-${if (night) "dark" else "light"}-update-long-font200", true)
