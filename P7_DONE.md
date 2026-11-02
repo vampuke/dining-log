@@ -11,7 +11,7 @@ Implementation is visual only. Public `QuietGrid*` symbol names and semantics ke
 | Read complete task and authoritative HTML before editing | verified | Task and all reference sections, including the 8 hand-drawn SVG definitions |
 | Light + complete dark theme; existing system/user choice follows correctly | verified | Both token tables; native day/night and system-bar assertions pass on API 26/35 |
 | Visible dark outlines, hard shadows and subdued dots | verified | Theme-specific tokens, screenshot inspection; stroke/shadow >=3:1 on bg/surface |
-| All intended body-text combinations >=4.5:1 | verified | 46 WCAG measurements below; 0 failures; persisted `contrast.json` |
+| All intended body-text combinations >=4.5:1 | verified | 56 WCAG measurements below; 0 failures; persisted `contrast.json` |
 | No bitmap app assets | verified | Both Android resource trees checked for png/jpg/jpeg/webp; evidence screenshots are outside APK resources |
 | Eight reference icon vectors and adaptive/round/monochrome launcher | verified | XML conversion and rendered icon tests in both wallpaper colors on API 26/35 |
 | Every existing test tag preserved | verified | Master-baseline expressions checked; no selectors changed |
@@ -23,8 +23,8 @@ Implementation is visual only. Public `QuietGrid*` symbol names and semantics ke
 | App update remains in 我的; accessible labels and >=48 dp actions | verified | Update tests pass; navigation descriptions and button/chip minimum sizes retained |
 | Backend/API/domain/Room/cache/drafts/conflicts/auth flow untouched | verified | Protected-file hashes and git diff; 70 unit tests and functional instrumentation pass |
 | Local Android unit tests/lint | unverified locally | Attempt stopped before tasks: AGP 8.9.2 is uncached and cannot resolve offline; host lacks SDK/emulator |
-| CI backend, Android build/unit/lint, API 26 and API 35 | verified | [Passing run 41369161142](https://github.com/vampuke/dining-log/actions/runs/41369161142), code commit `e854c919ff` |
-| List/detail/editor in both themes, on both APIs | verified | 12 required-screen captures plus 4 rated-fixture density captures, provenance below |
+| CI backend, Android build/unit/lint, API 26 and API 35 | verified | [Passing run 41371027315](https://github.com/vampuke/dining-log/actions/runs/41371027315), code commit `498c8e95eb` |
+| List/detail/editor in both themes, on both APIs | verified | 12 current required-screen captures plus additional density captures, provenance below |
 | Physical handset / OEM launcher testing | unverified | No connected physical device; emulator coverage is API 26/35 |
 
 Local Android command attempted (not passed):
@@ -35,7 +35,7 @@ JAVA_OPTS=-Xmx128m ./android/gradlew -p android :core:test :data:testDebugUnitTe
 
 Gradle 8.11.1 ran, then failed resolving `com.android.application:8.9.2` in offline mode. No unit test or lint task executed locally. The separate token/vector/baseline checks passed locally.
 
-CI Android evidence: [run 41369161142](https://github.com/vampuke/dining-log/actions/runs/41369161142), source commit `e854c919ff0c3035cf8192bba47bbe91a2063a81`. Debug app and instrumentation APK builds, all four unit-test tasks, and `:app:lintDebug` succeeded. Downloaded XML reports show **70 unit tests, 0 failures, 0 skipped**. Both emulator reports show **27 tests, 0 failures, 0 skipped** each. Backend CI is green. Subsequent commits only add this report and evidence.
+CI Android evidence: [run 41371027315](https://github.com/vampuke/dining-log/actions/runs/41371027315), source commit `498c8e95ebc6edd9a47d1c4bb054c751e0861ae8`. Debug app and instrumentation APK builds, all four unit-test tasks, and `:app:lintDebug` succeeded. Downloaded XML reports show **70 unit tests, 0 failures, 0 skipped**. Both emulator reports show **27 tests, 0 failures, 0 skipped** each. Backend CI is green. Subsequent commits only add this report and evidence.
 
 ## Design choices and schema limits
 
@@ -55,7 +55,7 @@ CI Android evidence: [run 41369161142](https://github.com/vampuke/dining-log/act
 | `surface` | `#FFFFFF` | Cards, fields, dialogs and navigation |
 | `ink` | `#111111` | Primary body text |
 | `secondary` | `#514B40` | Metadata, supporting/disabled text |
-| `tertiary` | `#635C50` | Secondary Material role |
+| `tertiary` | `#5D564A` | Secondary Material role; readable over paper dots |
 | `border` | `#111111` | Card/field outlines and revision rails |
 | `accent` | `#FFD60A` | Rating meter and decorative yellow |
 | `onAccent` | `#111111` | Button lettering |
@@ -80,25 +80,30 @@ CI Android evidence: [run 41369161142](https://github.com/vampuke/dining-log/act
 
 ## Light measured body contrast
 
-Computed from the implemented sRGB values using WCAG relative luminance, with the 0.04045 transfer-function threshold. All sizes use the stricter 4.5:1 body threshold. Lilac has no body-text use. Decorative dots/barcode are not text.
+Computed from the implemented sRGB values using WCAG relative luminance, with the 0.04045 transfer-function threshold. All sizes use the stricter 4.5:1 body threshold. Dotted backgrounds are included because text can overlap a dot. Lilac has no body-text use.
 
 | Foreground token (hex) | Background token (hex) | Ratio | Result |
 |---|---|---:|---|
 | ink `#111111` | bg `#FFFDF5` | 18.5419:1 | PASS |
 | ink `#111111` | surface `#FFFFFF` | 18.8831:1 | PASS |
 | ink `#111111` | paper `#FAF4E4` | 17.1974:1 | PASS |
+| ink `#111111` | dots `#D8D0C1` | 12.3299:1 | PASS |
 | secondary `#514B40` | bg `#FFFDF5` | 8.4847:1 | PASS |
 | secondary `#514B40` | surface `#FFFFFF` | 8.6408:1 | PASS |
 | secondary `#514B40` | paper `#FAF4E4` | 7.8694:1 | PASS |
-| tertiary `#635C50` | bg `#FFFDF5` | 6.4901:1 | PASS |
-| tertiary `#635C50` | surface `#FFFFFF` | 6.6095:1 | PASS |
-| tertiary `#635C50` | paper `#FAF4E4` | 6.0195:1 | PASS |
+| secondary `#514B40` | dots `#D8D0C1` | 5.6421:1 | PASS |
+| tertiary `#5D564A` | bg `#FFFDF5` | 7.1218:1 | PASS |
+| tertiary `#5D564A` | surface `#FFFFFF` | 7.2528:1 | PASS |
+| tertiary `#5D564A` | paper `#FAF4E4` | 6.6054:1 | PASS |
+| tertiary `#5D564A` | dots `#D8D0C1` | 4.7358:1 | PASS |
 | danger `#A61B27` | bg `#FFFDF5` | 7.3449:1 | PASS |
 | danger `#A61B27` | surface `#FFFFFF` | 7.4800:1 | PASS |
 | danger `#A61B27` | paper `#FAF4E4` | 6.8123:1 | PASS |
+| danger `#A61B27` | dots `#D8D0C1` | 4.8842:1 | PASS |
 | accentInk `#111111` | bg `#FFFDF5` | 18.5419:1 | PASS |
 | accentInk `#111111` | surface `#FFFFFF` | 18.8831:1 | PASS |
 | accentInk `#111111` | paper `#FAF4E4` | 17.1974:1 | PASS |
+| accentInk `#111111` | dots `#D8D0C1` | 12.3299:1 | PASS |
 | onAccent `#111111` | cta `#FFD60A` | 13.3755:1 | PASS |
 | accentInk `#111111` | accentSoft `#FFD60A` | 13.3755:1 | PASS |
 | stickerInk `#111111` | butter `#FFD60A` | 13.3755:1 | PASS |
@@ -143,25 +148,30 @@ Failures: **0**.
 
 ## Dark measured body contrast
 
-Computed from the implemented sRGB values using WCAG relative luminance, with the 0.04045 transfer-function threshold. All sizes use the stricter 4.5:1 body threshold. Lilac has no body-text use. Decorative dots/barcode are not text.
+Computed from the implemented sRGB values using WCAG relative luminance, with the 0.04045 transfer-function threshold. All sizes use the stricter 4.5:1 body threshold. Dotted backgrounds are included because text can overlap a dot. Lilac has no body-text use.
 
 | Foreground token (hex) | Background token (hex) | Ratio | Result |
 |---|---|---:|---|
 | ink `#F5F2E8` | bg `#14120E` | 16.7009:1 | PASS |
 | ink `#F5F2E8` | surface `#24211B` | 14.3296:1 | PASS |
 | ink `#F5F2E8` | paper `#302B23` | 12.5367:1 | PASS |
+| ink `#F5F2E8` | dots `#343026` | 11.7415:1 | PASS |
 | secondary `#D3CBBB` | bg `#14120E` | 11.6067:1 | PASS |
 | secondary `#D3CBBB` | surface `#24211B` | 9.9586:1 | PASS |
 | secondary `#D3CBBB` | paper `#302B23` | 8.7126:1 | PASS |
+| secondary `#D3CBBB` | dots `#343026` | 8.1600:1 | PASS |
 | tertiary `#BCB3A2` | bg `#14120E` | 9.0041:1 | PASS |
 | tertiary `#BCB3A2` | surface `#24211B` | 7.7256:1 | PASS |
 | tertiary `#BCB3A2` | paper `#302B23` | 6.7590:1 | PASS |
+| tertiary `#BCB3A2` | dots `#343026` | 6.3303:1 | PASS |
 | danger `#FF9398` | bg `#14120E` | 8.7999:1 | PASS |
 | danger `#FF9398` | surface `#24211B` | 7.5505:1 | PASS |
 | danger `#FF9398` | paper `#302B23` | 6.6058:1 | PASS |
+| danger `#FF9398` | dots `#343026` | 6.1867:1 | PASS |
 | accentInk `#F5F2E8` | bg `#14120E` | 16.7009:1 | PASS |
 | accentInk `#F5F2E8` | surface `#24211B` | 14.3296:1 | PASS |
 | accentInk `#F5F2E8` | paper `#302B23` | 12.5367:1 | PASS |
+| accentInk `#F5F2E8` | dots `#343026` | 11.7415:1 | PASS |
 | onAccent `#111111` | cta `#FFD60A` | 13.3755:1 | PASS |
 | accentInk `#F5F2E8` | accentSoft `#393326` | 11.1899:1 | PASS |
 | stickerInk `#111111` | butter `#FFD60A` | 13.3755:1 | PASS |
@@ -175,14 +185,14 @@ Failures: **0**.
 
 ## Screenshot evidence
 
-Actual captures from passing run **41369161142**, code commit `e854c919ff0c3035cf8192bba47bbe91a2063a81`. List images exercise the real isolated test API with synthetic test records; detail/editor images use the existing visual-test fixtures. They are not production user data or generated mockups. All image dimensions and SHA-256 checksums are retained in [evidence.json](design/bite/p7-evidence/evidence.json).
+The 12 required captures below come from passing run **41371027315**, code commit `498c8e95ebc6edd9a47d1c4bb054c751e0861ae8`. API 26 list images exercise the isolated test API; API 35 list images and all detail/editor images use the existing visual-test fixtures. All records are synthetic test inputs, not production user data or generated mockups. Each image has its own source commit, CI run, dimensions and SHA-256 in [evidence.json](design/bite/p7-evidence/evidence.json); artifact download digests and both original runtime logs are retained too.
 
 | API / screen | Light | Dark |
 |---|---|---|
 | 26 / List | [Screenshot](design/bite/p7-evidence/p6-real-light-360x640-api26.png) | [Screenshot](design/bite/p7-evidence/p6-real-dark-360x640-api26.png) |
 | 26 / Detail | [Screenshot](design/bite/p7-evidence/light-detail-api26.png) | [Screenshot](design/bite/p7-evidence/dark-detail-api26.png) |
 | 26 / Editor | [Screenshot](design/bite/p7-evidence/light-edit-api26.png) | [Screenshot](design/bite/p7-evidence/dark-edit-api26.png) |
-| 35 / List | [Screenshot](design/bite/p7-evidence/p6-real-light-360x640-api35.png) | [Screenshot](design/bite/p7-evidence/p6-real-dark-360x640-api35.png) |
+| 35 / List | [Screenshot](design/bite/p7-evidence/p6-light-360x640-api35.png) | [Screenshot](design/bite/p7-evidence/p6-dark-360x640-api35.png) |
 | 35 / Detail | [Screenshot](design/bite/p7-evidence/light-detail-api35.png) | [Screenshot](design/bite/p7-evidence/dark-detail-api35.png) |
 | 35 / Editor | [Screenshot](design/bite/p7-evidence/light-edit-api35.png) | [Screenshot](design/bite/p7-evidence/dark-edit-api35.png) |
 
@@ -193,7 +203,9 @@ Rated-fixture first-screen evidence:
 | 26 | 4 | [360×640](design/bite/p7-evidence/p6-light-360x640-api26.png) | [360×640](design/bite/p7-evidence/p6-dark-360x640-api26.png) |
 | 35 | 3 | [360×640](design/bite/p7-evidence/p6-light-360x640-api35.png) | [360×640](design/bite/p7-evidence/p6-dark-360x640-api35.png) |
 
-The real-API captures also contain 4 complete records on API 26 and 3 on API 35, in both themes. [API 26 runtime log](design/bite/p7-evidence/runtime-api26.log) and [API 35 runtime log](design/bite/p7-evidence/runtime-api35.log) record the measured counts, selected-icon contrast, tab reselections and zero-white-frame assertions. The copied dark screenshots additionally contain zero pure-white pixels. These are verification artifacts outside Android resources.
+The real-API runtime assertions also count 4 complete records on API 26 and 3 on API 35, in both themes. [API 26 runtime log](design/bite/p7-evidence/runtime-api26.log) and [API 35 runtime log](design/bite/p7-evidence/runtime-api35.log) record the measured counts, selected-icon contrast, tab reselections and zero-white-frame assertions. The copied dark screenshots additionally contain zero pure-white pixels. These are verification artifacts outside Android resources.
+
+The current API 35 artifact omitted the supplementary real-API light image. Its old image is retained with explicit source `e854c919ff0c3035cf8192bba47bbe91a2063a81` / run `41369161142` and `currentCapture: false`; it is not used for the 12 required views above. The current light fixture image and real-API runtime assertion verify the required list layout. The optional current real-API light screenshot remains unverified because the artifact did not retain the file.
 
 ## VectorDrawable inventory
 
@@ -213,10 +225,12 @@ Replaced `ic_launcher_foreground.xml` and `ic_launcher_background.xml`; created 
 ## Test changes, item by item
 
 1. `P6UiTest.actualAdaptiveRoundAndMonochromeIconsAndNativeNightThemeResolveCorrectly`: expected rendered foreground changes from D2 `#FBFBFA` to BITE `#111111`; background changes from D2 `#23543C` to BITE `#FFD60A`. The existing >50/>100 pixel assertions, both wallpaper cases, >=4.5 contrast threshold, adaptive/round/monochrome existence and matching native night checks remain intact.
-2. `verify_p6_visuals.py`: retained as the CI entry point, now invokes `verify_bite_visuals.py`. The D2 assumption that a launcher must have a single fill is replaced with verification of the multi-color reference vectors and dedicated alpha-only monochrome. The >=4.5 body/navigation threshold, native theme checks and no-bitmap checks remain; all tag expressions and protected-tree checks are added.
+2. `verify_p6_visuals.py`: retained as the CI entry point, now invokes `verify_bite_visuals.py`. The D2 assumption that a launcher must have a single fill is replaced with verification of the multi-color reference vectors and dedicated alpha-only monochrome. The >=4.5 body/navigation threshold, native theme checks, explicit manifest/adaptive-layer bindings, actual launcher ink/background contrast and navigation token bindings remain enforced; all tag expressions and protected-tree checks are added. Empty monochrome artwork is rejected. The protected-file inventory also rejects added/removed backend, contract, core and data files.
 
 3. `AndroidAuthTest.recoveryDarkUsesApprovedTokens`: exact background assertion changes from D2 `#0F0F0E` to BITE `#14120E`; equality and recovery-form visibility assertions are retained.
 
 The first emulator run found the obsolete auth color, a light-resource rim under a manually selected dark Compose theme, and a brand title overflow at 200% font. The fixes use an explicit dark masthead vector and a full-width Chinese title 食记 at large fonts; explicit width avoids the CJK fallback intrinsic-width overflow. API 35 additionally exposed the three-record density regression; compact card/header spacing and an explicit 64 dp navigation body plus actual system-bar padding fix it. The same zero-white-pixels, no-overflow and >=3 complete-record assertions remain intact.
+
+4. `verify_bite_visuals.py`: adds foreground measurements on the paper dots. Light tertiary `#635C50` measured 4.3158:1 on `#D8D0C1`; the shipped `#5D564A` measures 4.7358:1. This expands the 4.5:1 assertion to 56 pairs across both themes. No threshold is lowered.
 
 No selector changes and no weakened assertions. Tests still assert three complete records, preserved navigation entries, actual pixel colors, no white navigation flash, 200% text without overflow, save above the real keyboard, explicit conflict choice and one-tenth rating steps.
