@@ -33,7 +33,7 @@ class AppUpdateChecker(gateway: AppVersionGateway, private val preferences: Upda
                 if (enabled) {
                     try {
                         val release = gateway.latest()
-                        if (release.valid && release.versionCode > installedVersionCode) {
+                        if (release.valid && isNewerVersion(release.versionCode, installedVersionCode)) {
                             mutableState.value = AppUpdateState(true, release)
                         }
                     } catch (cancelled: CancellationException) { throw cancelled }

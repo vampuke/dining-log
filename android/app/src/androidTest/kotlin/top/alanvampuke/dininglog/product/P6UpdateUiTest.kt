@@ -23,7 +23,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 @RunWith(AndroidJUnit4::class)
 class P6UpdateUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun showsOnlyAnInlineEntryOpensHttpsAndAllowsOptOutWithoutAnInstallPermission() {
+    @Test fun inlineEntryAllowsOptOutAndInstallProviderExposesOnlyTheUpdatesSubdirectory() {
         val release = AppRelease(BuildConfig.VERSION_CODE + 1, "0.7.0", "https://github.com/vampuke/dining-log/releases/download/v0.7.0/app-release.apk",
             "0".repeat(64), "新的发布说明", 1793544038)
         var state by mutableStateOf(AppUpdateState(true, release))
@@ -48,6 +48,32 @@ class P6UpdateUiTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         @Suppress("DEPRECATION")
         val permissions = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
-        assertFalse(permissions.contains("android.permission.REQUEST_INSTALL_PACKAGES"))
+        assertTrue(permissions.contains("android.permission.REQUEST_INSTALL_PACKAGES"))
+        val authority = "${context.packageName}.fileprovider"
+        val provider = context.packageManager.resolveContentProvider(authority, 0)!!
+        assertFalse(provider.exported); assertTrue(provider.grantUriPermissions)
+        val folder = java.io.File(context.cacheDir, "updates").apply { mkdirs() }
+        val apk = java.io.File(folder, "app-public-fixture.apk").apply { writeText("public fixture") }
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(context, authority, apk)
+            assertEquals(authority, uri.authority)
+            assertEquals("content", uri.scheme)
+            try {
+                androidx.core.content.FileProvider.getUriForFile(context, authority, java.io.File(context.cacheDir, "private.txt"))
+                fail("FileProvider must reject cache root files")
+            } catch (_: IllegalArgumentException) { }
+            val paths = context.resources.getXml(top.alanvampuke.dininglog.R.xml.file_paths)
+            var entries = 0
+            paths.use {
+                while (it.next() != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
+                    if (it.eventType == org.xmlpull.v1.XmlPullParser.START_TAG && it.name != "paths") {
+                        entries++
+                        assertEquals("cache-path", it.name)
+                        assertEquals("updates/", it.getAttributeValue(null, "path"))
+                    }
+                }
+            }
+            assertEquals(1, entries)
+        } finally { apk.delete() }
     }
 }

@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.PersistableBundle
 import android.view.WindowManager
 import android.view.Window
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,6 +39,7 @@ import top.alanvampuke.dininglog.feature.auth.AuthRoot
 import top.alanvampuke.dininglog.feature.theme.QuietGridTheme
 import top.alanvampuke.dininglog.feature.theme.QuietGridDark
 import top.alanvampuke.dininglog.feature.theme.QuietGridLight
+import top.alanvampuke.dininglog.feature.settings.UpdateDialog
 import top.alanvampuke.dininglog.feature.ProductRoot
 import top.alanvampuke.dininglog.feature.ProductViewModel
 import javax.inject.Inject
@@ -52,6 +54,14 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var security: AccountSecurity
     @Inject lateinit var preferences: ThemePreferences
     @Inject lateinit var updates: AppUpdateChecker
+    @Inject lateinit var inAppUpdates: InAppUpdates
+    private val installPermission = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        inAppUpdates.install(this, { intent -> installPermissionLaunch(intent) }, afterPermission = true)
+    }
+    private fun installPermissionLaunch(intent: Intent) {
+        try { installPermission.launch(intent) }
+        catch (_: Exception) { inAppUpdates.fail("无法打开安装权限设置，请打开下载页") }
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -60,10 +70,24 @@ class MainActivity : ComponentActivity() {
         setContent {
             val choice by preferences.theme.collectAsStateWithLifecycle(ThemeChoice.SYSTEM)
             val updateState by updates.state.collectAsStateWithLifecycle()
+            val installState by inAppUpdates.state.collectAsStateWithLifecycle()
+            var showUpdate by remember { mutableStateOf(false) }
+            LaunchedEffect(installState.stage) {
+                if (installState.stage == UpdateStage.READY) {
+                    showUpdate = true
+                    inAppUpdates.install(this@MainActivity, ::installPermissionLaunch)
+                }
+            }
             val dark = when (choice) { ThemeChoice.SYSTEM -> isSystemInDarkTheme(); ThemeChoice.DARK -> true; ThemeChoice.LIGHT -> false }
             val scope = rememberCoroutineScope()
             SideEffect { applySystemBarTheme(window, dark) }
             QuietGridTheme(dark) {
+                if (showUpdate) UpdateDialog(installState, inAppUpdates::startDownload, inAppUpdates::cancel,
+                    onInstall = { inAppUpdates.install(this@MainActivity, ::installPermissionLaunch) },
+                    onDownloadPage = {
+                        try { installState.release?.let { startActivity(appUpdateIntent(it)) } }
+                        catch (_: Exception) { inAppUpdates.fail("无法打开下载页，请安装或启用浏览器后重试") }
+                    }, onDismiss = { showUpdate = false })
                 AuthRoot(account, gateway,
                     onRestore = { withContext(Dispatchers.IO) {
                         val saved = store.read()
@@ -94,10 +118,7 @@ class MainActivity : ComponentActivity() {
                         ProductRoot(vm, session.username, choice, onTheme = { next -> scope.launch { preferences.setTheme(next) } }, onLogout = logout,
                             version = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) " 调试版" else "",
                             updateState = updateState, onUpdateToggle = { enabled -> scope.launch { updates.setEnabled(enabled) } },
-                            onOpenUpdate = { release ->
-                                try { startActivity(appUpdateIntent(release)) }
-                                catch (_: ActivityNotFoundException) { Toast.makeText(this, "请安装浏览器后再打开下载链接", Toast.LENGTH_SHORT).show() }
-                            })
+                            onOpenUpdate = { release -> inAppUpdates.open(release); showUpdate = true })
                     })
             }
         }
@@ -119,6 +140,6 @@ fun applySystemBarTheme(window: Window, dark: Boolean) {
 }
 
 fun appUpdateIntent(release: AppRelease): Intent {
-    require(release.valid)
+    require(release.valid && isAllowedUpdateUrl(release.url, top.alanvampuke.dininglog.data.ApiConfiguration.BASE_URL))
     return Intent(Intent.ACTION_VIEW, Uri.parse(release.url))
 }

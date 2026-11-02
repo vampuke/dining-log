@@ -34,7 +34,13 @@ class AppVersionTest {
             assertFailsWith<IllegalArgumentException> { gateway.latest() }
             server.enqueue(MockResponse().setResponseCode(503))
             assertFailsWith<HttpException> { gateway.latest() }
-            assertEquals(3, server.requestCount)
+            for (value in listOf("6.5", "\"6\"", "2147483648")) {
+                server.enqueue(MockResponse().setBody(response.replace("\"version_code\":6", "\"version_code\":$value")))
+                assertFailsWith<kotlinx.serialization.SerializationException> { gateway.latest() }
+            }
+            server.enqueue(MockResponse().setBody(response.replace("https://github.com/vampuke/dining-log/releases/download/v0.6.0/app-release.apk", "https://evil.invalid/app.apk")))
+            assertFailsWith<IllegalArgumentException> { gateway.latest() }
+            assertEquals(7, server.requestCount)
         }
     }
 }
