@@ -2,59 +2,281 @@
   "phase": "P8",
   "base": "007a9c3",
   "screenshots": {
-    "status": "pending CI instrumentation; no local emulator available",
-    "expected": [
-      "light-home.png",
-      "light-edit.png",
-      "light-detail.png",
-      "light-update.png",
-      "dark-home.png",
-      "dark-edit.png",
-      "dark-detail.png",
-      "dark-update.png"
+    "status": "captured in CI and manually inspected",
+    "sourceRun": 41381574579,
+    "sourceCommit": "ab29c76",
+    "sourceArtifact": 13114055548,
+    "api": 35,
+    "normalization": "Full frame resized with Lanczos to 360x640; no crop or content edits. Update dialogs include system bars; other images capture the 360dp x 640dp Compose viewport.",
+    "runtimeCodeUnchangedSinceSource": true,
+    "images": [
+      {
+        "file": "light-home.png",
+        "sourceFile": "p8-light-home-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "3a97d49f649d92fef2186da4aabf38df08b8ca36d8e9b66d3a73417ead06585e",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-edit.png",
+        "sourceFile": "p8-light-edit-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "f46464c167fb32c8403417284d68d414daa1eeaf4edaed1e685635606e00e399",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-detail.png",
+        "sourceFile": "p8-light-detail-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "99255128446912a567ba433c7364c808bf887a24f5504b091d6b2a18f58af487",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-update.png",
+        "sourceFile": "p8-light-update-api35.png",
+        "sourceDimensions": [
+          1080,
+          1920
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "042c00ef6bf28e9186ba0386e802eb81972edf8a6a017c9d506d2b68ca10d98f",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-home-tail-font200.png",
+        "sourceFile": "p8-light-home-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "50a5341b43a343e97c74ec45dfcc59c5fd89f41bb26d26c05d9da29dd95692ce",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-dishes-tail-font200.png",
+        "sourceFile": "p8-light-dishes-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "e409ce5f7ab3259272f284cffe7a729a19298dcb5e849a559136c358f9698926",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-visits-tail-font200.png",
+        "sourceFile": "p8-light-visits-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "195cdcf68988feec22bcbf8e1e449ba97f3057fc6da313861f1c49f2c108bfc9",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "light-settings-tail-font200.png",
+        "sourceFile": "p8-light-settings-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "64c130a057c3d9190c5ab72891c02308685f55015d00a92a1f6f47644565f79e",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-home.png",
+        "sourceFile": "p8-dark-home-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "04e5c22e76a9a6bc7712702a637c19fd77ba97940e79dddbded4374d242aac1c",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-edit.png",
+        "sourceFile": "p8-dark-edit-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "7390c9b835f7ba427755ecf2035517de8077d7b48d4584ddbaaff3735d2227a5",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-detail.png",
+        "sourceFile": "p8-dark-detail-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "fcaa71dd5d238d11edf9959954caa73bd2eef07c6b6617310fc645874cf99ca2",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-update.png",
+        "sourceFile": "p8-dark-update-api35.png",
+        "sourceDimensions": [
+          1080,
+          1920
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "00ca5abaf86cd24546bc85e3123e2d645d2d1e3ed6f6a694b6b4fa6d7cf071fc",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-home-tail-font200.png",
+        "sourceFile": "p8-dark-home-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "b119fc77a9cf3dedb768a57f519f784d41dbe58706eaa815480f71c10c59b4f3",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-dishes-tail-font200.png",
+        "sourceFile": "p8-dark-dishes-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "2e8b9a81f2a5c5772a0ec3fa9520fada5a706364e9f987f5f525820c0d906426",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-visits-tail-font200.png",
+        "sourceFile": "p8-dark-visits-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "cae0d5d0ad18aef0d931dcb33f93c12cc6965ed324a5237eba5d088efae8e56a",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      },
+      {
+        "file": "dark-settings-tail-font200.png",
+        "sourceFile": "p8-dark-settings-tail-font200-api35.png",
+        "sourceDimensions": [
+          945,
+          1680
+        ],
+        "dimensions": [
+          360,
+          640
+        ],
+        "sha256": "5e00146218e06f52c96ba0bc1330215fcd296291a856104ac139422bf8d44941",
+        "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
+      }
     ]
   },
   "sections": {
     "A": {
       "locations": [
-        "core/Writes.kt",
-        "data/local/ProductDatabase.kt",
-        "feature/ProductViewModel.kt",
-        "feature/restaurants/DetailEditScreens.kt",
-        "feature/revisions/HistoryScreens.kt",
-        "feature/settings/SettingsScreen.kt"
+        "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Writes.kt",
+        "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/local/ProductDatabase.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/DetailEditScreens.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/revisions/HistoryScreens.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt"
       ],
       "behavior": "Only memory holds unsubmitted input. Failure stays in the editor. Detail supports pull-to-refresh. Explicit migration removes obsolete table."
     },
     "B": {
       "locations": [
-        "feature/components/BiteComponents.kt",
-        "feature/components/QuietGridComponents.kt"
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt"
       ],
       "behavior": "Label always above field; tertiary placeholder inside. Secondary/focus/error roles explicit, including disabled and multiline."
     },
     "C": {
       "locations": [
-        "app/InAppUpdates.kt",
-        "app/UpdateDownloadService.kt",
+        "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt",
+        "android/app/src/main/kotlin/top/alanvampuke/dininglog/UpdateDownloadService.kt",
         "app/AndroidManifest.xml",
-        "app/res/xml/file_paths.xml",
-        "feature/settings/UpdateDialog.kt"
+        "android/app/src/main/res/xml/file_paths.xml",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/UpdateDialog.kt"
       ],
       "behavior": "Foreground service, cancel/progress/retry, HTTPS entry and redirect allowlist, re-fetch API metadata, SHA-256 before installation, permission return, system installer, download-page fallback."
     },
     "D": {
       "locations": [
-        "feature/ProductRoot.kt",
-        "feature/components/QuietGridComponents.kt"
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductRoot.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt"
       ],
       "behavior": "Measured floating capsule, 20dp side margins, system navigation inset +16dp bottom, hard shadow. Equivalent scroll content padding. Hidden during IME to expose inputs."
     },
     "E": {
       "locations": [
-        "feature/ProductRoot.kt",
-        "feature/ProductViewModel.kt",
-        "feature/restaurants/DetailEditScreens.kt"
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductRoot.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt",
+        "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/DetailEditScreens.kt"
       ],
       "behavior": "Restaurant/account tabs, centered nav-add creates restaurant from either tab. Legacy tab falls back. add-visit and visit-history remain reachable."
     }
@@ -68,10 +290,11 @@
     "versionsUnchanged": true,
     "noBitmapResourcesAdded": true,
     "roomMigrationSql": "passed using populated exported v1 schema in sqlite3",
-    "runtimeAndManualScreenshotReview": "pending CI",
+    "runtimeAndManualScreenshotReview": "Eight primary images plus eight list tails at 200% font manually inspected. Earlier rows/fields outside the scroll viewport are naturally clipped; final rows and action controls were checked in full.",
     "searchExceptions": [
       "obsolete table name in the required DROP migration, migration test and immutable Room v1 schema",
-      "historical design/task documents and P7 baseline contain descriptions of removed functionality"
+      "historical design/task documents and P7 baseline contain descriptions of removed functionality",
+      "original removed tag literal in the visual verifier, preserving the historical assertion contract"
     ],
     "tagChanges": {
       "removedPersistenceEntries": "assert absence",
@@ -80,6 +303,31 @@
       "tab:visits": "assert absence; visit-history replaces navigation entry",
       "nav-add": "retained and centered; add retained in list header",
       "add-visit": "retained"
+    },
+    "globalRemovalSearch": "No removed persistence APIs in active Android code; only documented historical/migration and assertion-contract exceptions remain.",
+    "installPermissionAndProvider": "REQUEST_INSTALL_PACKAGES declared; non-exported provider authority uses applicationId; the single cache-path exposes updates/ only. CI provider checks reject cache root access.",
+    "floatingCapsuleAndListTails": "20dp horizontal margins; navigation inset +16dp bottom; measured capsule clearance. See *-tail-font200.png for restaurant, dish, visit and settings tails in both themes.",
+    "twoTabsAndCenteredAdd": "Restaurant and account tabs only; nav-add centered geometrically in CI; removed visits-tab absence asserted; detail add-visit and visit-history retained.",
+    "ci": {
+      "verifiedRun": 41382169800,
+      "verifiedCommit": "18cc169",
+      "buildJvmAndLint": "passed",
+      "api26EndToEnd": "passed",
+      "listTailAndScreenshotTestBothApis": "passed",
+      "fullSuiteResults": "See https://github.com/vampuke/dining-log/pull/12/checks for the final commit. Disabled focus semantics and IME test synchronization were corrected after this run without changing runtime code."
+    },
+    "priorBackendCapacityFailure": {
+      "run": 41381574579,
+      "p95Ms": 113,
+      "limitMs": 100,
+      "rerun": 41382169800,
+      "rerunResult": "passed",
+      "backendUnchanged": true
     }
-  }
+  },
+  "limitations": [
+    "No local Gradle or emulator execution, as instructed.",
+    "Signed release APK download and physical-device system installation, OEM installers, unknown-app settings return and service cancellation across process death were not exercised on a physical device.",
+    "Screenshots use deterministic UI fixtures; network and repository behavior is covered separately by JVM and CI end-to-end tests."
+  ]
 }
