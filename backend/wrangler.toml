@@ -26,12 +26,12 @@ API_BODY_MAX_BYTES = "65536"
 REVISION_MAX_BYTES = "131072"
 SOFT_DELETE_RETENTION_DAYS = "30"
 # Advertise only an actually published APK; replace all six values at release.
-APP_VERSION_CODE = "7"
-APP_VERSION_NAME = "0.7.0"
-APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.7.0/app-release.apk"
-APP_APK_SHA256 = "f0cb6653e1b3ea9dca8591b9d432982c49817c9ac5855de0d3ccbdac5c24e132"
-APP_RELEASE_NOTES = "全新潮流贴纸风界面：粗黑描边、硬投影、锯齿小票、8 款贴纸图标，深色模式独立设计。"
-APP_RELEASED_AT = "1793585859"
+APP_VERSION_CODE = "8"
+APP_VERSION_NAME = "0.8.0"
+APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.8.0/app-release.apk"
+APP_APK_SHA256 = "1da994089277076ab0a112843eced8d3d71502b47ab82d50e7e39f249dcb2bf4"
+APP_RELEASE_NOTES = "移除草稿；修复输入框提示与旋转丢输入；底部导航改悬浮胶囊并去掉到店 tab；支持应用内下载安装更新；允许截图（敏感页除外）。"
+APP_RELEASED_AT = "1793609298"
 
 [[d1_databases]]
 binding = "DB"
