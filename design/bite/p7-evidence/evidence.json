@@ -1,0 +1,163 @@
+{
+  "sourceCommit": "e854c919ff0c3035cf8192bba47bbe91a2063a81",
+  "ciRun": "https://github.com/vampuke/dining-log/actions/runs/41369161142",
+  "unitTests": {
+    "tests": 70,
+    "failures": 0,
+    "skipped": 0
+  },
+  "instrumentation": {
+    "26": {
+      "tests": 27,
+      "failures": 0,
+      "skipped": 0,
+      "density": [
+        {
+          "scope": "real API",
+          "theme": "light",
+          "completeRecords": 4
+        },
+        {
+          "scope": "real API",
+          "theme": "dark",
+          "completeRecords": 4
+        },
+        {
+          "scope": "fixture",
+          "theme": "light",
+          "completeRecords": 4
+        },
+        {
+          "scope": "fixture",
+          "theme": "dark",
+          "completeRecords": 4
+        }
+      ]
+    },
+    "35": {
+      "tests": 27,
+      "failures": 0,
+      "skipped": 0,
+      "density": [
+        {
+          "scope": "real API",
+          "theme": "light",
+          "completeRecords": 3
+        },
+        {
+          "scope": "real API",
+          "theme": "dark",
+          "completeRecords": 3
+        },
+        {
+          "scope": "fixture",
+          "theme": "light",
+          "completeRecords": 3
+        },
+        {
+          "scope": "fixture",
+          "theme": "dark",
+          "completeRecords": 3
+        }
+      ]
+    }
+  },
+  "screenshots": [
+    {
+      "file": "p6-real-light-360x640-api26.png",
+      "sha256": "79c22f709d93766d10c5899431a7079f55e84d77adf74f5bab561b29cc6af87b",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "p6-light-360x640-api26.png",
+      "sha256": "a2558b8ce7bb9306214d34ea2b47f09e6132d8acbe96d5279489ebcccd7a6511",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "light-detail-api26.png",
+      "sha256": "8193b8c36f80a7e771a65061bc74c780df29edac5fc804dd84e3f7fe034487a8",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "light-edit-api26.png",
+      "sha256": "03680e7904801fa9bb328aaaf2757116273097ef0573662f51f8248ff385d018",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "p6-real-dark-360x640-api26.png",
+      "sha256": "43ef2d46c9935952de7ffbc941d17843ee8b27f366f375017ad762325ca82aa6",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "p6-dark-360x640-api26.png",
+      "sha256": "4a41fc831cdd3a9724e69f16f7733bae714eecf95b401811fbb13005c02154d2",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "dark-detail-api26.png",
+      "sha256": "4a93f551a36ad2a0853fe7414e245d7dee2b4f094d230f946a2b6ab18f8cb599",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "dark-edit-api26.png",
+      "sha256": "0ff897f26d2ed962c6599235670ea9acc99f4d84e5fb7acd4f29ceb2e005987e",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "p6-real-light-360x640-api35.png",
+      "sha256": "2324fd39a9a40df12b9c69948f5642a2cc04e8c3cf02fc78d857d26db0958a5a",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "p6-light-360x640-api35.png",
+      "sha256": "5af1c43b0d5ec6f9d15c30e59d448a6f5b5db66c9505df89d2ec17eea8555fdd",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "light-detail-api35.png",
+      "sha256": "629044e734e9c12d59f61a20a8969a8f570115b9977c9a2e3d8db7f6aa267342",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "light-edit-api35.png",
+      "sha256": "75af8c0e6d074f7fef435b6c2593d9f0e4cffa2b073336a757cb7add0a74b738",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "p6-real-dark-360x640-api35.png",
+      "sha256": "86521ba7091884f84423904b1c99e16cd926be70cfc68da0bf8d9c216c8ebc1a",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "p6-dark-360x640-api35.png",
+      "sha256": "10f7ca46ec8391661561a1c4cfcde723c8e46d69715edeeff031f3ad59ae83eb",
+      "width": 945,
+      "height": 1680
+    },
+    {
+      "file": "dark-detail-api35.png",
+      "sha256": "d8f74e41ac6c357e45d02cd455aad694fa39b63815c0f1ae7303b3d483aabe76",
+      "width": 1080,
+      "height": 1920
+    },
+    {
+      "file": "dark-edit-api35.png",
+      "sha256": "098a2500a8ffe97d9f97e807ec1b2e65e19ef8c47e1785feb762e7209565ab58",
+      "width": 1080,
+      "height": 1920
+    }
+  ]
+}

@@ -8,21 +8,24 @@ Implementation is visual only. Public `QuietGrid*` symbol names and semantics ke
 
 | Requirement | Status | Evidence / limit |
 |---|---|---|
-| Read complete task and authoritative HTML before editing | verified | `design/P7_TASK.md`, all 1,578 lines of `design/bite/BITE_DESIGN_REFERENCE.html` |
-| Light + complete dark theme, follows existing system/user setting | verified (source); runtime pending | `Colors.kt`, native `values`/`values-night`, existing `QuietGridTheme` system selection retained |
-| Visible dark strokes and hard shadows | verified (tokens); rendered pending | Cream outlines `#F5F2E8`, warm shadow `#B5A88C`; both >=3:1 on dark bg/surface |
-| All intended body-text combinations >=4.5:1 | verified | 46 real WCAG measurements below; zero failures; `android/tools/verify_bite_visuals.py` |
-| No bitmap assets | verified | Both Android resource trees checked for png/jpg/jpeg/webp; SVG converted to vector XML |
-| All 8 reference icons + adaptive foreground/background/monochrome | verified (XML); runtime pending | Conversion script retains reference paths and converts SVG primitives to equivalent arcs |
-| Every existing `testTag` preserved | verified | Automated comparison against master of literal/interpolated expressions; none removed |
-| Three complete records at 360×640, both themes | unverified, CI pending | Existing P6 fixture and real-API tests retain `>=3` assertion |
-| Empty optional fields omitted, no null/-- | verified (source); instrumentation pending | Detail omits empty address/review/note; unchanged assertion |
-| Tab reselect, no rebuild, scroll to top, remove-animations setting | verified (source); instrumentation pending | Original navigation callbacks/transitions retained; existing tests unchanged |
-| App update in 我的; readable descriptions and >=48 dp actions | verified (source); instrumentation pending | Existing update tag/flow; button/chip min heights; `nav-add` description |
-| Backend/API/data/cache/draft/auth untouched | verified | `git diff master -- backend android/core android/data` empty; VM untouched |
-| Local Android unit tests/lint | unverified locally | Attempt failed before tests: Android Gradle plugin 8.9.2 is uncached and cannot resolve offline; no SDK/emulator on the 956 MB host. Command below. |
-| CI backend + Android + API 26/35 | backend/build/unit/lint verified; emulator pending | https://github.com/vampuke/dining-log/actions/runs/41367414503 |
-| Six screenshots | unverified, CI capture pending | See screenshot manifest below; no mock rendering presented as evidence |
+| Read complete task and authoritative HTML before editing | verified | Task and all reference sections, including the 8 hand-drawn SVG definitions |
+| Light + complete dark theme; existing system/user choice follows correctly | verified | Both token tables; native day/night and system-bar assertions pass on API 26/35 |
+| Visible dark outlines, hard shadows and subdued dots | verified | Theme-specific tokens, screenshot inspection; stroke/shadow >=3:1 on bg/surface |
+| All intended body-text combinations >=4.5:1 | verified | 46 WCAG measurements below; 0 failures; persisted `contrast.json` |
+| No bitmap app assets | verified | Both Android resource trees checked for png/jpg/jpeg/webp; evidence screenshots are outside APK resources |
+| Eight reference icon vectors and adaptive/round/monochrome launcher | verified | XML conversion and rendered icon tests in both wallpaper colors on API 26/35 |
+| Every existing test tag preserved | verified | Master-baseline expressions checked; no selectors changed |
+| >=3 complete records at 360×640 in both themes | verified | API 26: 4; API 35: 3, in both fixture and real-API tests; logs and captures below |
+| Empty optional fields omitted; no null/-- | verified | Existing minimal-record and real-API assertions pass on both APIs |
+| Tab reselect preserves entry and scrolls to top | verified | 4 reselections per tab, unchanged entry and refresh counts, both APIs |
+| Page motion respects remove animations; dark frames have no white flash | verified | 15 frames × 16 ms, 0 white pixels, system animation setting observed, both APIs |
+| 200% titles, full input/review values, keyboard and save remain readable/reachable | verified | Existing unweakened layout/IME/long-text tests pass on both APIs |
+| App update remains in 我的; accessible labels and >=48 dp actions | verified | Update tests pass; navigation descriptions and button/chip minimum sizes retained |
+| Backend/API/domain/Room/cache/drafts/conflicts/auth flow untouched | verified | Protected-file hashes and git diff; 70 unit tests and functional instrumentation pass |
+| Local Android unit tests/lint | unverified locally | Attempt stopped before tasks: AGP 8.9.2 is uncached and cannot resolve offline; host lacks SDK/emulator |
+| CI backend, Android build/unit/lint, API 26 and API 35 | verified | [Passing run 41369161142](https://github.com/vampuke/dining-log/actions/runs/41369161142), code commit `e854c919ff` |
+| List/detail/editor in both themes, on both APIs | verified | 12 required-screen captures plus 4 rated-fixture density captures, provenance below |
+| Physical handset / OEM launcher testing | unverified | No connected physical device; emulator coverage is API 26/35 |
 
 Local Android command attempted (not passed):
 
@@ -32,7 +35,7 @@ JAVA_OPTS=-Xmx128m ./android/gradlew -p android :core:test :data:testDebugUnitTe
 
 Gradle 8.11.1 ran, then failed resolving `com.android.application:8.9.2` in offline mode. No unit test or lint task executed locally. The separate token/vector/baseline checks passed locally.
 
-CI Android evidence: [run 41367414503](https://github.com/vampuke/dining-log/actions/runs/41367414503), source commit `e8f774557b`. `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `:core:test`, `:data:testDebugUnitTest`, `:feature:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:lintDebug` completed successfully. Downloaded `android-build` artifact XML reports **70 unit tests, 0 failures, 0 skipped**. Backend job is green. API 26/35 results remain pending.
+CI Android evidence: [run 41369161142](https://github.com/vampuke/dining-log/actions/runs/41369161142), source commit `e854c919ff0c3035cf8192bba47bbe91a2063a81`. Debug app and instrumentation APK builds, all four unit-test tasks, and `:app:lintDebug` succeeded. Downloaded XML reports show **70 unit tests, 0 failures, 0 skipped**. Both emulator reports show **27 tests, 0 failures, 0 skipped** each. Backend CI is green. Subsequent commits only add this report and evidence.
 
 ## Design choices and schema limits
 
@@ -170,17 +173,27 @@ Computed from the implemented sRGB values using WCAG relative luminance, with th
 
 Failures: **0**.
 
-## Screenshot manifest
+## Screenshot evidence
 
-These are actual instrumentation capture names, not generated illustrations. Until the artifact is downloaded, each is unverified.
+Actual captures from passing run **41369161142**, code commit `e854c919ff0c3035cf8192bba47bbe91a2063a81`. List images exercise the real isolated test API with synthetic test records; detail/editor images use the existing visual-test fixtures. They are not production user data or generated mockups. All image dimensions and SHA-256 checksums are retained in [evidence.json](design/bite/p7-evidence/evidence.json).
 
-| Screen | Light | Dark | State |
-|---|---|---|---|
-| List | `light-list-api35.png` | `dark-list-api35.png` | CI pending |
-| Detail | `light-detail-api35.png` | `dark-detail-api35.png` | CI pending |
-| Editor | `light-edit-api35.png` | `dark-edit-api35.png` | CI pending |
+| API / screen | Light | Dark |
+|---|---|---|
+| 26 / List | [Screenshot](design/bite/p7-evidence/p6-real-light-360x640-api26.png) | [Screenshot](design/bite/p7-evidence/p6-real-dark-360x640-api26.png) |
+| 26 / Detail | [Screenshot](design/bite/p7-evidence/light-detail-api26.png) | [Screenshot](design/bite/p7-evidence/dark-detail-api26.png) |
+| 26 / Editor | [Screenshot](design/bite/p7-evidence/light-edit-api26.png) | [Screenshot](design/bite/p7-evidence/dark-edit-api26.png) |
+| 35 / List | [Screenshot](design/bite/p7-evidence/p6-real-light-360x640-api35.png) | [Screenshot](design/bite/p7-evidence/p6-real-dark-360x640-api35.png) |
+| 35 / Detail | [Screenshot](design/bite/p7-evidence/light-detail-api35.png) | [Screenshot](design/bite/p7-evidence/dark-detail-api35.png) |
+| 35 / Editor | [Screenshot](design/bite/p7-evidence/light-edit-api35.png) | [Screenshot](design/bite/p7-evidence/dark-edit-api35.png) |
 
-The same tests capture API 26 variants and 360×640 record-density evidence. Screenshots are verification artifacts outside Android resources, not app bitmap assets.
+Rated-fixture first-screen evidence:
+
+| API | Complete records, both themes | Light | Dark |
+|---|---:|---|---|
+| 26 | 4 | [360×640](design/bite/p7-evidence/p6-light-360x640-api26.png) | [360×640](design/bite/p7-evidence/p6-dark-360x640-api26.png) |
+| 35 | 3 | [360×640](design/bite/p7-evidence/p6-light-360x640-api35.png) | [360×640](design/bite/p7-evidence/p6-dark-360x640-api35.png) |
+
+The real-API captures also contain 4 complete records on API 26 and 3 on API 35, in both themes. [API 26 runtime log](design/bite/p7-evidence/runtime-api26.log) and [API 35 runtime log](design/bite/p7-evidence/runtime-api35.log) record the measured counts, selected-icon contrast, tab reselections and zero-white-frame assertions. The copied dark screenshots additionally contain zero pure-white pixels. These are verification artifacts outside Android resources.
 
 ## VectorDrawable inventory
 
