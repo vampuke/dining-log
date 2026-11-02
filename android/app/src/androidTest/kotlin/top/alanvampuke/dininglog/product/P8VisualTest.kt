@@ -124,6 +124,46 @@ class P8VisualTest {
             }
         }
     }
+    @Test fun updatePanelFitsShortContentAndScrollsLongNotesAt200PercentInBothThemes() {
+        var dark by mutableStateOf(false)
+        var longNotes by mutableStateOf(false)
+        var stage by mutableStateOf(UpdateStage.IDLE)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, if (longNotes) 2f else 1f)) {
+                QuietGridTheme(dark) {
+                    key(longNotes, stage) {
+                        UpdateDialog(UpdateInstallState(release.copy(notes = if (longNotes) "详细发布说明，记录每一口。\n".repeat(100) else "更新说明"),
+                            stage, 512 * 1024, 1024 * 1024), {}, {}, {}, {}, {})
+                    }
+                }
+            }
+        }
+        for (night in listOf(false, true)) {
+            for (downloadStage in listOf(UpdateStage.IDLE, UpdateStage.DOWNLOADING)) {
+                compose.runOnIdle { dark = night; longNotes = false; stage = downloadStage }
+                compose.onNodeWithTag("update-close").assertIsDisplayed()
+                val panel = compose.onNodeWithTag("screen:update").getUnclippedBoundsInRoot()
+                val last = compose.onNodeWithTag("update-close").getUnclippedBoundsInRoot()
+                assertEquals("short panel ends at its content padding", 16f, (panel.bottom - last.bottom).value, 1f)
+                compose.onNodeWithTag("update-scroll").assert(SemanticsMatcher("short notes need no scroll") {
+                    it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() == 0f
+                })
+                save("p9-${if (night) "dark" else "light"}-update-short-${downloadStage.name.lowercase()}", true)
+            }
+            compose.runOnIdle { longNotes = true; stage = UpdateStage.IDLE }
+            compose.onNodeWithTag("update-scroll").assert(SemanticsMatcher("long notes scroll internally") {
+                it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 0f
+            })
+            compose.onNodeWithTag("update-scroll").performScrollToNode(hasTestTag("update-close"))
+            compose.onNodeWithTag("update-close").assertIsDisplayed()
+            val panel = compose.onNodeWithTag("screen:update").getUnclippedBoundsInRoot()
+            val last = compose.onNodeWithTag("update-close").getUnclippedBoundsInRoot()
+            assertTrue(last.top >= panel.top && last.bottom <= panel.bottom)
+            assertTrue("panel remains within the available window", panel.top >= 0.dp && panel.bottom <=
+                compose.activity.resources.configuration.screenHeightDp.dp)
+            save("p9-${if (night) "dark" else "light"}-update-long-font200", true)
+        }
+    }
     @Test fun emptyFocusedDisabledErrorAndMultilineFieldsUseLegibleRolesInBothThemes() {
         var dark by mutableStateOf(false)
         var enabled by mutableStateOf(true)

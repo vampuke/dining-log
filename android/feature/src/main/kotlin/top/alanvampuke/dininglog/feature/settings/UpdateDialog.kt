@@ -19,9 +19,10 @@ import java.util.Locale
     val release = state.release ?: return
     val c = LocalQuietGridColors.current
     Dialog(onDismissRequest = onDismiss) {
+        BoxWithConstraints {
         Surface(color = c.surface, shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f).testTag("screen:update")) {
-            Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            modifier = Modifier.fillMaxWidth().wrapContentHeight().heightIn(max = maxHeight * 0.85f).testTag("screen:update")) {
+            Column(Modifier.verticalScroll(rememberScrollState()).testTag("update-scroll").padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 GridText("发现新版本 ${release.versionName}", style = MaterialTheme.typography.headlineSmall)
                 GridText(release.notes.ifBlank { "更新食记，继续记录每一口。" }, color = c.secondary)
                 if (state.busy) {
@@ -46,6 +47,7 @@ import java.util.Locale
                 BiteTextButton(onClick = onDownloadPage, modifier = Modifier.fillMaxWidth().testTag("update-download-page")) { Text("打开下载页") }
                 BiteTextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().testTag("update-close")) { Text(if (state.busy) "后台继续下载" else "稍后") }
             }
+        }
         }
     }
 }
