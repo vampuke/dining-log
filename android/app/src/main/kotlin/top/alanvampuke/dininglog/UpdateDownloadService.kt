@@ -30,7 +30,11 @@ class UpdateDownloadService : Service() {
             NotificationChannel(CHANNEL, "应用更新", NotificationManager.IMPORTANCE_LOW))
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == CANCEL) { updates.markCanceled(); work?.cancel(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return START_NOT_STICKY }
+        if (intent?.action == CANCEL) {
+            updates.markCanceled(); work?.cancel(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+            if (work == null) updates.finishCancellation()
+            return START_NOT_STICKY
+        }
         try {
             val notification = notification(updates.state.value)
             if (Build.VERSION.SDK_INT >= 29) startForeground(NOTIFICATION, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
@@ -43,7 +47,10 @@ class UpdateDownloadService : Service() {
                 startForeground(NOTIFICATION, notification(it))
             } }
             try { withContext(Dispatchers.IO) { updates.download() } }
-            finally { progress.cancel(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
+            finally {
+                progress.cancel(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf()
+                updates.finishCancellation()
+            }
         }
         return START_NOT_STICKY
     }

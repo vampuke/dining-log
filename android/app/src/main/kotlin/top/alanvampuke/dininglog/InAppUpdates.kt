@@ -43,7 +43,13 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
     }
     fun markCanceled() {
         cancelled = true; connection?.disconnect()
-        mutableState.value = state.value.copy(stage = UpdateStage.CANCELED, message = "下载已取消，可重试或打开下载页", packageVerified = false)
+        // Keep retry disabled until the service has closed and deleted the partial
+        // file. Otherwise its cleanup can delete a newly retried download.
+        mutableState.value = state.value.copy(message = "正在取消下载…", packageVerified = false)
+    }
+    fun finishCancellation() {
+        if (cancelled) mutableState.value = state.value.copy(stage = UpdateStage.CANCELED,
+            message = "下载已取消，可重试或打开下载页", packageVerified = false)
     }
     fun cancel() {
         markCanceled()
@@ -111,7 +117,6 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
             mutableState.value = state.value.copy(stage = UpdateStage.READY, packageVerified = true)
         } catch (e: CancellationException) {
             file.delete()
-            if (state.value.busy) mutableState.value = state.value.copy(stage = UpdateStage.CANCELED, message = "下载已取消，可重试或打开下载页")
             throw e
         } catch (e: Exception) {
             file.delete()
