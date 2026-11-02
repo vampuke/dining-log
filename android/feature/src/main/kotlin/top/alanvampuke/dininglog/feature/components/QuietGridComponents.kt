@@ -38,7 +38,7 @@ val BackgroundArgb = SemanticsPropertyKey<Int>("QuietGridBackgroundArgb")
 val ForegroundArgb = SemanticsPropertyKey<Int>("QuietGridForegroundArgb")
 val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
 @Composable fun GridText(text: String, modifier: Modifier = Modifier, style: TextStyle = MaterialTheme.typography.bodyMedium,
-    color: Color = LocalQuietGridColors.current.ink, maxLines: Int = Int.MAX_VALUE, overflow: TextOverflow = TextOverflow.Clip) {
+    color: Color = LocalFieldForeground.current ?: LocalQuietGridColors.current.ink, maxLines: Int = Int.MAX_VALUE, overflow: TextOverflow = TextOverflow.Clip) {
     Text(text, modifier.semantics { this[ForegroundArgb] = color.toArgb() }, color = color, style = style, maxLines = maxLines, overflow = overflow)
 }
 @Composable fun ScreenFrame(tag: String, bottomBar: @Composable () -> Unit = {}, content: @Composable (PaddingValues) -> Unit) {
@@ -149,10 +149,17 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
         BiteTextButton(onClick = { onChange(if (value == null) "40" else null) }, enabled = enabled) { Text(if (value == null) "设置评分" else "清除评分") }
     }
 }
+fun fieldPlaceholder(field: String): String = when (field) {
+    "name" -> "例如：兰巴赫"
+    "cuisine" -> "例如：川菜"
+    "dining_date", "first-visit-date" -> "例如：2026-11-02"
+    "address", "review", "note", "first-visit-note" -> "选填"
+    else -> "必填"
+}
 @Composable fun FormField(field: String, value: String?, onChange: (String) -> Unit, enabled: Boolean = true,
-    error: String? = null, label: String = fieldLabel(field), minLines: Int = 1, supporting: String? = null) {
+    error: String? = null, label: String = fieldLabel(field), minLines: Int = 1, supporting: String? = null, placeholder: String = fieldPlaceholder(field)) {
     BiteTextField(value ?: "", onChange, modifier = Modifier.fillMaxWidth().testTag("field:$field"), enabled = enabled,
-        label = { GridText(label) }, textStyle = QuietGridText.input, minLines = minLines, isError = error != null,
+        label = { GridText(label) }, placeholder = { GridText(placeholder, style = QuietGridText.input) }, textStyle = QuietGridText.input, minLines = minLines, isError = error != null,
         supportingText = { if (error != null) GridText(error, color = LocalQuietGridColors.current.danger) else if (supporting != null) GridText(supporting, style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary) })
 }
 @OptIn(ExperimentalLayoutApi::class)

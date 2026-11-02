@@ -66,7 +66,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             }
             if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && !isSearch && state.query.deleted != DeletedFilter.ONLY) item { LoadedStats(state.items) }
             item {
-                BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().then(if (LocalDensity.current.fontScale <= 1.3f) Modifier.height(56.dp) else Modifier).testTag("search"), label = { GridText(when (kind) {
+                BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
                     RecordKind.RESTAURANT -> "搜索店名、菜品或评价"
                     RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
                 }) }, textStyle = QuietGridText.input, singleLine = true,
