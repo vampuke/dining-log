@@ -151,6 +151,7 @@ class P8VisualTest {
         for (night in listOf(false, true)) {
             for (downloadStage in listOf(UpdateStage.IDLE, UpdateStage.DOWNLOADING)) {
                 compose.runOnIdle { dark = night; longNotes = false; stage = downloadStage }
+                assertUpdateFontScale(1f)
                 compose.onNodeWithTag("update-close").assertIsDisplayed()
                 val panel = compose.onNodeWithTag("screen:update").getUnclippedBoundsInRoot()
                 val last = compose.onNodeWithTag("update-close").getUnclippedBoundsInRoot()
@@ -161,6 +162,7 @@ class P8VisualTest {
                 save("p9-${if (night) "dark" else "light"}-update-short-${downloadStage.name.lowercase()}", true)
             }
             compose.runOnIdle { longNotes = true; stage = UpdateStage.IDLE }
+            assertUpdateFontScale(2f)
             compose.onNodeWithTag("update-scroll").assert(SemanticsMatcher("long notes scroll internally") {
                 it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() > 0f
             })
@@ -304,6 +306,13 @@ class P8VisualTest {
             compose.onNodeWithTag("clear-restaurant").assertDoesNotExist()
             compose.onNodeWithTag("refresh").performClick()
         }
+    }
+    private fun assertUpdateFontScale(expected: Float) {
+        val layouts = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText("发现新版本 ${release.versionName}", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertTrue("update title must expose its text layout", layouts.isNotEmpty())
+        layouts.forEach { assertEquals("dialog renders the requested font scale", expected, it.layoutInput.density.fontScale, 0.001f) }
     }
     private fun assertFieldLayout(empty: Boolean, invalid: Boolean) {
         val field = compose.onNodeWithTag("field:name")
