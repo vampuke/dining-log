@@ -38,7 +38,9 @@ class UpdateDownloadService : Service() {
         } catch (_: Exception) { updates.fail("无法启动下载，请打开下载页"); stopSelf(); return START_NOT_STICKY }
         if (work?.isActive != true) work = scope.launch {
             val progress = launch { updates.state.collect {
-                getSystemService(NotificationManager::class.java).notify(NOTIFICATION, notification(it))
+                // Updating our foreground notification does not require the optional
+                // Android 13 notification permission; the in-app progress also stays visible.
+                startForeground(NOTIFICATION, notification(it))
             } }
             try { withContext(Dispatchers.IO) { updates.download() } }
             finally { progress.cancel(); stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
