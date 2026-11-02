@@ -35,7 +35,10 @@ import java.util.Locale
                 state.message?.let { ErrorMessage(it, "update-message") }
                 when (state.stage) {
                     UpdateStage.IDLE -> BiteButton(onClick = onDownload, modifier = Modifier.fillMaxWidth().testTag("update-now")) { Text("立即更新") }
-                    UpdateStage.FAILED, UpdateStage.CANCELED -> BiteButton(onClick = onDownload, modifier = Modifier.fillMaxWidth().testTag("update-retry")) { Text("重新下载") }
+                    UpdateStage.FAILED, UpdateStage.CANCELED -> {
+                        if (state.packageVerified) BiteButton(onClick = onInstall, modifier = Modifier.fillMaxWidth().testTag("update-install")) { Text("继续安装") }
+                        else BiteButton(onClick = onDownload, modifier = Modifier.fillMaxWidth().testTag("update-retry")) { Text("重新下载") }
+                    }
                     UpdateStage.READY, UpdateStage.NEED_PERMISSION, UpdateStage.INSTALLING -> BiteButton(onClick = onInstall,
                         modifier = Modifier.fillMaxWidth().testTag("update-install")) { Text("继续安装") }
                     else -> Unit

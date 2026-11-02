@@ -41,7 +41,7 @@ fun verifyApkSha256(file: File, expected: String): Boolean {
 
 enum class UpdateStage { IDLE, DOWNLOADING, VERIFYING, READY, NEED_PERMISSION, INSTALLING, FAILED, CANCELED }
 data class UpdateInstallState(val release: AppRelease? = null, val stage: UpdateStage = UpdateStage.IDLE,
-    val downloaded: Long = 0, val total: Long? = null, val message: String? = null) {
+    val downloaded: Long = 0, val total: Long? = null, val message: String? = null, val packageVerified: Boolean = false) {
     val busy: Boolean get() = stage in setOf(UpdateStage.DOWNLOADING, UpdateStage.VERIFYING)
     val percent: Int? get() = total?.takeIf { it > 0 }?.let { (downloaded.toDouble() / it * 100).toInt().coerceIn(0, 100) }
 }

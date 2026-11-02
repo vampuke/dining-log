@@ -41,9 +41,12 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
         try { context.startForegroundService(Intent(context, UpdateDownloadService::class.java)) }
         catch (_: Exception) { fail("无法启动下载，请打开下载页") }
     }
-    fun cancel() {
+    fun markCanceled() {
         cancelled = true; connection?.disconnect()
-        mutableState.value = state.value.copy(stage = UpdateStage.CANCELED, message = "下载已取消，可重试或打开下载页")
+        mutableState.value = state.value.copy(stage = UpdateStage.CANCELED, message = "下载已取消，可重试或打开下载页", packageVerified = false)
+    }
+    fun cancel() {
+        markCanceled()
         try { context.startService(Intent(context, UpdateDownloadService::class.java).setAction(UpdateDownloadService.CANCEL)) }
         catch (_: Exception) { context.stopService(Intent(context, UpdateDownloadService::class.java)) }
     }
@@ -105,7 +108,7 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
             }
             currentCoroutineContext().ensureActive()
             if (cancelled) throw CancellationException()
-            mutableState.value = state.value.copy(stage = UpdateStage.READY)
+            mutableState.value = state.value.copy(stage = UpdateStage.READY, packageVerified = true)
         } catch (e: CancellationException) {
             file.delete()
             if (state.value.busy) mutableState.value = state.value.copy(stage = UpdateStage.CANCELED, message = "下载已取消，可重试或打开下载页")
@@ -124,7 +127,7 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
             try {
                 // Recheck the file even on return from Settings; never hand an unchecked package to the installer.
                 val valid = withContext(Dispatchers.IO) { verifyApkSha256(apk(release), release.sha256) }
-                if (!valid) { apk(release).delete(); fail("安装包校验失败，请重试或打开下载页"); return@launch }
+                if (!valid) { apk(release).delete(); mutableState.value = state.value.copy(packageVerified = false); fail("安装包校验失败，请重试或打开下载页"); return@launch }
                 if (activity.isFinishing || activity.isDestroyed) { fail("安装未启动，请重新打开更新或下载页"); return@launch }
                 if (!activity.packageManager.canRequestPackageInstalls()) {
                     if (afterPermission) { fail("未允许安装未知应用，可开启权限后重试或打开下载页"); return@launch }

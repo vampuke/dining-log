@@ -83,7 +83,7 @@ class P8VisualTest {
                         compose.onNodeWithTag("tab:visits").assertDoesNotExist()
                         val capsule = compose.onNodeWithTag("floating-tabs").getUnclippedBoundsInRoot()
                         val plus = compose.onNodeWithTag("nav-add").getUnclippedBoundsInRoot()
-                        assertEquals(capsule.center.x.value, plus.center.x.value, 0.5f)
+                        assertEquals((capsule.left.value + capsule.right.value) / 2, (plus.left.value + plus.right.value) / 2, 0.5f)
                     }
                     "edit" -> {
                         compose.onNodeWithTag("field:name").assertIsDisplayed()
