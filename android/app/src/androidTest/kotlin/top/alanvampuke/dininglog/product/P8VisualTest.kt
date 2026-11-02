@@ -113,7 +113,7 @@ class P8VisualTest {
                 }
                 for (label in listOf("餐厅", "我的")) {
                     val layouts = mutableListOf<TextLayoutResult>()
-                    compose.onNodeWithText(label, useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                    compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("tab:${if (label == "餐厅") "restaurants" else "settings"}")), useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
                     assertTrue(layouts.isNotEmpty()); layouts.forEach { assertFalse(it.hasVisualOverflow) }
                 }
             }

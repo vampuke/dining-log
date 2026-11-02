@@ -173,8 +173,8 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
 }
 fun fieldPlaceholder(field: String): String = when (field) {
     "name" -> "例如：兰巴赫"
-    "cuisine" -> "例如：川菜"
-    "dining_date", "first-visit-date" -> "例如：2026-11-02"
+    "cuisine", "filter-cuisine" -> "例如：川菜"
+    "dining_date", "first-visit-date", "filter-from", "filter-to" -> "例如：2026-11-02"
     "address", "review", "note", "first-visit-note" -> "选填"
     else -> "必填"
 }

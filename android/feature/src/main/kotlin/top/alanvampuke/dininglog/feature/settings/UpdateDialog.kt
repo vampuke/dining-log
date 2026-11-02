@@ -32,7 +32,7 @@ import java.util.Locale
                     else LinearProgressIndicator(color = c.ink, trackColor = c.paper, modifier = Modifier.fillMaxWidth())
                     BiteTextButton(onClick = onCancel, modifier = Modifier.testTag("update-cancel")) { Text("取消下载") }
                 }
-                if (state.message != null) ErrorMessage(state.message, "update-message")
+                state.message?.let { ErrorMessage(it, "update-message") }
                 when (state.stage) {
                     UpdateStage.IDLE -> BiteButton(onClick = onDownload, modifier = Modifier.fillMaxWidth().testTag("update-now")) { Text("立即更新") }
                     UpdateStage.FAILED, UpdateStage.CANCELED -> BiteButton(onClick = onDownload, modifier = Modifier.fillMaxWidth().testTag("update-retry")) { Text("重新下载") }

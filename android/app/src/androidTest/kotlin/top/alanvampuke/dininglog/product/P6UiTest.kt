@@ -170,6 +170,26 @@ class P6UiTest {
         } finally { fixture.close() }
     }
 
+    @Test fun centeredAddCreatesARestaurantFromEitherTab() {
+        val fixture = Fixture()
+        try {
+            compose.setContent { QuietGridTheme(true) { ProductRoot(fixture.vm, "p8_owner", ThemeChoice.DARK, {}, {}, "0.7.0") } }
+            waitForRows(fixture, RecordKind.RESTAURANT)
+            for (tab in listOf("restaurants", "settings")) {
+                compose.onNodeWithTag("tab:$tab").performClick()
+                compose.onNodeWithTag("tab:visits").assertDoesNotExist()
+                compose.onNodeWithTag("nav-add").assertIsDisplayed().performClick()
+                compose.waitUntil(5000) { fixture.vm.editor.value.input != null && !fixture.vm.editor.value.loading }
+                val input = fixture.vm.editor.value.input!!
+                assertEquals(RecordKind.RESTAURANT, input.ref.kind)
+                assertEquals(WriteAction.CREATE, input.action)
+                assertNull(input.ref.restaurantId)
+                compose.onNodeWithTag("back").performClick()
+                compose.waitUntil(5000) { fixture.vm.editor.value.input == null }
+            }
+        } finally { fixture.close() }
+    }
+
     @Test fun systemRemoveAnimationsIsObservedAndDarkNavigationFramesNeverPaintWhite() {
         val resolver = compose.activity.contentResolver
         val previous = Settings.Global.getString(resolver, Settings.Global.ANIMATOR_DURATION_SCALE)?.toFloatOrNull()

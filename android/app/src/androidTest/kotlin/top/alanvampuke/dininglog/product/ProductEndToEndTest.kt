@@ -398,7 +398,16 @@ class ProductEndToEndTest {
         val lazy = listOf("edit-scroll", "record-list", "detail-scroll", "history-scroll", "settings-scroll").firstOrNull { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
         if (lazy != null) compose.onNodeWithTag(lazy, useUnmergedTree = true).performScrollToNode(hasTestTag(tag))
     }
-    private fun tap(tag: String) { scroll(tag); compose.onNodeWithTag(tag).performClick() }
+    private fun tap(tag: String) {
+        if (tag.startsWith("tab:")) {
+            // P8 intentionally hides navigation while typing. Dismiss only the IME, preserving the page.
+            compose.activityRule.scenario.onActivity {
+                androidx.core.view.WindowInsetsControllerCompat(it.window, it.window.decorView).hide(androidx.core.view.WindowInsetsCompat.Type.ime())
+            }
+            compose.waitUntil(5000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+        }
+        scroll(tag); compose.onNodeWithTag(tag).performClick()
+    }
     private fun choose(text: String) {
         compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasText(text))
         compose.onNodeWithText(text).performClick()
