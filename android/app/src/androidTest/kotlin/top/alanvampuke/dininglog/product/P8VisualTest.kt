@@ -273,7 +273,7 @@ class P8VisualTest {
             assertFieldName("字段名称")
             compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.tertiary.toArgb()))
             compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.secondary.toArgb()))
-            assertFieldLayout(empty = true, invalid = invalid)
+            assertFieldLayout(empty = true, invalid = invalid, expectedScale = font)
             if (font == 2f && minLines == 4) {
                 save("p9-${if (night) "dark" else "light"}-field-font200-${if (active) "enabled" else "disabled"}-${if (invalid) "error" else "normal"}-multiline", false)
             }
@@ -284,7 +284,7 @@ class P8VisualTest {
             } else compose.onNodeWithTag("field:name").assertIsNotEnabled()
             compose.runOnIdle { value = "已填内容"; idleFocus.requestFocus() }
             assertFieldName("字段名称")
-            assertFieldLayout(empty = false, invalid = invalid)
+            assertFieldLayout(empty = false, invalid = invalid, expectedScale = font)
         }
     }
     @Test fun removedChooserEntriesAreAbsentFromOpenRestaurantAndVisitMenusInBothThemes() {
@@ -314,22 +314,22 @@ class P8VisualTest {
         assertTrue("update title must expose its text layout", layouts.isNotEmpty())
         layouts.forEach { assertEquals("dialog renders the requested font scale", expected, it.layoutInput.density.fontScale, 0.001f) }
     }
-    private fun assertFieldLayout(empty: Boolean, invalid: Boolean) {
+    private fun assertFieldLayout(empty: Boolean, invalid: Boolean, expectedScale: Float) {
         val field = compose.onNodeWithTag("field:name")
         val fieldBounds = field.getUnclippedBoundsInRoot()
         val parent = compose.onNodeWithTag("field-container").getUnclippedBoundsInRoot()
         val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
         assertContained("field", fieldBounds, parent)
         assertContained("field container", parent, viewport)
-        assertTextFits(field, "editable text")
+        assertTextFits(field, "editable text", expectedScale)
         val label = compose.onNodeWithText("字段名称", useUnmergedTree = true)
         val labelBounds = label.getUnclippedBoundsInRoot()
-        assertTextFits(label, "label")
+        assertTextFits(label, "label", expectedScale)
         assertContained("label", labelBounds, parent)
         assertTrue("label must end above the input box", labelBounds.bottom <= fieldBounds.top)
         val placeholder = compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true)
         val placeholderBounds = if (empty) {
-            assertTextFits(placeholder, "placeholder")
+            assertTextFits(placeholder, "placeholder", expectedScale)
             placeholder.getUnclippedBoundsInRoot().also { assertContained("placeholder", it, fieldBounds) }
         } else {
             placeholder.assertDoesNotExist()
@@ -337,18 +337,21 @@ class P8VisualTest {
         }
         val error = compose.onNodeWithText(fieldError, useUnmergedTree = true)
         if (invalid) {
-            assertTextFits(error, "supporting error")
+            assertTextFits(error, "supporting error", expectedScale)
             val errorBounds = error.getUnclippedBoundsInRoot()
             assertContained("supporting error", errorBounds, fieldBounds)
             if (placeholderBounds != null) assertTrue("placeholder must not overlap supporting error", placeholderBounds.bottom <= errorBounds.top)
         } else error.assertDoesNotExist()
     }
-    private fun assertTextFits(node: SemanticsNodeInteraction, description: String) {
+    private fun assertTextFits(node: SemanticsNodeInteraction, description: String, expectedScale: Float) {
         node.assertIsDisplayed()
         val layouts = mutableListOf<TextLayoutResult>()
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertTrue("$description must expose its rendered text layout", layouts.isNotEmpty())
-        layouts.forEach { assertFalse("$description must not overflow: ${it.layoutInput.text}", it.hasVisualOverflow) }
+        layouts.forEach {
+            assertEquals("$description renders the requested font scale", expectedScale, it.layoutInput.density.fontScale, 0.001f)
+            assertFalse("$description must not overflow: ${it.layoutInput.text}", it.hasVisualOverflow)
+        }
     }
     private fun assertContained(description: String, bounds: DpRect, parent: DpRect) {
         assertTrue("$description must not be clipped by its parent: $bounds inside $parent",
