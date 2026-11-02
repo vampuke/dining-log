@@ -116,6 +116,7 @@ class P8VisualTest {
                     compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("tab:${if (label == "餐厅") "restaurants" else "settings"}")), useUnmergedTree = true).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
                     assertTrue(layouts.isNotEmpty()); layouts.forEach { assertFalse(it.hasVisualOverflow) }
                 }
+                if (font == 2f) save("p8-${if (night) "dark" else "light"}-$screen-tail-font200", false)
             }
         }
     }
