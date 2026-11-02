@@ -6,6 +6,7 @@ import android.os.Build
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.view.View
+import android.view.Surface
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -192,24 +193,33 @@ class P8VisualTest {
         try {
             for (orientation in listOf(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE)) {
                 compose.runOnIdle { compose.activity.requestedOrientation = orientation }
+                val barOnRight = orientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                val rotation = if (barOnRight) Surface.ROTATION_90 else Surface.ROTATION_270
                 compose.waitUntil(10_000) {
                     val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
-                    compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && viewport.width > viewport.height
+                    compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
+                        composeView?.display?.rotation == rotation && viewport.width > viewport.height
                 }
                 for (night in listOf(false, true)) {
                     compose.runOnIdle { dark = night }
-                    // Simulate a 48dp side navigation bar and a 32dp cutout on the opposite side.
-                    val left = if (orientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) 32 else 48
-                    val right = if (left == 32) 48 else 32
+                    // API 26 exercises side navigation bars. Typed synthetic cutout insets
+                    // are supported from API 30, so API 35 also adds an opposite 32dp cutout.
+                    val cutoutDp = if (Build.VERSION.SDK_INT >= 30) 32 else 0
+                    val left = if (barOnRight) cutoutDp else 48
+                    val right = if (barOnRight) 48 else cutoutDp
                     compose.runOnIdle {
-                        val bars = Insets.of(if (left == 48) (left * pixelsPerDp).toInt() else 0, 0,
-                            if (right == 48) (right * pixelsPerDp).toInt() else 0, 0)
-                        val cutout = Insets.of(if (left == 32) (left * pixelsPerDp).toInt() else 0, 0,
-                            if (right == 32) (right * pixelsPerDp).toInt() else 0, 0)
-                        ViewCompat.dispatchApplyWindowInsets(requireNotNull(composeView), WindowInsetsCompat.Builder()
+                        val bars = Insets.of(if (barOnRight) 0 else (48 * pixelsPerDp).toInt(), 0,
+                            if (barOnRight) (48 * pixelsPerDp).toInt() else 0, 0)
+                        val cutout = Insets.of(if (barOnRight) (cutoutDp * pixelsPerDp).toInt() else 0, 0,
+                            if (barOnRight) 0 else (cutoutDp * pixelsPerDp).toInt(), 0)
+                        val insets = WindowInsetsCompat.Builder()
                             .setInsets(WindowInsetsCompat.Type.navigationBars(), bars)
                             .setInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars(), bars)
-                            .setInsets(WindowInsetsCompat.Type.displayCutout(), cutout).build())
+                            .setInsets(WindowInsetsCompat.Type.displayCutout(), cutout).build()
+                        val safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                        assertEquals("left synthetic safe inset", (left * pixelsPerDp).toInt(), safe.left)
+                        assertEquals("right synthetic safe inset", (right * pixelsPerDp).toInt(), safe.right)
+                        ViewCompat.dispatchApplyWindowInsets(requireNotNull(composeView), insets)
                     }
                     val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
                     for (tag in listOf("floating-tabs", "tab:restaurants", "nav-add", "tab:settings")) {
@@ -218,7 +228,7 @@ class P8VisualTest {
                         assertTrue("$tag clears the left safe inset plus margin", bounds.left >= viewport.left + (left + 20).dp - 1.dp)
                         assertTrue("$tag clears the right safe inset plus margin", bounds.right <= viewport.right - (right + 20).dp + 1.dp)
                     }
-                    save("p9-${if (night) "dark" else "light"}-landscape-${if (left == 32) "right-bar" else "left-bar"}", false)
+                    save("p9-${if (night) "dark" else "light"}-landscape-${if (barOnRight) "right-bar" else "left-bar"}", false)
                 }
             }
         } finally {
