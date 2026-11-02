@@ -44,6 +44,8 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private val _detail = MutableStateFlow(DetailUiState())
     val detail = _detail.asStateFlow()
     private val _editor = MutableStateFlow(EditorUiState())
+    private var editorKey: Pair<RecordRef, Boolean>? = null
+    private var editorLoadJob: Job? = null
     val editor = _editor.asStateFlow()
     private val _settings = MutableStateFlow(SettingsUiState())
     val settings = _settings.asStateFlow()
@@ -168,9 +170,13 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     }
     fun refreshDetail() { refreshDetailAction(); refreshRelated() }
     fun openEditor(ref: RecordRef, create: Boolean) {
-        scope.launch {
-            _editor.value = EditorUiState(loading = true); actionFromEditor = true
-            _operationVisible.value = false
+        val key = ref to create
+        if (editorKey == key && (_editor.value.input != null || _editor.value.loading)) return
+        editorKey = key
+        editorLoadJob?.cancel()
+        _editor.value = EditorUiState(loading = true); actionFromEditor = true
+        _operationVisible.value = false
+        editorLoadJob = scope.launch {
             try {
                 val input = if (create) {
                     val fields = editableFields(ref.kind).associateWith { field -> when (field) {
@@ -210,6 +216,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     }
     fun leaveEditor(onReady: () -> Unit) {
         if (_editor.value.saving) return
+        editorKey = null; editorLoadJob?.cancel()
         editorDishesJob?.cancel(); _editorDishes.value = emptyList()
         _editor.value = EditorUiState(); onReady()
     }
@@ -229,6 +236,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private suspend fun handleOutcome(outcome: SaveOutcome) {
         when (outcome) {
             is SaveOutcome.Saved -> {
+                editorKey = null
                 _editor.value = EditorUiState(message = "已保存到服务器")
                 _operationVisible.value = false
                 refresh(); refreshDetail(); _apply.value = null
@@ -243,6 +251,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         val input = comparison.confirmed(choices)
         if (input.changedFields.isEmpty()) {
             scope.launch {
+                editorKey = null
                 _editor.value = EditorUiState(message = "已保留服务器值")
                 _operationVisible.value = false
                 refresh(); refreshDetail(); eventChannel.send(ProductEvent.Saved(comparison.serverCurrent.ref, actionFromEditor))
