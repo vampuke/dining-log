@@ -42,9 +42,9 @@ import top.alanvampuke.dininglog.feature.theme.*
     val tag = if (isSearch && kind == RecordKind.RESTAURANT) "screen:search" else "screen:${kind.name.lowercase()}:list"
     var expandedFilters by rememberSaveable(kind) { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
-    ScreenFrame(tag, bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("record-list"), state = listState,
-            contentPadding = PaddingValues(horizontal = QuietGridDimensions.edge, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    ScreenFrame(tag, bottomBar, floatingBottomBar = true) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("record-list"), state = listState,
+            contentPadding = PaddingValues(start = QuietGridDimensions.edge, top = 8.dp, end = QuietGridDimensions.edge, bottom = 8.dp + padding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             item {
                 if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && state.query.deleted != DeletedFilter.ONLY) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

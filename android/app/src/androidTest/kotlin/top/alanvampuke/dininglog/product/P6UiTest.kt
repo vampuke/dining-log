@@ -87,7 +87,7 @@ class P6UiTest {
         for (night in listOf(false, true)) {
             compose.runOnIdle { dark = night }
             val colors = if (night) QuietGridDark else QuietGridLight
-            for (id in listOf("restaurants", "visits", "settings")) {
+            for (id in listOf("restaurants", "settings")) {
                 val other = if (id == "restaurants") "settings" else "restaurants"
                 compose.runOnIdle { selected = other }
                 val icon = compose.onNodeWithTag("tab-icon:$id", useUnmergedTree = true)
@@ -133,14 +133,14 @@ class P6UiTest {
         compose.runOnIdle { assertEquals(1, saved) }
     }
 
-    @Test fun allThreeTabReselectionsKeepTheSameBackStackEntryAndScrollToTop() {
+    @Test fun bothTabReselectionsKeepTheSameBackStackEntryAndScrollToTop() {
         val fixture = Fixture()
         try {
             compose.setContent { QuietGridTheme(true) {
                 ProductRoot(fixture.vm, "p6_owner", ThemeChoice.DARK, {}, {}, "0.6.0")
             } }
             waitForRows(fixture, RecordKind.RESTAURANT)
-            for (tab in listOf("restaurants", "visits", "settings")) {
+            for (tab in listOf("restaurants", "settings")) {
                 compose.onNodeWithTag("tab:$tab").performClick()
                 if (tab == "settings") compose.waitUntil(5000) { fixture.vm.settings.value.sessions.size == 12 && !fixture.vm.settings.value.loading }
                 else waitForRows(fixture, if (tab == "restaurants") RecordKind.RESTAURANT else RecordKind.VISIT)
@@ -180,7 +180,7 @@ class P6UiTest {
             waitForRows(fixture, RecordKind.RESTAURANT)
             compose.onNodeWithTag("product-navigation").assert(SemanticsMatcher.expectValue(NavigationAnimationsEnabled, true))
             compose.mainClock.autoAdvance = false
-            compose.onNodeWithTag("tab:visits").performClick()
+            compose.onNodeWithTag("tab:settings").performClick()
             repeat(15) { frame ->
                 if (frame > 0) compose.mainClock.advanceTimeBy(16)
                 val bitmap = compose.onNodeWithTag("product-navigation").captureToImage().asAndroidBitmap()

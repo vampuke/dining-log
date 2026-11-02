@@ -157,7 +157,7 @@ class ProductVisualTest {
         largeForm(true, "保存失败，请检查网络后重试。".repeat(4))
         assertKeyboard("dark")
     }
-    @Test fun allThreeTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes() {
+    @Test fun bothTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes() {
         var dark by mutableStateOf(false)
         var page by mutableStateOf("list")
         compose.setContent {
@@ -187,7 +187,7 @@ class ProductVisualTest {
             assertTrue(titleLayouts.isNotEmpty()); titleLayouts.forEach {
                 assertFalse("200% $screen title ${it.layoutInput.text}: size=${it.size}, widthOverflow=${it.didOverflowWidth}, heightOverflow=${it.didOverflowHeight}", it.hasVisualOverflow)
             }
-            for ((id, label) in listOf("restaurants" to "餐厅", "visits" to "到店", "settings" to "我的")) {
+            for ((id, label) in listOf("restaurants" to "餐厅", "settings" to "我的")) {
                 compose.onNodeWithTag("tab:$id").assertIsDisplayed()
                 val layouts = mutableListOf<TextLayoutResult>()
                 compose.onNode(hasText(label) and hasAnyAncestor(hasTestTag("tab:$id")), useUnmergedTree = true)

@@ -25,8 +25,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     var absolute by remember { mutableStateOf(false) }
     var hide by remember { mutableStateOf(false) }
     var restore by remember { mutableStateOf(false) }
-    ScreenFrame("screen:history", bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("history-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    ScreenFrame("screen:history", bottomBar, floatingBottomBar = true) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("history-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             item { PageHeader("修改详情", onBack, record?.fields?.get("entity_label")) }
             item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)

@@ -25,8 +25,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     val c = LocalQuietGridColors.current
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
-    ScreenFrame("screen:detail", bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("detail-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    ScreenFrame("screen:detail", bottomBar, floatingBottomBar = true) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("detail-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { PageHeader("探店小票", onBack) }
             item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
@@ -97,7 +97,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                             record.fields["visit_count"]?.let { GridText("已记录 $it 次", style = QuietGridText.caption) }
                             record.fields["last_visit_date"]?.takeIf { it.isNotBlank() }?.let { Sticker("最近到店 $it", c.mint) }
                             if (onNewVisit != null) BiteButton(onClick = onNewVisit, modifier = Modifier.fillMaxWidth().testTag("add-visit")) { Text("再次到店") }
-                            if (onVisits != null) BiteTextButton(onClick = onVisits) { Text("查看全部到店记录") }
+                            if (onVisits != null) BiteTextButton(onClick = onVisits, modifier = Modifier.testTag("visit-history")) { Text("查看全部到店记录") }
                         }
                     }
                     items(visits.items, key = { "visit:${it.ref.id}" }) { RecordRow(it, onChild) }

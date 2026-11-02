@@ -126,7 +126,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
     }
 }
 @Composable fun BiteButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
-    colors: ButtonColors? = null, content: @Composable RowScope.() -> Unit) {
+    colors: ButtonColors? = null, contentPadding: PaddingValues = ButtonDefaults.ContentPadding, content: @Composable RowScope.() -> Unit) {
     val c = LocalQuietGridColors.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
@@ -135,7 +135,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
         tween(if (animate) 120 else 0, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)), label = "sticker-press")
     Button(onClick, modifier.heightIn(min = 48.dp).graphicsLayer { translationX = shift.dp.toPx(); translationY = shift.dp.toPx() }
         .brutalBox(if (enabled) colors?.containerColor ?: c.cta else c.paper, c.border, c.shadow, 12.dp, offset = (4f - 1.5f * shift).dp),
-        enabled = enabled, shape = RoundedCornerShape(12.dp), border = BorderStroke(2.5.dp, c.border),
+        enabled = enabled, contentPadding = contentPadding, shape = RoundedCornerShape(12.dp), border = BorderStroke(2.5.dp, c.border),
         interactionSource = source, elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
         colors = colors?.copy(contentColor = c.onAccent, disabledContainerColor = c.paper, disabledContentColor = c.secondary) ?: ButtonDefaults.buttonColors(containerColor = c.cta, contentColor = c.onAccent,
             disabledContainerColor = c.paper, disabledContentColor = c.secondary), content = content)

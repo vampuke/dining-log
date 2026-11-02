@@ -191,7 +191,10 @@ class ProductEndToEndTest {
             waitFor { vm.list.value.query.filters.from == "2026-11-02" && !vm.list.value.isRefreshing && vm.list.value.items.isEmpty() }
             tap("filter-clear"); tap("filters")
             waitFor { vm.list.value.query.filters == ListFilters() && !vm.list.value.isRefreshing && vm.list.value.items.singleOrNull()?.ref?.id == restaurantId }
-            tap("tab:visits"); waitFor { vm.list.value.query.kind == RecordKind.VISIT }
+            tap("tab:restaurants"); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
+            type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
+            tap("record:$restaurantId"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
+            tap("visit-history"); waitFor { vm.list.value.query.kind == RecordKind.VISIT && !vm.list.value.isRefreshing }
             type("search", "2026-11-01")
             waitFor { vm.list.value.query.query == "2026-11-01" && !vm.list.value.isRefreshing && vm.list.value.items.size == 2 }
             assertEquals(2, vm.list.value.items.map { it.ref.id }.toSet().size)
@@ -301,23 +304,25 @@ class ProductEndToEndTest {
             tap("restore"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt == null && !vm.detail.value.refreshing }
             assertEquals("1", server(restaurantRef).fields["dish_count"])
 
-            phase = "global visits edit delete restore and restaurant filter"
-            tap("tab:visits"); waitFor { vm.list.value.query.kind == RecordKind.VISIT }
+            phase = "restaurant visit history edit delete and restore"
+            tap("tab:restaurants"); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
+            type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
+            tap("record:$restaurantId"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
+            tap("visit-history"); waitFor { vm.list.value.query.kind == RecordKind.VISIT && !vm.list.value.isRefreshing }
             type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing && vm.list.value.items.size == 2 }
             tap("record:${visitRef.id}"); waitFor { vm.detail.value.cached.snapshot?.ref == visitRef && !vm.detail.value.refreshing }
             tap("edit"); waitFor { vm.editor.value.input?.ref == visitRef }
             type("field:dining_date", "2026-11-02"); type("field:note", "编辑后的到店备注"); tap("save")
             waitFor { vm.detail.value.cached.snapshot?.ref == visitRef && vm.detail.value.cached.snapshot?.fields?.get("dining_date") == "2026-11-02" && !vm.detail.value.refreshing }
             tap("delete"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt != null && !vm.detail.value.refreshing }
-            tap("tab:visits"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing && vm.list.value.items.none { it.ref.id == visitRef.id } }
+            tap("back"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing && vm.list.value.items.none { it.ref.id == visitRef.id } }
             tap("trash"); waitFor { vm.list.value.query.deleted == DeletedFilter.ONLY && !vm.list.value.isRefreshing && vm.list.value.items.any { it.ref.id == visitRef.id } }
             tap("record:${visitRef.id}"); waitFor { vm.detail.value.cached.snapshot?.ref == visitRef && !vm.detail.value.refreshing }
             tap("restore"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt == null && !vm.detail.value.refreshing }
-            tap("tab:visits"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing }
-            tap("choose-restaurant"); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
-            tap("record:$restaurantId"); waitFor { vm.list.value.query.kind == RecordKind.VISIT && vm.list.value.query.restaurantId == restaurantId && !vm.list.value.isRefreshing }
-            assertEquals(2, vm.list.value.items.size); assertTrue(vm.list.value.items.all { it.ref.restaurantId == restaurantId })
-            tap("clear-restaurant"); waitFor { vm.list.value.query.restaurantId == null && !vm.list.value.isRefreshing && vm.list.value.items.size == 2 }
+            tap("back"); tap("back"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing }
+            assertEquals(2, vm.list.value.items.size)
+            assertTrue(vm.list.value.items.all { it.ref.restaurantId == restaurantId })
+            compose.onNodeWithTag("tab:visits").assertDoesNotExist()
 
             phase = "sessions password logout and fresh login"
             tap("tab:settings"); waitFor { !vm.settings.value.loading && vm.settings.value.sessions.any { it.id == other.sessionId } }
@@ -388,7 +393,7 @@ class ProductEndToEndTest {
             compose.onNodeWithTag(tag).assertIsDisplayed()
             return
         }
-        val dialog = listOf("screen:apply", "screen:conflict", "screen:expired", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
+        val dialog = listOf("screen:apply", "screen:conflict", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
         if (dialog) { compose.onNodeWithTag(tag).performScrollTo(); return }
         val lazy = listOf("edit-scroll", "record-list", "detail-scroll", "history-scroll", "settings-scroll").firstOrNull { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
         if (lazy != null) compose.onNodeWithTag(lazy, useUnmergedTree = true).performScrollToNode(hasTestTag(tag))

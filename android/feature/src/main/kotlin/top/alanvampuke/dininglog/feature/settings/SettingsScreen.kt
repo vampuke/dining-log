@@ -34,8 +34,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     var password by remember { mutableStateOf(false) }
     var logout by remember { mutableStateOf(false) }
     LaunchedEffect(state.passwordRevision) { if (state.passwordRevision > 0) password = false }
-    ScreenFrame("screen:settings", bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("settings-scroll"), state = listState, contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    ScreenFrame("screen:settings", bottomBar, floatingBottomBar = true) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("settings-scroll"), state = listState, contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
                 PageHeader("我的", subtitle = username)
                 GridText("账号 ${state.profile?.displayName ?: username}", style = MaterialTheme.typography.titleMedium)
