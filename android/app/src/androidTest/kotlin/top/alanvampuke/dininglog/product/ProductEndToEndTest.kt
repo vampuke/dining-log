@@ -45,6 +45,7 @@ import top.alanvampuke.dininglog.data.local.*
 import top.alanvampuke.dininglog.data.remote.*
 import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.auth.*
+import top.alanvampuke.dininglog.feature.components.ImeBottomPx
 import top.alanvampuke.dininglog.feature.theme.*
 
 // This test uses the real, unmodified Worker and isolated local D1 running on
@@ -458,9 +459,14 @@ class ProductEndToEndTest {
     }
     private fun type(tag: String, value: String) {
         scroll(tag)
-        // Focus can resize the lazy viewport when the IME appears. Finish that
-        // transition and fetch the current field before replacing its text.
-        compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        // Tapping also reopens the IME when this field retained focus after tab
+        // navigation. Wait for ScreenFrame to observe it before scrolling again;
+        // Compose idleness alone does not wait for the platform keyboard.
+        compose.onNodeWithTag(tag).performClick()
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(SemanticsMatcher.keyIsDefined(ImeBottomPx), useUnmergedTree = true)
+                .fetchSemanticsNodes().any { it.config[ImeBottomPx] > 0 }
+        }
         compose.waitForIdle()
         scroll(tag)
         compose.onNodeWithTag(tag).assertIsFocused().performTextReplacement(value)

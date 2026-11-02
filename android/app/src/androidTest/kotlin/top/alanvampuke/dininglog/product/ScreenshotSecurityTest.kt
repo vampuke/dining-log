@@ -41,7 +41,7 @@ class ScreenshotSecurityTest {
             compose.runOnIdle { dark = night }
             compose.onNodeWithTag("screen:restaurant:list").assertExists()
             assertSecureWindow(false, "restaurant list, dark=$night")
-            compose.onNodeWithTag("tab:settings").performClick()
+            tapTab("tab:settings")
             assertSecureWindow(false, "ordinary settings, dark=$night")
             repeat(2) {
                 compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("change-password"))
@@ -52,10 +52,19 @@ class ScreenshotSecurityTest {
                 compose.onNodeWithTag("screen:password").assertDoesNotExist()
                 assertSecureWindow(false, "settings after password dismissal, dark=$night")
             }
-            compose.onNodeWithTag("tab:restaurants").performClick()
+            tapTab("tab:restaurants")
             compose.onNodeWithTag("screen:restaurant:list").assertExists()
             assertSecureWindow(false, "restaurant list after sensitive flow, dark=$night")
         }
+    }
+
+    private fun tapTab(tag: String) {
+        compose.activityRule.scenario.onActivity { activity ->
+            androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
+                .hide(androidx.core.view.WindowInsetsCompat.Type.ime())
+        }
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag(tag).assertIsDisplayed().performClick()
     }
 
     private fun assertSecureWindow(expected: Boolean, screen: String) {
