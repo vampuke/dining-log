@@ -83,7 +83,8 @@ test('release accepts only a full SHA, stable version tag, own repository and ma
 
 test('source version is read from the reviewed file and cannot differ from tag', () => {
   const gradle = readFileSync(new URL('../../android/app/build.gradle.kts', import.meta.url), 'utf8');
-  assert.deepEqual(sourceVersion(gradle, 'v0.6.0'), { versionCode: 6, versionName: '0.6.0' });
+  assert.deepEqual(sourceVersion(gradle, 'v0.7.0'), { versionCode: 7, versionName: '0.7.0' });
+  assert.throws(() => sourceVersion(gradle, 'v0.6.0'));
   assert.throws(() => sourceVersion(gradle, 'v0.5.0'));
   assert.throws(() => sourceVersion(gradle, 'v0.4.0'));
   assert.throws(() => sourceVersion('versionCode = 0\nversionName = "0.5.0"', 'v0.5.0'));
