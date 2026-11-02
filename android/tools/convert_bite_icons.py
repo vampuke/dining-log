@@ -85,7 +85,7 @@ for index, ((bg, raw), name) in enumerate(zip(icons, NAMES), 1):
         night = ET.fromstring(ET.tostring(root))
         for path in night.iter('path'):
             if path.attrib.get(A+'strokeColor') == '#FFFFFF': path.set(A+'strokeColor', '#E6DDCA')
-        save(night, FEATURE.parent / 'drawable-night/bite_v1_burger.xml')
+        save(night, FEATURE / 'bite_v1_burger_dark.xml')
         for mono in (False, True):
             launcher = vector(108, 108)
             if not mono:

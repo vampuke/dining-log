@@ -20,9 +20,19 @@ Implementation is visual only. Public `QuietGrid*` symbol names and semantics ke
 | Tab reselect, no rebuild, scroll to top, remove-animations setting | verified (source); instrumentation pending | Original navigation callbacks/transitions retained; existing tests unchanged |
 | App update in 我的; readable descriptions and >=48 dp actions | verified (source); instrumentation pending | Existing update tag/flow; button/chip min heights; `nav-add` description |
 | Backend/API/data/cache/draft/auth untouched | verified | `git diff master -- backend android/core android/data` empty; VM untouched |
-| Local Android unit tests/lint | pending environment result | No SDK or emulator; 956 MB RAM; attempted offline Gradle with 256 MB heap |
-| CI backend + Android + API 26/35 | unverified, running | https://github.com/vampuke/dining-log/actions/runs/41367024244 |
+| Local Android unit tests/lint | unverified locally | Attempt failed before tests: Android Gradle plugin 8.9.2 is uncached and cannot resolve offline; no SDK/emulator on the 956 MB host. Command below. |
+| CI backend + Android + API 26/35 | backend/build/unit/lint verified; emulator pending | https://github.com/vampuke/dining-log/actions/runs/41367414503 |
 | Six screenshots | unverified, CI capture pending | See screenshot manifest below; no mock rendering presented as evidence |
+
+Local Android command attempted (not passed):
+
+```sh
+JAVA_OPTS=-Xmx128m ./android/gradlew -p android :core:test :data:testDebugUnitTest :feature:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug --offline --no-daemon -Dorg.gradle.jvmargs=-Xmx256m
+```
+
+Gradle 8.11.1 ran, then failed resolving `com.android.application:8.9.2` in offline mode. No unit test or lint task executed locally. The separate token/vector/baseline checks passed locally.
+
+CI Android evidence: [run 41367414503](https://github.com/vampuke/dining-log/actions/runs/41367414503), source commit `e8f774557b`. `:app:assembleDebug`, `:app:assembleDebugAndroidTest`, `:core:test`, `:data:testDebugUnitTest`, `:feature:testDebugUnitTest`, `:app:testDebugUnitTest`, `:app:lintDebug` completed successfully. Downloaded `android-build` artifact XML reports **70 unit tests, 0 failures, 0 skipped**. Backend job is green. API 26/35 results remain pending.
 
 ## Design choices and schema limits
 
@@ -185,11 +195,15 @@ All eight live under `android/app/src/main/res/drawable/`:
 7. `bite_v7_cloche.xml` — V7 cloche.
 8. `bite_v8_notebook.xml` — V8 journal.
 
-Replaced `ic_launcher_foreground.xml` and `ic_launcher_background.xml`; created `ic_launcher_monochrome.xml`. API 33 normal and round adaptive icons reference the dedicated monochrome resource. `android/feature/src/main/res/drawable/bite_v1_burger.xml` is the same generated V1 vector used in the masthead. Conversion is reproducible with `python3 android/tools/convert_bite_icons.py`.
+Replaced `ic_launcher_foreground.xml` and `ic_launcher_background.xml`; created `ic_launcher_monochrome.xml`. API 33 normal and round adaptive icons reference the dedicated monochrome resource. `android/feature/src/main/res/drawable/bite_v1_burger.xml` is the same generated V1 vector used in the masthead; `drawable/bite_v1_burger_dark.xml` substitutes the warm die-cut rim for pure white and is selected from the Compose theme, including an explicit dark choice on a light system. Conversion is reproducible with `python3 android/tools/convert_bite_icons.py`.
 
 ## Test changes, item by item
 
 1. `P6UiTest.actualAdaptiveRoundAndMonochromeIconsAndNativeNightThemeResolveCorrectly`: expected rendered foreground changes from D2 `#FBFBFA` to BITE `#111111`; background changes from D2 `#23543C` to BITE `#FFD60A`. The existing >50/>100 pixel assertions, both wallpaper cases, >=4.5 contrast threshold, adaptive/round/monochrome existence and matching native night checks remain intact.
 2. `verify_p6_visuals.py`: retained as the CI entry point, now invokes `verify_bite_visuals.py`. The D2 assumption that a launcher must have a single fill is replaced with verification of the multi-color reference vectors and dedicated alpha-only monochrome. The >=4.5 body/navigation threshold, native theme checks and no-bitmap checks remain; all tag expressions and protected-tree checks are added.
+
+3. `AndroidAuthTest.recoveryDarkUsesApprovedTokens`: exact background assertion changes from D2 `#0F0F0E` to BITE `#14120E`; equality and recovery-form visibility assertions are retained.
+
+The first emulator run found the obsolete auth color, a light-resource rim under a manually selected dark Compose theme, and a brand title overflow at 200% font. The fixes use an explicit dark masthead vector and the concise Chinese title 食记 at large fonts. The same zero-white-pixels and no-overflow assertions remain intact.
 
 No selector changes and no weakened assertions. Tests still assert three complete records, preserved navigation entries, actual pixel colors, no white navigation flash, 200% text without overflow, save above the real keyboard, explicit conflict choice and one-tenth rating steps.

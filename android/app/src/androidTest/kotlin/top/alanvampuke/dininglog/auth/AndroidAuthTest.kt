@@ -88,7 +88,7 @@ class AndroidAuthTest {
         compose.onAllNodesWithText("注册账号").onLast().performScrollTo().assertIsDisplayed().assertIsNotEnabled()
     }
     @Test fun recoveryDarkUsesApprovedTokens() {
-        assertEquals(0xFF0F0F0E.toInt(), QuietGridDark.bg.toArgb())
+        assertEquals(0xFF14120E.toInt(), QuietGridDark.bg.toArgb())
         form(AuthPage.RECOVER, true, 1f)
         compose.onNodeWithText("一次性恢复码", useUnmergedTree = true).assertExists()
         compose.onAllNodesWithText("恢复账号").onLast().performScrollTo().assertIsDisplayed()

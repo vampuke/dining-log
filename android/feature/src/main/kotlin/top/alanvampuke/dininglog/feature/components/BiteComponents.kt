@@ -131,9 +131,9 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
     val pressed by source.collectIsPressedAsState()
     val animate = rememberNavigationAnimationsEnabled()
     val shift by animateFloatAsState(if (pressed) 2f else 0f,
-        tween(if (animate) 120 else 0, easing = CubicBezierEasing(.2f, .8f, .2f, 1f)), label = "sticker-press")
+        tween(if (animate) 120 else 0, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)), label = "sticker-press")
     Button(onClick, modifier.heightIn(min = 48.dp).graphicsLayer { translationX = shift.dp.toPx(); translationY = shift.dp.toPx() }
-        .brutalBox(if (enabled) c.cta else c.paper, c.border, c.shadow, 12.dp, offset = (4f - 1.5f * shift).dp),
+        .brutalBox(if (enabled) colors?.containerColor ?: c.cta else c.paper, c.border, c.shadow, 12.dp, offset = (4f - 1.5f * shift).dp),
         enabled = enabled, shape = RoundedCornerShape(12.dp), border = BorderStroke(2.5.dp, c.border),
         interactionSource = source, elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
         colors = colors?.copy(contentColor = c.onAccent, disabledContainerColor = c.paper, disabledContentColor = c.secondary) ?: ButtonDefaults.buttonColors(containerColor = c.cta, contentColor = c.onAccent,
