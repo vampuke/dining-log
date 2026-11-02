@@ -2,7 +2,9 @@ package top.alanvampuke.dininglog.product
 
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -26,14 +28,20 @@ class ScreenshotSecurityTest {
         var tab by mutableStateOf("restaurants")
         compose.setContent {
             QuietGridTheme(dark) {
-                val tabs: @Composable () -> Unit = { BottomTabs(tab) { tab = it } }
-                if (tab == "settings") {
-                    SettingsScreen(SettingsUiState(), "screenshot_test",
-                        if (dark) ThemeChoice.DARK else ThemeChoice.LIGHT, BuildConfig.VERSION_NAME,
-                        {}, {}, { _, _ -> }, {}, {}, tabs)
-                } else {
-                    RecordListScreen(ListUiState(localScope = false), "", ListFilters(),
-                        {}, {}, {}, {}, {}, bottomBar = tabs)
+                Column(Modifier.fillMaxSize().navigationBarsPadding().imePadding()) {
+                    Box(Modifier.weight(1f)) {
+                        if (tab == "settings") {
+                            SettingsScreen(SettingsUiState(), "screenshot_test",
+                                if (dark) ThemeChoice.DARK else ThemeChoice.LIGHT, BuildConfig.VERSION_NAME,
+                                {}, {}, { _, _ -> }, {}, {}, bottomBar = {})
+                        } else {
+                            RecordListScreen(ListUiState(localScope = false), "", ListFilters(),
+                                {}, {}, {}, {}, {})
+                        }
+                    }
+                    // ScreenFrame omits its floating tabs while IME insets are nonzero.
+                    // Keep navigation available independently of dialog dismissal insets.
+                    BottomTabs(tab) { tab = it }
                 }
             }
         }
@@ -59,12 +67,7 @@ class ScreenshotSecurityTest {
     }
 
     private fun tapTab(tag: String) {
-        compose.activityRule.scenario.onActivity { activity ->
-            androidx.core.view.WindowInsetsControllerCompat(activity.window, activity.window.decorView)
-                .hide(androidx.core.view.WindowInsetsCompat.Type.ime())
-        }
-        compose.waitUntil(15_000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithTag(tag).assertIsDisplayed().performClick()
+        compose.onNodeWithTag(tag).assertExists().assertIsDisplayed().performClick()
     }
 
     private fun assertSecureWindow(expected: Boolean, screen: String) {
