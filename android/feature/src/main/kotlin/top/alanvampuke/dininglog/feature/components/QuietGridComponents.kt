@@ -5,6 +5,13 @@ import android.os.Build
 import android.view.ViewTreeObserver
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -61,12 +69,14 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
     Scaffold(Modifier.fillMaxSize().imePadding().padding(extra).consumeWindowInsets(extra)
         .testTag(tag).semantics { this[BackgroundArgb] = c.bg.toArgb(); this[ImeBottomPx] = ime },
         containerColor = c.bg, contentColor = c.ink,
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal), bottomBar = bottomBar, content = content)
+        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal), bottomBar = bottomBar) { padding ->
+        Box(Modifier.fillMaxSize().paperDots(c.dots)) { content(padding) }
+    }
 }
 @Composable fun PageHeader(title: String, onBack: (() -> Unit)? = null, subtitle: String? = null) {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (onBack != null) TextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
+            if (onBack != null) BiteTextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
             GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
         }
         if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
@@ -84,19 +94,29 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
     }
 }
 @Composable fun Score(value: String?, prominent: Boolean = false, meter: Boolean = false, modifier: Modifier = Modifier) {
+    val c = LocalQuietGridColors.current
+    val tenths = value?.toIntOrNull()
+    val fill = verdictFill(tenths)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        GridText(displayValue("rating_tenths", value), style = if (prominent) QuietGridText.detailRating else QuietGridText.listRating,
-            color = LocalQuietGridColors.current.accentInk)
+        GridText(displayValue("rating_tenths", value), Modifier.rotate(-3f)
+            .drawBehind {
+                drawRoundRect(c.dieCut, topLeft = Offset(-3.dp.toPx(), -3.dp.toPx()),
+                    size = Size(size.width + 6.dp.toPx(), size.height + 6.dp.toPx()), cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()))
+            }.brutalBox(fill, c.border, c.shadow, 10.dp, 3.dp).padding(horizontal = 8.dp, vertical = 4.dp)
+            .semantics { this[BackgroundArgb] = fill.toArgb() },
+            style = if (prominent) QuietGridText.detailRating else QuietGridText.listRating,
+            color = if (tenths == null) c.ink else c.stickerInk)
         if (meter && value != null) {
             val filled = (value.toInt() / 5.0).roundToInt()
             Row(Modifier.width(120.dp).semantics { contentDescription = "评分 ${Rating.fromTenths(value.toInt()).display}，满分 5.0" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                repeat(10) { index -> Box(Modifier.weight(1f).height(3.dp).background(if (index < filled) LocalQuietGridColors.current.accent else LocalQuietGridColors.current.borderStrong)) }
+                repeat(10) { index -> Box(Modifier.weight(1f).height(5.dp).background(if (index < filled) c.accent else c.borderStrong)) }
             }
         }
     }
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun RatingEditor(value: String?, onChange: (String?) -> Unit, enabled: Boolean, tag: String = "rating") {
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         GridText("评分 · 选填", style = MaterialTheme.typography.titleMedium)
         Score(value, meter = true)
         Slider(value = (value?.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
@@ -108,24 +128,43 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
                     onChange((selected * 10).roundToInt().coerceIn(10, 50).toString())
                     true
                 }
+            }, thumb = {
+                Box(Modifier.size(28.dp).brutalBox(LocalQuietGridColors.current.popRed,
+                    LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow, 6.dp, 2.dp))
+            }, track = { slider ->
+                val c = LocalQuietGridColors.current
+                Canvas(Modifier.fillMaxWidth().height(14.dp)) {
+                    drawRoundRect(c.bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
+                    val fraction = (slider.value - 1f) / 4f
+                    drawRoundRect(c.butter, size = Size(size.width * fraction, size.height), cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
+                    drawRoundRect(c.border, topLeft = Offset(1.25.dp.toPx(), 1.25.dp.toPx()),
+                        size = Size(size.width - 2.5.dp.toPx(), size.height - 2.5.dp.toPx()),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(2.5.dp.toPx()))
+                }
             })
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            TextButton(onClick = { onChange(((value?.toInt() ?: 40) - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:minus")) { Text("− 0.1") }
-            TextButton(onClick = { onChange(((value?.toInt() ?: 40) + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:plus")) { Text("+ 0.1") }
+            BiteTextButton(onClick = { onChange(((value?.toInt() ?: 40) - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:minus")) { Text("− 0.1") }
+            BiteTextButton(onClick = { onChange(((value?.toInt() ?: 40) + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:plus")) { Text("+ 0.1") }
         }
-        TextButton(onClick = { onChange(if (value == null) "40" else null) }, enabled = enabled) { Text(if (value == null) "设置评分" else "清除评分") }
+        BiteTextButton(onClick = { onChange(if (value == null) "40" else null) }, enabled = enabled) { Text(if (value == null) "设置评分" else "清除评分") }
     }
 }
 @Composable fun FormField(field: String, value: String?, onChange: (String) -> Unit, enabled: Boolean = true,
     error: String? = null, label: String = fieldLabel(field), minLines: Int = 1, supporting: String? = null) {
-    OutlinedTextField(value ?: "", onChange, modifier = Modifier.fillMaxWidth().testTag("field:$field"), enabled = enabled,
+    BiteTextField(value ?: "", onChange, modifier = Modifier.fillMaxWidth().testTag("field:$field"), enabled = enabled,
         label = { GridText(label) }, textStyle = QuietGridText.input, minLines = minLines, isError = error != null,
         supportingText = { if (error != null) GridText(error, color = LocalQuietGridColors.current.danger) else if (supporting != null) GridText(supporting, style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary) })
 }
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun ChoiceChips(options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit, enabled: Boolean = true) {
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        options.forEach { (code, label) -> FilterChip(selected = selected == code, onClick = { onSelect(code) }, enabled = enabled, label = { Text(label) }) }
+        options.forEach { (code, label) -> FilterChip(selected = selected == code, onClick = { onSelect(code) }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp), label = { Text(label) },
+            border = FilterChipDefaults.filterChipBorder(enabled, selected == code, borderColor = LocalQuietGridColors.current.border,
+                selectedBorderColor = LocalQuietGridColors.current.border, borderWidth = 1.5.dp, selectedBorderWidth = 2.dp),
+            colors = FilterChipDefaults.filterChipColors(containerColor = LocalQuietGridColors.current.surface,
+                labelColor = LocalQuietGridColors.current.ink, selectedContainerColor = LocalQuietGridColors.current.accentSoft,
+                selectedLabelColor = LocalQuietGridColors.current.accentInk, disabledContainerColor = LocalQuietGridColors.current.paper,
+                disabledLabelColor = LocalQuietGridColors.current.secondary, disabledSelectedContainerColor = LocalQuietGridColors.current.paper)) }
     }
 }
 @Composable fun SaveBar(enabled: Boolean, saving: Boolean, unknown: Boolean, onSave: () -> Unit, message: String? = null) {
@@ -134,7 +173,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
             if (message != null) Column(Modifier.heightIn(max = 112.dp).verticalScroll(rememberScrollState())) {
                 ErrorMessage(message, "save-message")
             }
-            Button(onClick = onSave, enabled = enabled && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("save"),
+            BiteButton(onClick = onSave, enabled = enabled && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("save"),
                 colors = ButtonDefaults.buttonColors(containerColor = LocalQuietGridColors.current.cta, contentColor = LocalQuietGridColors.current.onAccent)) {
                 Text(if (saving) "正在保存…" else if (unknown) "重试原请求，确认结果" else "保存")
             }
@@ -146,12 +185,12 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
     val text = displayValue(field, value)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         GridText(if (!expanded && text.length > 240) text.take(240) + "…" else text, Modifier.testTag(tag), style = QuietGridText.paragraph)
-        if (text.length > 240) TextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("expand:$tag")) { Text(if (expanded) "收起全文" else "展开全文") }
+        if (text.length > 240) BiteTextButton(onClick = { expanded = !expanded }, modifier = Modifier.testTag("expand:$tag")) { Text(if (expanded) "收起全文" else "展开全文") }
     }
 }
 @Composable fun ConfirmAction(title: String, message: String, confirmText: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(onDismissRequest = onDismiss, title = { GridText(title, style = MaterialTheme.typography.headlineSmall) },
         text = { Column(Modifier.verticalScroll(rememberScrollState())) { GridText(message) } }, containerColor = LocalQuietGridColors.current.surface,
-        confirmButton = { TextButton(onClick = onConfirm, modifier = Modifier.testTag("confirm")) { Text(confirmText, color = LocalQuietGridColors.current.danger) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
+        confirmButton = { BiteTextButton(onClick = onConfirm, modifier = Modifier.testTag("confirm")) { Text(confirmText, color = LocalQuietGridColors.current.danger) } },
+        dismissButton = { BiteTextButton(onClick = onDismiss) { Text("取消") } })
 }

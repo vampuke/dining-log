@@ -5,18 +5,18 @@ import androidx.compose.material3.Shapes
 import androidx.compose.ui.unit.dp
 
 val QuietGridShapes = Shapes(
-    extraSmall = RoundedCornerShape(3.dp),
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(4.dp),
-    large = RoundedCornerShape(6.dp),
-    extraLarge = RoundedCornerShape(6.dp),
+    extraSmall = RoundedCornerShape(6.dp),
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(10.dp),
+    large = RoundedCornerShape(14.dp),
+    extraLarge = RoundedCornerShape(14.dp),
 )
 object QuietGridDimensions {
-    val edge = 24.dp
-    val radius = 4.dp
-    val buttonRadius = 6.dp
-    val scoreRadius = 3.dp
-    val hairline = 1.dp
+    val edge = 16.dp
+    val radius = 14.dp
+    val buttonRadius = 12.dp
+    val scoreRadius = 10.dp
+    val hairline = 2.5.dp
     val elevation = 0.dp
     const val colorMotionMillis = 140
 }

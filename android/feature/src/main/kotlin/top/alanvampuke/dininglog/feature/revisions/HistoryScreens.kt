@@ -31,17 +31,17 @@ import top.alanvampuke.dininglog.feature.theme.*
             item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
                 if (state.error != null) ErrorMessage(state.error)
-                TextButton(onClick = onRefresh, enabled = !state.refreshing) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
+                BiteTextButton(onClick = onRefresh, enabled = !state.refreshing) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
             }
             if (record != null) {
                 item {
                     GridText(relativeTime(record.fields["created_at"] ?: record.updatedAt), style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-                    TextButton(onClick = { absolute = !absolute }) { Text(if (absolute) "收起绝对时间" else "显示绝对时间") }
+                    BiteTextButton(onClick = { absolute = !absolute }) { Text(if (absolute) "收起绝对时间" else "显示绝对时间") }
                     if (absolute) GridText(record.fields["created_at"] ?: record.updatedAt, Modifier.testTag("absolute-time"), style = QuietGridText.date)
                     GridText("版本 ${record.fields["entity_version_before"] ?: "0"} → ${record.fields["entity_version_after"] ?: "1"}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
                 }
                 record.diff.forEach { change -> item(key = change.field) {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BitePanel(Modifier.revisionRail(LocalQuietGridColors.current.border).padding(start = 16.dp)) {
                         GridText(fieldLabel(change.field), style = MaterialTheme.typography.titleMedium)
                         GridText("原值", color = LocalQuietGridColors.current.secondary)
                         ExpandableValue(change.field, change.before, "before:${change.field}")
@@ -55,13 +55,13 @@ import top.alanvampuke.dininglog.feature.theme.*
                     ExpandableValue("note", record.fields["note"], "history:note")
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (record.deletedAt == null) {
-                            TextButton(onClick = { onNote(record) }, modifier = Modifier.testTag("history-note")) { Text("加说明 / 修改说明") }
-                            TextButton(onClick = { hide = true }, modifier = Modifier.testTag("hide-history")) { Text("隐藏此条历史", color = LocalQuietGridColors.current.danger) }
+                            BiteTextButton(onClick = { onNote(record) }, modifier = Modifier.testTag("history-note")) { Text("加说明 / 修改说明") }
+                            BiteTextButton(onClick = { hide = true }, modifier = Modifier.testTag("hide-history")) { Text("隐藏此条历史", color = LocalQuietGridColors.current.danger) }
                         } else {
                             GridText("此条历史已隐藏，普通列表不显示", color = LocalQuietGridColors.current.secondary)
-                            Button(onClick = { restore = true }, modifier = Modifier.fillMaxWidth().testTag("restore-history")) { Text("取消隐藏") }
+                            BiteButton(onClick = { restore = true }, modifier = Modifier.fillMaxWidth().testTag("restore-history")) { Text("取消隐藏") }
                         }
-                        Button(onClick = { onApply(record) }, modifier = Modifier.fillMaxWidth().testTag("reapply")) { Text("重新应用字段") }
+                        BiteButton(onClick = { onApply(record) }, modifier = Modifier.fillMaxWidth().testTag("reapply")) { Text("重新应用字段") }
                     }
                 }
             } else item { GridText("尚无完整 diff 缓存，请联网后重试") }
@@ -75,12 +75,12 @@ import top.alanvampuke.dininglog.feature.theme.*
     footer: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
         Surface(color = LocalQuietGridColors.current.surface, shape = MaterialTheme.shapes.medium,
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.94f).windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp).testTag(tag)) {
+            modifier = Modifier.brutalBox(LocalQuietGridColors.current.surface, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).fillMaxWidth().fillMaxHeight(0.94f).windowInsetsPadding(WindowInsets.safeDrawing).padding(12.dp).testTag(tag)) {
             Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 GridText(title, Modifier.testTag("dialog-title"), style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
                 footer()
-                TextButton(onClick = onDismiss) { Text("保留草稿，返回") }
+                BiteTextButton(onClick = onDismiss) { Text("保留草稿，返回") }
             }
         }
     }
@@ -106,7 +106,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable fun ConflictDialog(comparison: ConflictComparison, busy: Boolean, onConfirm: (Map<String, ConflictChoice>) -> Unit, onDismiss: () -> Unit) {
     var choices by remember(comparison) { mutableStateOf(emptyMap<String, ConflictChoice>()) }
     ReviewDialog("版本冲突", "screen:conflict", onDismiss, footer = {
-        Button(onClick = { onConfirm(choices) }, enabled = !busy && comparison.mergeAllowed && choices.keys.containsAll(comparison.needsChoice),
+        BiteButton(onClick = { onConfirm(choices) }, enabled = !busy && comparison.mergeAllowed && choices.keys.containsAll(comparison.needsChoice),
             modifier = Modifier.fillMaxWidth().testTag("confirm-merge")) { Text(if (busy) "正在保存…" else "确认选择并保存") }
     }) {
         GridText(if (comparison.mergeAllowed) "横向滑动比较三栏。不同字段已提供合并建议，同一字段必须选择。确认后使用服务器当前版本保存。" else "删除冲突或记录不可用，不能强制合并保存；请先恢复或刷新，草稿保留。")
@@ -126,8 +126,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     val allow = server?.deletedAt == null && draft.action !in setOf(WriteAction.DELETE, WriteAction.RESTORE) && (server != null || draft.action == WriteAction.CREATE)
     ReviewDialog("原请求已超过 7 天", "screen:expired", onDismiss, footer = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (server != null) TextButton(onClick = onAcceptServer, enabled = !busy) { Text("保留服务器值，清除本机草稿") }
-            Button(onClick = onConfirm, enabled = !busy && allow, modifier = Modifier.fillMaxWidth().testTag("confirm-new-save")) { Text("确认新保存") }
+            if (server != null) BiteTextButton(onClick = onAcceptServer, enabled = !busy) { Text("保留服务器值，清除本机草稿") }
+            BiteButton(onClick = onConfirm, enabled = !busy && allow, modifier = Modifier.fillMaxWidth().testTag("confirm-new-save")) { Text("确认新保存") }
         }
     }) {
         GridText("已读取服务器当前值。原请求没有重放，请核对后确认新的保存。")
@@ -140,7 +140,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable fun ApplyFieldsDialog(state: ApplyUiState, onSide: (String) -> Unit, onField: (String, Boolean) -> Unit,
     onSave: () -> Unit, onDismiss: () -> Unit) {
     ReviewDialog("重新应用历史字段", "screen:apply", onDismiss, footer = {
-        Button(onClick = onSave, enabled = state.selected.isNotEmpty() && state.current.deletedAt == null, modifier = Modifier.fillMaxWidth().testTag("apply-save")) { Text("确认选中字段并保存") }
+        BiteButton(onClick = onSave, enabled = state.selected.isNotEmpty() && state.current.deletedAt == null, modifier = Modifier.fillMaxWidth().testTag("apply-save")) { Text("确认选中字段并保存") }
     }) {
         GridText("当前版本 ${state.current.version}。只修改选中的字段，保存时会重新检查版本。")
         ChoiceChips(listOf("before" to "应用旧值", "after" to "应用新值"), state.side, { if (it != null) onSide(it) })
@@ -170,7 +170,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             GridText(state.message ?: "正在确认服务器结果…")
             if (state.draft != null) GridText("请求与草稿已保留在本机，也可在「我的」中查看。", color = LocalQuietGridColors.current.secondary)
         } },
-        confirmButton = { if (state.draft != null) TextButton(onClick = onRetry, enabled = !state.saving,
+        confirmButton = { if (state.draft != null) BiteTextButton(onClick = onRetry, enabled = !state.saving,
             modifier = Modifier.testTag("retry-operation")) { Text(if (state.draft.status == DraftStatus.RESULT_UNKNOWN) "重试原请求确认结果" else "重试保存") } },
-        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.saving) { Text("关闭") } })
+        dismissButton = { BiteTextButton(onClick = onDismiss, enabled = !state.saving) { Text("关闭") } })
 }

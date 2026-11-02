@@ -207,7 +207,7 @@ class P6UiTest {
                 val bitmap = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888)
                 val canvas = Canvas(bitmap); canvas.drawColor(wallpaper)
                 icon.setBounds(24, 24, 136, 136); icon.draw(canvas)
-                val foreground = Color.rgb(251, 251, 250); val background = Color.rgb(35, 84, 60)
+                val foreground = Color.rgb(17, 17, 17); val background = Color.rgb(255, 214, 10)
                 val pixels = IntArray(160 * 160); bitmap.getPixels(pixels, 0, 160, 0, 0, 160, 160)
                 assertTrue(pixels.count { it == foreground } > 50); assertTrue(pixels.count { it == background } > 100)
                 val ratio = contrast(foreground, background); assertTrue(ratio >= 4.5)

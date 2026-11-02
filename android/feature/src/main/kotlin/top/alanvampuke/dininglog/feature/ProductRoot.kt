@@ -4,6 +4,11 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -79,7 +84,9 @@ import top.alanvampuke.dininglog.feature.theme.*
             entry?.destination?.hasRoute<SettingsRoute>() == true -> "settings"
             else -> selectedTab
         }
-        BottomTabs(selected) { tab ->
+        BottomTabs(selected, onAdd = {
+            if (selected == "visits") nav.navigate(ChooseRestaurantRoute("new-visit")) else create(RecordKind.RESTAURANT)
+        }) { tab ->
             val destination = nav.currentBackStackEntry?.destination
             val current = when (tab) {
                 "restaurants" -> destination?.hasRoute<RestaurantsRoute>() == true
@@ -200,11 +207,15 @@ import top.alanvampuke.dininglog.feature.theme.*
     if (operationVisible && conflict == null && expired == null) OperationDialog(editor, vm::saveEditor, vm::dismissOperation)
 }
 val TabIconFilled = SemanticsPropertyKey<Boolean>("TabIconFilled")
-@Composable fun BottomTabs(selectedRoute: String?, onSelect: (String) -> Unit) {
+@Composable fun BottomTabs(selectedRoute: String?, onAdd: (() -> Unit)? = null, onSelect: (String) -> Unit) {
     val c = LocalQuietGridColors.current
-    NavigationBar(modifier = Modifier.heightIn(min = if (LocalDensity.current.fontScale > 1.3f) 112.dp else 80.dp),
+    NavigationBar(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).border(2.5.dp, c.border, RoundedCornerShape(16.dp)).height((if (LocalDensity.current.fontScale > 1.3f) 112.dp else 64.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         containerColor = c.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
         listOf("restaurants" to "餐厅", "visits" to "到店", "settings" to "我的").forEach { (id, title) ->
+            if (id == "visits" && onAdd != null) Box(Modifier.width(56.dp).heightIn(min = 64.dp), contentAlignment = Alignment.Center) {
+                BiteButton(onClick = onAdd, modifier = Modifier.size(48.dp).rotate(3f).testTag("nav-add").semantics { contentDescription = "新增记录" },
+                    colors = ButtonDefaults.buttonColors(containerColor = c.popRed, contentColor = c.stickerInk)) { Text("+", style = MaterialTheme.typography.headlineSmall) }
+            }
             val selected = selectedRoute == id || selectedRoute?.contains(when (id) { "restaurants" -> "RestaurantsRoute"; "visits" -> "VisitsRoute"; else -> "SettingsRoute" }) == true
             val foreground = if (selected) c.accentInk else c.secondary
             val icon = when (id) {

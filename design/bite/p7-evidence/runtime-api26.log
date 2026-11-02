@@ -1,0 +1,36 @@
+--------- beginning of main
+--------- beginning of system
+11-02 01:13:54.396  3224  3241 I System.out: P6 real_api viewport=360x640dp theme=light complete_record_items=4
+11-02 01:13:55.013  3224  3241 I System.out: P6 real_api viewport=360x640dp theme=dark complete_record_items=4
+11-02 01:13:59.879  3224  3241 I System.out: P6 viewport=360x640dp theme=light complete_record_items=4
+11-02 01:14:00.346  3224  3241 I System.out: P6 viewport=360x640dp theme=dark complete_record_items=4
+11-02 01:14:06.084  3224  3241 I System.out: P6 dark_navigation_frames=15 sample_interval_ms=16 white_pixels=0 remove_animations_observed=true
+11-02 01:14:06.500  3224  3241 I System.out: P6 adaptive_icon=2131492864 wallpaper=-1 contrast=13.375510370734203
+11-02 01:14:06.503  3224  3241 I System.out: P6 adaptive_icon=2131492864 wallpaper=-15790322 contrast=13.375510370734203
+11-02 01:14:06.507  3224  3241 I System.out: P6 adaptive_icon=2131492865 wallpaper=-1 contrast=13.375510370734203
+11-02 01:14:06.509  3224  3241 I System.out: P6 adaptive_icon=2131492865 wallpaper=-15790322 contrast=13.375510370734203
+11-02 01:14:07.247  3224  3241 I System.out: P6 theme=light tab=restaurants icon_contrast=13.375510370734203 label_contrast=18.883060964594996
+11-02 01:14:07.530  3224  3241 I System.out: P6 theme=light tab=visits icon_contrast=13.375510370734203 label_contrast=18.883060964594996
+11-02 01:14:07.812  3224  3241 I System.out: P6 theme=light tab=settings icon_contrast=13.375510370734203 label_contrast=18.883060964594996
+11-02 01:14:08.131  3224  3241 I System.out: P6 theme=dark tab=restaurants icon_contrast=11.189911834134087 label_contrast=14.329590922804023
+11-02 01:14:08.412  3224  3241 I System.out: P6 theme=dark tab=visits icon_contrast=11.189911834134087 label_contrast=14.329590922804023
+11-02 01:14:08.712  3224  3241 I System.out: P6 theme=dark tab=settings icon_contrast=11.189911834134087 label_contrast=14.329590922804023
+11-02 01:14:10.145  3224  3241 I System.out: P6 tab=restaurants reselections=4 entry_preserved=true scrolled_to_top=true
+11-02 01:14:11.113  3224  3241 I System.out: P6 tab=visits reselections=4 entry_preserved=true scrolled_to_top=true
+11-02 01:14:11.946  3224  3241 I System.out: P6 tab=settings reselections=4 entry_preserved=true scrolled_to_top=true
+11-02 01:14:53.030  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.032  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370/dishes: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.041  3224  3375 E DiningP4: transport GET /api/v1/visits: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.400  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.416  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370/dishes: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.416  3224  3376 E DiningP4: transport GET /api/v1/visits: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.904  3224  3375 E DiningP4: transport GET /api/v1/visits: IOException: P4 injected offline transport; cause=null
+11-02 01:14:53.913  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected offline transport; cause=null
+11-02 01:14:54.053  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370/dishes: IOException: P4 injected offline transport; cause=null
+11-02 01:14:54.525  3224  3375 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370/dishes: IOException: P4 injected offline transport; cause=null
+11-02 01:14:54.528  3224  3376 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected offline transport; cause=null
+11-02 01:14:54.853  3224  3376 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370/dishes: IOException: P4 injected offline transport; cause=null
+11-02 01:14:54.940  3224  3376 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected offline transport; cause=null
+11-02 01:14:55.428  3224  3376 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected offline transport; cause=null
+11-02 01:14:55.457  3224  3376 E DiningP4: transport GET /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370/dishes: IOException: P4 injected offline transport; cause=null
+11-02 01:14:57.671  3224  3367 E DiningP4: transport PATCH /api/v1/restaurants/70176f50-06c1-41c2-b41a-4cd877bae370: IOException: P4 injected response loss after server commit; cause=null

@@ -21,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import top.alanvampuke.dininglog.core.auth.*
 import top.alanvampuke.dininglog.feature.theme.*
+import top.alanvampuke.dininglog.feature.components.*
 
 enum class AuthPage(val title: String) { LOGIN("登录"), REGISTER("注册账号"), RECOVER("恢复账号") }
 fun authErrorText(error: AuthFailure): String = when (error.code) {
@@ -69,8 +70,11 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
     }
     Surface(color = LocalQuietGridColors.current.bg, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
-            .verticalScroll(rememberScrollState()).padding(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Text("食记 / 账号", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
+            .paperDots(LocalQuietGridColors.current.dots).verticalScroll(rememberScrollState()).padding(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            BitePanel(fill = LocalQuietGridColors.current.paper) {
+                GridText("BITE! 食记", style = MaterialTheme.typography.headlineLarge)
+                GridText("私人探店手账 · 账号", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
+            }
             val current = session
             if (current == null) {
                 key(page) {
@@ -87,9 +91,9 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
                 }
                 // Stacked links stay reachable at large font sizes and narrow widths.
                 for (target in AuthPage.entries.filter { it != page }) {
-                    TextButton(onClick = { page = target; message = null }, enabled = !loading) { Text(target.title) }
+                    BiteTextButton(onClick = { page = target; message = null }, enabled = !loading) { Text(target.title) }
                 }
-                if (message != null) TextButton(onClick = { launchAction { onRestore() } }, enabled = !loading) { Text("重试恢复已保存的登录") }
+                if (message != null) BiteTextButton(onClick = { launchAction { onRestore() } }, enabled = !loading) { Text("重试恢复已保存的登录") }
             } else {
                 key(current.sessionId) {
                     Text("${current.username} 的账号", style = MaterialTheme.typography.headlineMedium)
@@ -100,11 +104,11 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
                         current.recoveryCodes.forEachIndexed { index, code ->
                             Text("${index + 1}. $code", style = QuietGridText.date, modifier = Modifier.fillMaxWidth())
                         }
-                        TextButton(onClick = { onCopyRecoveryCodes(current.recoveryCodes) }) { Text("复制恢复码") }
-                        Button(onClick = { acknowledgedFor = current.sessionId }, modifier = Modifier.fillMaxWidth()) { Text("我已安全保存") }
+                        BiteTextButton(onClick = { onCopyRecoveryCodes(current.recoveryCodes) }) { Text("复制恢复码") }
+                        BiteButton(onClick = { acknowledgedFor = current.sessionId }, modifier = Modifier.fillMaxWidth()) { Text("我已安全保存") }
                     }
                     if (message != null) PersistentError(message!!)
-                    TextButton(onClick = { launchAction { message = onLogout(); page = AuthPage.LOGIN } }, enabled = !loading) { Text(if (loading) "正在退出…" else "退出账号") }
+                    BiteTextButton(onClick = { launchAction { message = onLogout(); page = AuthPage.LOGIN } }, enabled = !loading) { Text(if (loading) "正在退出…" else "退出账号") }
                 }
             }
         }
@@ -119,19 +123,19 @@ fun AuthForm(page: AuthPage, loading: Boolean, error: String?, onSubmit: (String
     Text(page.title, style = MaterialTheme.typography.headlineMedium)
     Text(if (page == AuthPage.LOGIN) "使用独立账号保存你的食记。" else if (page == AuthPage.REGISTER) "注册后会显示 8 个一次性恢复码，请安全保存。" else "输入一个有效恢复码，新密码生效后所有旧会话都会退出。",
         color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodyMedium)
-    OutlinedTextField(username, { username = it }, label = { Text("用户名") }, enabled = !loading,
+    BiteTextField(username, { username = it }, label = { Text("用户名") }, enabled = !loading,
         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("auth-username"), textStyle = QuietGridText.input,
         supportingText = { Text("3–32 位字母、数字或下划线，以字母开头。") })
-    if (page == AuthPage.RECOVER) OutlinedTextField(recoveryCode, { recoveryCode = it }, label = { Text("一次性恢复码") },
+    if (page == AuthPage.RECOVER) BiteTextField(recoveryCode, { recoveryCode = it }, label = { Text("一次性恢复码") },
         enabled = !loading, modifier = Modifier.fillMaxWidth().testTag("auth-recovery"), textStyle = QuietGridText.date)
-    OutlinedTextField(password, { password = it }, label = { Text(if (page == AuthPage.RECOVER) "新密码" else "密码") },
+    BiteTextField(password, { password = it }, label = { Text(if (page == AuthPage.RECOVER) "新密码" else "密码") },
         enabled = !loading, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("auth-password"), textStyle = QuietGridText.input,
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
-    TextButton(onClick = { visible = !visible }, enabled = !loading) { Text(if (visible) "隐藏密码" else "显示密码") }
+    BiteTextButton(onClick = { visible = !visible }, enabled = !loading) { Text(if (visible) "隐藏密码" else "显示密码") }
     if (page != AuthPage.LOGIN) Text("密码需 12–128 个字符；允许空格和 Unicode，不能全为空白或使用常见弱密码。", style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary)
     if (error != null) PersistentError(error)
-    Button(onClick = { onSubmit(username, password, recoveryCode) }, enabled = !loading && username.isNotBlank() && password.isNotEmpty() && (page != AuthPage.RECOVER || recoveryCode.isNotBlank()),
+    BiteButton(onClick = { onSubmit(username, password, recoveryCode) }, enabled = !loading && username.isNotBlank() && password.isNotEmpty() && (page != AuthPage.RECOVER || recoveryCode.isNotBlank()),
         colors = ButtonDefaults.buttonColors(containerColor = LocalQuietGridColors.current.cta), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("auth-submit")) {
         Text(if (loading) "正在处理…" else page.title)
     }
