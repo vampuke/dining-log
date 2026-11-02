@@ -16,7 +16,7 @@ data class QuietGridColors(
 )
 val QuietGridLight = QuietGridColors(
     bg = Color(0xFFFFFDF5), surface = Color(0xFFFFFFFF), ink = Color(0xFF111111),
-    secondary = Color(0xFF514B40), tertiary = Color(0xFF635C50), border = Color(0xFF111111),
+    secondary = Color(0xFF514B40), tertiary = Color(0xFF5D564A), border = Color(0xFF111111),
     accent = Color(0xFFFFD60A), onAccent = Color(0xFF111111), danger = Color(0xFFA61B27),
     accentInk = Color(0xFF111111), cta = Color(0xFFFFD60A), accentSoft = Color(0xFFFFD60A),
     borderStrong = Color(0xFF111111), gallery = Color(0xFFFAF4E4),

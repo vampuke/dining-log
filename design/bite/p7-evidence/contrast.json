@@ -5,7 +5,7 @@
       "surface": "#FFFFFF",
       "ink": "#111111",
       "secondary": "#514B40",
-      "tertiary": "#635C50",
+      "tertiary": "#5D564A",
       "border": "#111111",
       "accent": "#FFD60A",
       "onAccent": "#111111",
@@ -51,6 +51,13 @@
         "ratio": 17.1974
       },
       {
+        "foreground": "ink",
+        "background": "dots",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 12.3299
+      },
+      {
         "foreground": "secondary",
         "background": "bg",
         "foregroundHex": "#514B40",
@@ -72,25 +79,39 @@
         "ratio": 7.8694
       },
       {
+        "foreground": "secondary",
+        "background": "dots",
+        "foregroundHex": "#514B40",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 5.6421
+      },
+      {
         "foreground": "tertiary",
         "background": "bg",
-        "foregroundHex": "#635C50",
+        "foregroundHex": "#5D564A",
         "backgroundHex": "#FFFDF5",
-        "ratio": 6.4901
+        "ratio": 7.1218
       },
       {
         "foreground": "tertiary",
         "background": "surface",
-        "foregroundHex": "#635C50",
+        "foregroundHex": "#5D564A",
         "backgroundHex": "#FFFFFF",
-        "ratio": 6.6095
+        "ratio": 7.2528
       },
       {
         "foreground": "tertiary",
         "background": "paper",
-        "foregroundHex": "#635C50",
+        "foregroundHex": "#5D564A",
         "backgroundHex": "#FAF4E4",
-        "ratio": 6.0195
+        "ratio": 6.6054
+      },
+      {
+        "foreground": "tertiary",
+        "background": "dots",
+        "foregroundHex": "#5D564A",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 4.7358
       },
       {
         "foreground": "danger",
@@ -114,6 +135,13 @@
         "ratio": 6.8123
       },
       {
+        "foreground": "danger",
+        "background": "dots",
+        "foregroundHex": "#A61B27",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 4.8842
+      },
+      {
         "foreground": "accentInk",
         "background": "bg",
         "foregroundHex": "#111111",
@@ -133,6 +161,13 @@
         "foregroundHex": "#111111",
         "backgroundHex": "#FAF4E4",
         "ratio": 17.1974
+      },
+      {
+        "foreground": "accentInk",
+        "background": "dots",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 12.3299
       },
       {
         "foreground": "onAccent",
@@ -245,6 +280,13 @@
         "ratio": 12.5367
       },
       {
+        "foreground": "ink",
+        "background": "dots",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#343026",
+        "ratio": 11.7415
+      },
+      {
         "foreground": "secondary",
         "background": "bg",
         "foregroundHex": "#D3CBBB",
@@ -264,6 +306,13 @@
         "foregroundHex": "#D3CBBB",
         "backgroundHex": "#302B23",
         "ratio": 8.7126
+      },
+      {
+        "foreground": "secondary",
+        "background": "dots",
+        "foregroundHex": "#D3CBBB",
+        "backgroundHex": "#343026",
+        "ratio": 8.16
       },
       {
         "foreground": "tertiary",
@@ -287,6 +336,13 @@
         "ratio": 6.759
       },
       {
+        "foreground": "tertiary",
+        "background": "dots",
+        "foregroundHex": "#BCB3A2",
+        "backgroundHex": "#343026",
+        "ratio": 6.3303
+      },
+      {
         "foreground": "danger",
         "background": "bg",
         "foregroundHex": "#FF9398",
@@ -308,6 +364,13 @@
         "ratio": 6.6058
       },
       {
+        "foreground": "danger",
+        "background": "dots",
+        "foregroundHex": "#FF9398",
+        "backgroundHex": "#343026",
+        "ratio": 6.1867
+      },
+      {
         "foreground": "accentInk",
         "background": "bg",
         "foregroundHex": "#F5F2E8",
@@ -327,6 +390,13 @@
         "foregroundHex": "#F5F2E8",
         "backgroundHex": "#302B23",
         "ratio": 12.5367
+      },
+      {
+        "foreground": "accentInk",
+        "background": "dots",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#343026",
+        "ratio": 11.7415
       },
       {
         "foreground": "onAccent",
