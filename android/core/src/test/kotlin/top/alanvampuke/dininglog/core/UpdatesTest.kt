@@ -77,4 +77,75 @@ class UpdatesTest {
             runCurrent(); assertNull(checker.state.value.release)
         }
     }
+    @Test fun sha256AcceptsExactBytesAndRejectsCorruptionMalformedDigestAndEmptyFiles() {
+        val file = java.io.File.createTempFile("p8-package", ".apk")
+        try {
+            file.writeText("abc")
+            val digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+            assertTrue(verifyApkSha256(file, digest)); assertTrue(verifyApkSha256(file, digest.uppercase()))
+            file.appendText("changed"); assertFalse(verifyApkSha256(file, digest))
+            assertFalse(verifyApkSha256(file, "bad"))
+            file.writeBytes(byteArrayOf()); assertFalse(verifyApkSha256(file, digest))
+            file.delete(); assertFalse(verifyApkSha256(file, digest))
+        } finally { file.delete() }
+    }
+    @Test fun interruptedPackagesAreSweptAndOnlyVerifiedBytesReceiveTheFinalName() {
+        val directory = java.nio.file.Files.createTempDirectory("p9-updates").toFile()
+        val digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        fun packageFile(name: String, bytes: String = "abc") = java.io.File(directory, name).apply { writeText(bytes) }
+        try {
+            val partial = packageFile("app-8.apk.part", "interrupted")
+            val otherPartial = packageFile("app-9.apk.part", "interrupted")
+            val legacy = packageFile("app-6.apk", "old partial APK")
+            val current = packageFile("app-8.apk")
+            val unrelated = packageFile("readme.txt")
+            val subdirectory = java.io.File(directory, "keep.part").apply { mkdir() }
+            sweepUpdateOrphans(directory, 8)
+            assertFalse(partial.exists()); assertFalse(otherPartial.exists()); assertFalse(legacy.exists())
+            assertTrue(current.exists()); assertTrue(unrelated.exists()); assertTrue(subdirectory.isDirectory)
+            // A new controller has no retained installation state, so all old APKs are orphaned.
+            sweepUpdateOrphans(directory)
+            assertFalse(current.exists()); assertTrue(unrelated.exists())
+            partial.writeText("ab")
+            assertFalse(current.exists())
+            assertFailsWith<IOException> { promoteVerifiedApk(partial, current, digest) }
+            assertFalse(partial.exists()); assertFalse(current.exists())
+            partial.writeText("abc")
+            promoteVerifiedApk(partial, current, digest)
+            assertFalse(partial.exists()); assertEquals("abc", current.readText())
+            assertTrue(verifyApkSha256(current, digest))
+            sweepUpdateOrphans(directory, 9)
+            assertFalse(current.exists())
+            // Failed renames must not turn a partial file into a ready package.
+            partial.writeText("abc"); current.mkdir()
+            java.io.File(current, "block-replacement").writeText("fixture")
+            assertFailsWith<IOException> { promoteVerifiedApk(partial, current, digest) }
+            assertTrue(partial.exists()); assertTrue(current.isDirectory)
+        } finally { directory.deleteRecursively() }
+    }
+    @Test fun downloadWhitelistRejectsArbitraryHostsCredentialsTraversalAndInsecureRedirects() {
+        val api = "https://dining.alanvampuke.top/api/v1/"
+        assertTrue(isAllowedUpdateUrl(release.url, api))
+        assertTrue(isAllowedUpdateUrl("https://dining.alanvampuke.top/updates/app.apk", api))
+        for (url in listOf("http://github.com/vampuke/dining-log/releases/download/v8/app.apk",
+            "https://github.com/attacker/repo/releases/download/v8/app.apk",
+            "https://dining.alanvampuke.top.evil.invalid/app.apk", "https://evil.invalid/app.apk",
+            "https://user@dining.alanvampuke.top/app.apk", "https://dining.alanvampuke.top:444/app.apk",
+            "https://github.com/vampuke/dining-log/releases/download/../app.apk",
+            "https://github.com/vampuke/dining-log/releases/download/v8/%2e%2e/app.apk")) {
+            assertFalse(isAllowedUpdateUrl(url, api), url)
+        }
+        val signed = "https://release-assets.githubusercontent.com/github-production-release-asset/123?sig=public-fixture"
+        assertTrue(isAllowedUpdateRedirect(signed, release.url, api))
+        assertFalse(isAllowedUpdateRedirect(signed, "https://dining.alanvampuke.top/app.apk", api))
+        assertFalse(isAllowedUpdateRedirect("http://release-assets.githubusercontent.com/app.apk", release.url, api))
+        assertFalse(isAllowedUpdateRedirect("https://evil.invalid/app.apk", release.url, api))
+    }
+    @Test fun comparisonUsesPositiveIntegerVersionCodesAndProgressTracksBytes() {
+        assertTrue(isNewerVersion(Int.MAX_VALUE, 7)); assertFalse(isNewerVersion(-1, 7))
+        assertFalse(isNewerVersion(7, 7)); assertFalse(isNewerVersion(6, 7))
+        assertEquals(25, UpdateInstallState(downloaded = 25, total = 100).percent)
+        assertNull(UpdateInstallState(downloaded = 25).percent)
+    }
+
 }

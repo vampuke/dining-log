@@ -64,6 +64,8 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
     // originally entered through registration or account recovery.
     LaunchedEffect(session?.sessionId) { if (session != null) page = AuthPage.LOGIN }
     val authenticated = session
+    SecureScreen(enabled = authenticated == null ||
+        (authenticated.recoveryCodes.isNotEmpty() && acknowledgedFor != authenticated.sessionId))
     if (authenticated != null && (authenticated.recoveryCodes.isEmpty() || acknowledgedFor == authenticated.sessionId) && onAuthenticated != null) {
         key(authenticated.userId) { onAuthenticated(authenticated) { launchAction { message = onLogout(); page = AuthPage.LOGIN } } }
         return
@@ -123,12 +125,12 @@ fun AuthForm(page: AuthPage, loading: Boolean, error: String?, onSubmit: (String
     Text(page.title, style = MaterialTheme.typography.headlineMedium)
     Text(if (page == AuthPage.LOGIN) "使用独立账号保存你的食记。" else if (page == AuthPage.REGISTER) "注册后会显示 8 个一次性恢复码，请安全保存。" else "输入一个有效恢复码，新密码生效后所有旧会话都会退出。",
         color = LocalQuietGridColors.current.secondary, style = MaterialTheme.typography.bodyMedium)
-    BiteTextField(username, { username = it }, label = { Text("用户名") }, enabled = !loading,
+    BiteTextField(username, { username = it }, label = { Text("用户名") }, accessibleLabel = "用户名", placeholder = { Text("输入用户名") }, enabled = !loading,
         singleLine = true, modifier = Modifier.fillMaxWidth().testTag("auth-username"), textStyle = QuietGridText.input,
         supportingText = { Text("3–32 位字母、数字或下划线，以字母开头。") })
-    if (page == AuthPage.RECOVER) BiteTextField(recoveryCode, { recoveryCode = it }, label = { Text("一次性恢复码") },
+    if (page == AuthPage.RECOVER) BiteTextField(recoveryCode, { recoveryCode = it }, label = { Text("一次性恢复码") }, accessibleLabel = "一次性恢复码", placeholder = { Text("输入恢复码") },
         enabled = !loading, modifier = Modifier.fillMaxWidth().testTag("auth-recovery"), textStyle = QuietGridText.date)
-    BiteTextField(password, { password = it }, label = { Text(if (page == AuthPage.RECOVER) "新密码" else "密码") },
+    BiteTextField(password, { password = it }, label = { Text(if (page == AuthPage.RECOVER) "新密码" else "密码") }, accessibleLabel = if (page == AuthPage.RECOVER) "新密码" else "密码", placeholder = { Text("输入密码") },
         enabled = !loading, singleLine = true, modifier = Modifier.fillMaxWidth().testTag("auth-password"), textStyle = QuietGridText.input,
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))

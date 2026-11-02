@@ -8,4 +8,4 @@ object ApiConfiguration { const val BASE_URL = "https://dining.alanvampuke.top/a
 @Serializable
 data class HealthResponse(val status: String, @SerialName("api_version") val apiVersion: String)
 interface HealthApi { @GET("health") suspend fun health(): HealthResponse }
-// Room cache/draft entities and owner-scoped DAOs arrive in P3.
+// Room cache/input entities and owner-scoped DAOs arrive in P3.

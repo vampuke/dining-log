@@ -25,8 +25,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     var absolute by remember { mutableStateOf(false) }
     var hide by remember { mutableStateOf(false) }
     var restore by remember { mutableStateOf(false) }
-    ScreenFrame("screen:history", bottomBar) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("history-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    ScreenFrame("screen:history", bottomBar, floatingBottomBar = true) { padding ->
+        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("history-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             item { PageHeader("修改详情", onBack, record?.fields?.get("entity_label")) }
             item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
@@ -80,21 +80,21 @@ import top.alanvampuke.dininglog.feature.theme.*
                 GridText(title, Modifier.testTag("dialog-title"), style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
                 footer()
-                BiteTextButton(onClick = onDismiss) { Text("保留草稿，返回") }
+                BiteTextButton(onClick = onDismiss) { Text("返回") }
             }
         }
     }
 }
-@Composable fun ComparisonColumns(fields: List<ConflictField>, baseVersion: Int?, serverVersion: Int?) {
+@Composable fun ComparisonColumns(fields: List<ConflictField>, serverVersion: Int?) {
     val width = if (LocalDensity.current.fontScale > 1.3f) 220.dp else 170.dp
-    Column(Modifier.horizontalScroll(rememberScrollState()).width(width * 3), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.horizontalScroll(rememberScrollState()).width(width * 2), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row {
-            listOf("开始编辑时 · v${baseVersion ?: "新建"}" to "base_snapshot", "服务器当前 · v${serverVersion ?: "未找到"}" to "server_current", "本地草稿" to "local_draft").forEach { (label, tag) ->
+            listOf("服务器当前 · v${serverVersion ?: "未找到"}" to "server_current", "本地未提交值" to "local_input").forEach { (label, tag) ->
                 Column(Modifier.width(width).padding(8.dp).testTag(tag)) { GridText(label, style = MaterialTheme.typography.titleMedium) }
             }
         }
         fields.forEach { field -> Row(Modifier.height(IntrinsicSize.Min)) {
-            listOf(field.base, field.server, field.local).forEachIndexed { index, value ->
+            listOf(field.server, field.local).forEachIndexed { index, value ->
                 Column(Modifier.width(width).padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     GridText(fieldLabel(field.name), style = MaterialTheme.typography.titleSmall, color = LocalQuietGridColors.current.secondary)
                     ExpandableValue(field.name, value, "compare:${field.name}:$index")
@@ -109,32 +109,14 @@ import top.alanvampuke.dininglog.feature.theme.*
         BiteButton(onClick = { onConfirm(choices) }, enabled = !busy && comparison.mergeAllowed && choices.keys.containsAll(comparison.needsChoice),
             modifier = Modifier.fillMaxWidth().testTag("confirm-merge")) { Text(if (busy) "正在保存…" else "确认选择并保存") }
     }) {
-        GridText(if (comparison.mergeAllowed) "横向滑动比较三栏。不同字段已提供合并建议，同一字段必须选择。确认后使用服务器当前版本保存。" else "删除冲突或记录不可用，不能强制合并保存；请先恢复或刷新，草稿保留。")
-        ComparisonColumns(comparison.fields, comparison.baseSnapshot?.version, comparison.serverCurrent.version)
+        GridText(if (comparison.mergeAllowed) "横向滑动比较两栏。不同字段已提供合并建议，同一字段必须选择。确认后使用服务器当前版本保存。" else "删除冲突或记录不可用，不能强制合并保存；请先恢复或刷新，请返回后刷新详情。")
+        ComparisonColumns(comparison.fields, comparison.serverCurrent.version)
         comparison.fields.filter { it.requiresChoice }.forEach { field ->
             GridText("${fieldLabel(field.name)}发生冲突，请选择", style = MaterialTheme.typography.titleMedium)
-            ChoiceChips(listOf("server" to "使用服务器", "local" to "使用草稿"), choices[field.name]?.name?.lowercase(), { choice ->
+            ChoiceChips(listOf("server" to "使用服务器", "local" to "使用未提交值"), choices[field.name]?.name?.lowercase(), { choice ->
                 if (choice != null) choices = choices + (field.name to if (choice == "server") ConflictChoice.SERVER else ConflictChoice.LOCAL)
             })
         }
-    }
-}
-@Composable fun ExpiredRequestDialog(review: SaveOutcome.Expired, busy: Boolean, onConfirm: () -> Unit, onAcceptServer: () -> Unit, onDismiss: () -> Unit) {
-    val draft = review.draft
-    val server = review.serverCurrent
-    val fields = editableFields(draft.ref.kind).map { ConflictField(it, draft.baseSnapshot?.fields?.get(it), server?.fields?.get(it), draft.localFields[it], false) }
-    val allow = server?.deletedAt == null && draft.action !in setOf(WriteAction.DELETE, WriteAction.RESTORE) && (server != null || draft.action == WriteAction.CREATE)
-    ReviewDialog("原请求已超过 7 天", "screen:expired", onDismiss, footer = {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (server != null) BiteTextButton(onClick = onAcceptServer, enabled = !busy) { Text("保留服务器值，清除本机草稿") }
-            BiteButton(onClick = onConfirm, enabled = !busy && allow, modifier = Modifier.fillMaxWidth().testTag("confirm-new-save")) { Text("确认新保存") }
-        }
-    }) {
-        GridText("已读取服务器当前值。原请求没有重放，请核对后确认新的保存。")
-        if (server == null) GridText("服务器未找到此记录；现有记录的编辑草稿需先恢复或刷新。")
-        if (draft.action == WriteAction.CREATE && server != null && draft.firstVisit != null) GridText("请核对餐厅的首访记录；本次新保存只修改餐厅字段，首访可在到店页单独管理。")
-        if (!allow) ErrorMessage("记录不可用，请先恢复或刷新；草稿保留")
-        ComparisonColumns(fields, draft.baseVersion, server?.version)
     }
 }
 @Composable fun ApplyFieldsDialog(state: ApplyUiState, onSide: (String) -> Unit, onField: (String, Boolean) -> Unit,
@@ -168,9 +150,9 @@ import top.alanvampuke.dininglog.feature.theme.*
         title = { GridText(if (state.saving) "正在保存" else "操作未完成", style = MaterialTheme.typography.headlineSmall) },
         text = { Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             GridText(state.message ?: "正在确认服务器结果…")
-            if (state.draft != null) GridText("请求与草稿已保留在本机，也可在「我的」中查看。", color = LocalQuietGridColors.current.secondary)
+            if (state.input != null) GridText("未提交值仅保留在当前页面，关闭后可刷新详情确认服务器结果。", color = LocalQuietGridColors.current.secondary)
         } },
-        confirmButton = { if (state.draft != null) BiteTextButton(onClick = onRetry, enabled = !state.saving,
-            modifier = Modifier.testTag("retry-operation")) { Text(if (state.draft.status == DraftStatus.RESULT_UNKNOWN) "重试原请求确认结果" else "重试保存") } },
+        confirmButton = { if (state.input != null) BiteTextButton(onClick = onRetry, enabled = !state.saving,
+            modifier = Modifier.testTag("retry-operation")) { Text("重试保存") } },
         dismissButton = { BiteTextButton(onClick = onDismiss, enabled = !state.saving) { Text("关闭") } })
 }

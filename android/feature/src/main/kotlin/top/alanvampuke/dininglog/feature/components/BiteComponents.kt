@@ -8,6 +8,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +28,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
@@ -125,7 +128,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
     }
 }
 @Composable fun BiteButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
-    colors: ButtonColors? = null, content: @Composable RowScope.() -> Unit) {
+    colors: ButtonColors? = null, contentPadding: PaddingValues = ButtonDefaults.ContentPadding, content: @Composable RowScope.() -> Unit) {
     val c = LocalQuietGridColors.current
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
@@ -134,7 +137,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
         tween(if (animate) 120 else 0, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)), label = "sticker-press")
     Button(onClick, modifier.heightIn(min = 48.dp).graphicsLayer { translationX = shift.dp.toPx(); translationY = shift.dp.toPx() }
         .brutalBox(if (enabled) colors?.containerColor ?: c.cta else c.paper, c.border, c.shadow, 12.dp, offset = (4f - 1.5f * shift).dp),
-        enabled = enabled, shape = RoundedCornerShape(12.dp), border = BorderStroke(2.5.dp, c.border),
+        enabled = enabled, contentPadding = contentPadding, shape = RoundedCornerShape(12.dp), border = BorderStroke(2.5.dp, c.border),
         interactionSource = source, elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
         colors = colors?.copy(contentColor = c.onAccent, disabledContainerColor = c.paper, disabledContentColor = c.secondary) ?: ButtonDefaults.buttonColors(containerColor = c.cta, contentColor = c.onAccent,
             disabledContainerColor = c.paper, disabledContentColor = c.secondary), content = content)
@@ -145,23 +148,52 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
     TextButton(onClick, modifier.heightIn(min = 48.dp).border(1.5.dp, c.border, RoundedCornerShape(10.dp)), enabled,
         colors = ButtonDefaults.textButtonColors(contentColor = c.accentInk, disabledContentColor = c.secondary), content = content)
 }
+// Slot foreground is explicit so GridText and Material Text share label/placeholder roles.
+val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
 @Composable fun BiteTextField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
-    enabled: Boolean = true, label: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true, label: (@Composable () -> Unit)? = null, accessibleLabel: String? = null,
+    placeholder: (@Composable () -> Unit)? = null,
     textStyle: TextStyle = QuietGridText.input, singleLine: Boolean = false, minLines: Int = 1,
     isError: Boolean = false, supportingText: (@Composable () -> Unit)? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default, leadingIcon: (@Composable () -> Unit)? = null) {
     val c = LocalQuietGridColors.current
-    OutlinedTextField(value, onValueChange, modifier.border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
-        enabled = enabled, label = label, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
-        isError = isError, supportingText = supportingText, visualTransformation = visualTransformation,
-        keyboardOptions = keyboardOptions, leadingIcon = leadingIcon, shape = RoundedCornerShape(10.dp),
-        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = c.ink, unfocusedTextColor = c.ink,
-            disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = c.surface,
-            unfocusedContainerColor = c.surface, disabledContainerColor = c.surface, errorContainerColor = c.surface,
-            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
-            disabledBorderColor = Color.Transparent, errorBorderColor = Color.Transparent,
-            focusedLabelColor = c.ink, unfocusedLabelColor = c.secondary, disabledLabelColor = c.secondary,
-            errorLabelColor = c.danger, cursorColor = c.ink,
-            focusedSupportingTextColor = c.secondary, unfocusedSupportingTextColor = c.secondary, disabledSupportingTextColor = c.secondary))
+    val source = remember { MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
+    val labelColor = when { isError -> c.danger; !enabled -> c.secondary; focused -> c.ink; else -> c.secondary }
+    val supportingSlot: (@Composable () -> Unit)? = supportingText?.let { content ->
+        { Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) { content() } }
+    }
+    // Always keep the label above the box. Material's collapsed empty label hides placeholders.
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (label != null) Box(Modifier.fillMaxWidth().clearAndSetSemantics {}, propagateMinConstraints = true) {
+            CompositionLocalProvider(LocalContentColor provides labelColor, LocalFieldForeground provides labelColor) { label() }
+        }
+        OutlinedTextField(value, onValueChange,
+            modifier.fillMaxWidth().semantics { if (accessibleLabel != null) contentDescription = accessibleLabel }
+                .border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
+            enabled = enabled, interactionSource = source, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
+            placeholder = {
+                Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) {
+                    CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {
+                        if (placeholder != null) placeholder() else Text("请输入", style = textStyle)
+                    }
+                }
+            },
+            isError = isError, supportingText = supportingSlot, visualTransformation = visualTransformation,
+            keyboardOptions = keyboardOptions, leadingIcon = leadingIcon, shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = c.ink, unfocusedTextColor = c.ink,
+                disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = c.surface,
+                unfocusedContainerColor = c.surface, disabledContainerColor = c.surface, errorContainerColor = c.surface,
+                focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                disabledBorderColor = Color.Transparent, errorBorderColor = Color.Transparent,
+                focusedLabelColor = c.ink, unfocusedLabelColor = c.secondary, disabledLabelColor = c.secondary,
+                errorLabelColor = c.danger, cursorColor = c.ink, errorCursorColor = c.danger,
+                focusedPlaceholderColor = c.tertiary, unfocusedPlaceholderColor = c.tertiary,
+                disabledPlaceholderColor = c.tertiary, errorPlaceholderColor = c.tertiary,
+                focusedLeadingIconColor = c.secondary, unfocusedLeadingIconColor = c.secondary,
+                disabledLeadingIconColor = c.secondary, errorLeadingIconColor = c.danger,
+                focusedSupportingTextColor = c.secondary, unfocusedSupportingTextColor = c.secondary,
+                disabledSupportingTextColor = c.secondary, errorSupportingTextColor = c.danger))
+    }
 }

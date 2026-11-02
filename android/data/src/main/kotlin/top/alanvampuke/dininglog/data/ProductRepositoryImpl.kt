@@ -1,11 +1,9 @@
 package top.alanvampuke.dininglog.data
 
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.util.concurrent.ConcurrentHashMap
@@ -67,40 +65,12 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
         owner.write(account, accountId, generation) { cacheSnapshot(accountId, current) }
         return current
     }
-    override fun observeDrafts(accountId: String): Flow<List<SavedDraft>> = dao.observeDrafts(accountId).map { rows ->
-        rows.map { DraftRules.recovered(ProductJson.decodeFromString<SavedDraft>(it.payload)) }
-    }
-    override suspend fun findDraft(accountId: String, draftId: String): SavedDraft? = dao.draft(accountId, draftId)?.let {
-        DraftRules.recovered(ProductJson.decodeFromString<SavedDraft>(it.payload))
-    }
-    override suspend fun storeDraft(draft: SavedDraft) {
-        owner.write(account, draft.accountId, account.generation) { putDraft(draft) }
-    }
-    private suspend fun putDraft(draft: SavedDraft) = dao.putDraft(DraftRow(draft.accountId, draft.id, draft.ref.kind.name, draft.ref.id,
-        draft.baseVersion, draft.baseSnapshot?.let { ProductJson.encodeToString(it) }, ProductJson.encodeToString(draft.localFields),
-        draft.original?.key, draft.status.name.lowercase(), draft.updatedAt, ProductJson.encodeToString(draft)))
-    override suspend fun discardDraft(accountId: String, draftId: String) {
-        owner.write(account, accountId, account.generation) { dao.deleteDraft(accountId, draftId) }
-    }
-    override suspend fun submit(draft: SavedDraft): SaveOutcome = saveLocks.getOrPut("${draft.accountId}:${draft.id}") { Mutex() }.withLock {
+    override suspend fun submit(input: SaveInput): SaveOutcome = saveLocks.getOrPut("${input.accountId}:${input.ref.kind}:${input.ref.id}") { Mutex() }.withLock {
         val generation = account.generation
-        var pending = DraftRules.recovered(draft)
-        if (!connectivity.value) {
-            storeDraft(pending)
-            return@withLock SaveOutcome.Kept(pending, "已保留草稿，联网后再保存")
-        }
-        val waitMs = (pending.retryNotBefore ?: 0) - now()
-        if (waitMs > 0) {
-            storeDraft(pending)
-            return@withLock SaveOutcome.Kept(pending, "请求过于频繁，请在 ${(waitMs + 999) / 1000} 秒后再保存；草稿已保留")
-        }
-        if (DraftRules.needsReview(pending, now()) || pending.status == DraftStatus.EXPIRED_REVIEW) {
-            return@withLock reviewExpired(pending)
-        }
-        pending = requestFor(pending, now())
-        owner.write(account, pending.accountId, generation) { putDraft(pending) }
+        val pending = input
+        if (!connectivity.value) return@withLock SaveOutcome.Failed(input, "保存失败，请检查网络后重试")
         val saved = try {
-            val data = remote.write(pending)
+            val data = remote.write(pending.ref.kind, requestFor(pending, now()))
             val raw = (data["entity"] as? JsonObject) ?: data
             val partial = snapshot(pending.ref.kind, raw, pending.ref.restaurantId)
             val baseline = dao.detail(pending.accountId, pending.ref.kind.name, pending.ref.id)?.let { ProductJson.decodeFromString<RecordSnapshot>(it.payload) } ?: pending.baseSnapshot
@@ -118,42 +88,26 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
                     cacheSummary(pending.accountId, revision.copy(cachedDiff = score))
                 }
                 (data["revision"] as? JsonObject)?.let { cacheSnapshot(pending.accountId, snapshot(RecordKind.REVISION, it)) }
-                dao.deleteDraft(pending.accountId, pending.id)
                 dao.invalidateQueries(pending.accountId); dao.invalidateMembers(pending.accountId)
             }
             saved
-        } catch (e: CancellationException) {
-            withContext(NonCancellable) { runCatching { owner.write(account, pending.accountId, generation) { putDraft(pending.copy(status = DraftStatus.RESULT_UNKNOWN)) } } }
-            throw e
-        } catch (e: ProductFailure) {
+        } catch (e: CancellationException) { throw e }
+        catch (e: ProductFailure) {
             if (e.code == "VERSION_CONFLICT" && e.current != null) {
-                val preserved = pending.copy(status = DraftStatus.EDITING, original = null)
-                storeDraft(preserved)
-                return@withLock SaveOutcome.Conflict(preserved, compareConflict(preserved, requireNotNull(e.current).copy(ref = pending.ref)))
-            } else {
-                val unknown = e.offline || e.status >= 500
-                val rateLimited = e.status == 429
-                val kept = pending.copy(status = if (unknown) DraftStatus.RESULT_UNKNOWN else DraftStatus.EDITING,
-                    original = if (unknown || rateLimited) pending.original else null,
-                    retryNotBefore = if (rateLimited) now() + (e.retryAfterSeconds ?: 60).coerceAtLeast(0) * 1000 else pending.retryNotBefore)
-                storeDraft(kept)
-                val message = when {
-                    unknown -> "保存结果未知；草稿已保留，请用原请求重试确认结果"
-                    e.code == "PARENT_UNAVAILABLE" || e.code == "NOT_FOUND" -> "记录或父餐厅不可用；请先恢复或刷新，草稿已保留"
-                    e.code == "RATE_LIMITED" -> "请求过于频繁，请在 ${e.retryAfterSeconds ?: 60} 秒后再保存"
-                    e.fieldErrors.isNotEmpty() -> "请检查输入：${e.fieldErrors.keys.joinToString("、", transform = ::fieldLabel)}；草稿已保留"
-                    else -> "保存失败（${e.code}）；草稿已保留"
-                }
-                return@withLock SaveOutcome.Kept(kept, message)
+                return@withLock SaveOutcome.Conflict(input, compareConflict(input, requireNotNull(e.current).copy(ref = input.ref)))
             }
+            val message = when {
+                e.code == "PARENT_UNAVAILABLE" || e.code == "NOT_FOUND" -> "记录或父餐厅不可用，请恢复或刷新后重试"
+                e.status == 429 -> "请求过于频繁，请在 ${e.retryAfterSeconds ?: 60} 秒后重试"
+                e.fieldErrors.isNotEmpty() -> "请检查输入：${e.fieldErrors.keys.joinToString("、", transform = ::fieldLabel)}"
+                else -> "保存失败，请检查网络后重试"
+            }
+            return@withLock SaveOutcome.Failed(input, message)
         } catch (e: AuthFailure) {
-            if (e.code in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE", "RATE_LIMITED")) {
-                val kept = pending.copy(status = DraftStatus.RESULT_UNKNOWN)
-                storeDraft(kept); return@withLock SaveOutcome.Kept(kept, "保存结果未知；请联网后用原请求重试")
-            } else throw e
+            if (e.code !in setOf("NETWORK_ERROR", "TEMPORARILY_UNAVAILABLE", "RATE_LIMITED")) throw e
+            return@withLock SaveOutcome.Failed(input, "保存失败，请检查网络后重试")
         }
-        // A failed statistics GET cannot turn an acknowledged write into an
-        // unknown result or reinsert a successfully deleted draft.
+        // Parent statistics cannot turn an acknowledged write into a failed save.
         val parent = if (pending.ref.kind == RecordKind.RESTAURANT) pending.ref.id else pending.ref.restaurantId
         if (parent != null && pending.ref.kind != RecordKind.REVISION &&
             (pending.ref.kind != RecordKind.RESTAURANT || saved.deletedAt == null)) {
@@ -163,29 +117,6 @@ class ProductRepositoryImpl(private val db: ProductDatabase, private val owner: 
             catch (_: ProductFailure) { /* Keep the acknowledged write; the parent can be refreshed manually. */ }
         }
         SaveOutcome.Saved(saved)
-    }
-    private suspend fun reviewExpired(draft: SavedDraft): SaveOutcome {
-        val current = try { refreshDetail(draft.accountId, draft.ref) } catch (e: ProductFailure) {
-            if (e.code == "NOT_FOUND") null else {
-                storeDraft(draft)
-                return SaveOutcome.Kept(draft, "原请求已超过 7 天；暂时无法读取服务器，草稿保留且没有重放")
-            }
-        }
-        val review = draft.copy(status = DraftStatus.EXPIRED_REVIEW)
-        storeDraft(review)
-        return SaveOutcome.Expired(review, current)
-    }
-    override suspend fun confirmExpired(draft: SavedDraft, current: RecordSnapshot?): SaveOutcome {
-        check(draft.status == DraftStatus.EXPIRED_REVIEW)
-        if (current?.deletedAt != null || draft.action in setOf(WriteAction.DELETE, WriteAction.RESTORE) || current == null && draft.action != WriteAction.CREATE) return SaveOutcome.Kept(draft, "请先恢复或刷新，再从当前详情发起操作；草稿保留")
-        val next = draft.copy(baseSnapshot = current, original = null, status = DraftStatus.EDITING,
-            action = if (draft.action == WriteAction.CREATE && current != null) WriteAction.UPDATE else draft.action,
-            firstVisit = if (current == null) draft.firstVisit else null, updatedAt = now())
-        if (current != null && next.changedFields.isEmpty()) {
-            discardDraft(draft.accountId, draft.id); return SaveOutcome.Saved(current)
-        }
-        storeDraft(next)
-        return submit(next)
     }
     private suspend fun cacheSummary(accountId: String, record: RecordSummary) {
         val previous = dao.summary(accountId, record.ref.kind.name, record.ref.id)?.let { ProductJson.decodeFromString<RecordSummary>(it.payload) }

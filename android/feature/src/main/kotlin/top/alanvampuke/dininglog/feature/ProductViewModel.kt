@@ -12,9 +12,9 @@ import top.alanvampuke.dininglog.core.auth.*
 
 data class DetailUiState(val cached: CachedDetail = CachedDetail(), val refreshing: Boolean = false,
     val offline: Boolean = false, val error: String? = null)
-data class EditorUiState(val draft: SavedDraft? = null, val loading: Boolean = false, val saving: Boolean = false,
+data class EditorUiState(val input: SaveInput? = null, val loading: Boolean = false, val saving: Boolean = false,
     val message: String? = null, val errors: Map<String, String> = emptyMap(),
-    val conflict: ConflictComparison? = null, val expired: SaveOutcome.Expired? = null)
+    val conflict: ConflictComparison? = null)
 data class PasswordInputs(val current: String = "", val replacement: String = "", val repeated: String = "")
 data class SettingsUiState(val profile: AccountInfo? = null, val sessions: List<DeviceSession> = emptyList(),
     val loading: Boolean = false, val busy: Boolean = false, val message: String? = null,
@@ -44,11 +44,11 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private val _detail = MutableStateFlow(DetailUiState())
     val detail = _detail.asStateFlow()
     private val _editor = MutableStateFlow(EditorUiState())
+    private var editorKey: Pair<RecordRef, Boolean>? = null
+    private var editorLoadJob: Job? = null
     val editor = _editor.asStateFlow()
     private val _settings = MutableStateFlow(SettingsUiState())
     val settings = _settings.asStateFlow()
-    private val _drafts = MutableStateFlow<List<SavedDraft>>(emptyList())
-    val drafts = _drafts.asStateFlow()
     private val _editorDishes = MutableStateFlow<List<RecordSummary>>(emptyList())
     val editorDishes = _editorDishes.asStateFlow()
     private val _relatedDishes = MutableStateFlow(CachedPage())
@@ -63,18 +63,16 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     private val foreground = MutableStateFlow(false)
     private val eventChannel = Channel<ProductEvent>(Channel.BUFFERED)
     val events = eventChannel.receiveAsFlow()
-    private var autosaver: DraftAutosaver? = null
     private var editorDishesJob: Job? = null
     private var refreshListAction: (Boolean) -> Unit = {}
     private var refreshDetailAction: () -> Unit = {}
     private var scopeKey = "RESTAURANT::EXCLUDE"
     private var hasActiveList = false
-    var visitRestaurantId: String? = saved["visit_restaurant_id"]; private set
-    val restoredTab: String = saved["tab"] ?: "restaurants"
+    val restoredTab: String = if (saved.get<String>("tab") == "settings") "settings" else "restaurants"
     private var actionFromEditor = true
 
     init {
-        job.invokeOnCompletion { _settings.value = SettingsUiState() }
+        job.invokeOnCompletion { _settings.value = SettingsUiState(); _editor.value = EditorUiState(); _apply.value = null }
         scope.launch {
             combine(_search.debounce(300), _query, _filters) { text, query, filters -> query.copy(query = text, filters = filters) }
                 .distinctUntilChanged().flatMapLatest { query ->
@@ -120,8 +118,7 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
                 fetch(); awaitCancellation()
             } }.collect { _detail.value = it }
         }
-        scope.launch { repository.observeDrafts(accountId).collect { _drafts.value = it } }
-        scope.launch {
+            scope.launch {
             combine(repository.connectivity, foreground) { online, active -> online && active }
                 .distinctUntilChanged().filter { it }.collect {
                 // Foreground recovery refreshes only page one and the open detail.
@@ -149,9 +146,8 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         saved[filterKey("unrated")] = value.unrated; saved[filterKey("visited")] = value.visited
         saved[filterKey("from")] = value.from; saved[filterKey("to")] = value.to; saved[filterKey("sort")] = value.sort
     }
-    fun selectTab(tab: String) { saved["tab"] = tab }
+    fun selectTab(tab: String) { saved["tab"] = if (tab == "settings") "settings" else "restaurants" }
     fun setForeground(active: Boolean) { foreground.value = active }
-    fun filterVisits(restaurantId: String?) { visitRestaurantId = restaurantId; saved["visit_restaurant_id"] = restaurantId; activateList(RecordKind.VISIT, restaurantId) }
     fun refresh() { refreshListAction(false) }
     fun loadMore() { if (_list.value.hasMore) refreshListAction(true) }
     fun openDetail(ref: RecordRef) {
@@ -173,161 +169,111 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         } }
     }
     fun refreshDetail() { refreshDetailAction(); refreshRelated() }
-    fun openEditor(ref: RecordRef, create: Boolean, draftId: String? = null) {
-        scope.launch {
-            autosaver?.stopAndFlush(); autosaver = null
-            _editor.value = EditorUiState(loading = true); actionFromEditor = true
-            _operationVisible.value = false
-            val id = draftId ?: "edit:${ref.kind.name}:${ref.id}"
+    fun openEditor(ref: RecordRef, create: Boolean) {
+        val key = ref to create
+        if (editorKey == key && (_editor.value.input != null || _editor.value.loading)) return
+        editorKey = key
+        editorLoadJob?.cancel()
+        _editor.value = EditorUiState(loading = true); actionFromEditor = true
+        _operationVisible.value = false
+        editorLoadJob = scope.launch {
             try {
-                val cached = repository.findDraft(accountId, id)
-                val draft = cached ?: if (create) {
+                val input = if (create) {
                     val fields = editableFields(ref.kind).associateWith { field -> when (field) {
                         "name" -> ""; "category" -> "restaurant"; "dining_date" -> LocalDate.now().toString(); else -> null
                     } }
-                    SavedDraft(accountId, id, ref, WriteAction.CREATE, null, fields,
+                    SaveInput(accountId, ref, WriteAction.CREATE, null, fields,
                         firstVisit = if (ref.kind == RecordKind.RESTAURANT) FirstVisitInput(UUID.randomUUID().toString(), LocalDate.now().toString()) else null)
                 } else {
                     val base = repository.observeDetail(accountId, ref).first().snapshot ?: repository.refreshDetail(accountId, ref)
-                    SavedDraft(accountId, id, ref, if (ref.kind == RecordKind.REVISION) WriteAction.METADATA else WriteAction.UPDATE, base, base.editable)
+                    SaveInput(accountId, ref, if (ref.kind == RecordKind.REVISION) WriteAction.METADATA else WriteAction.UPDATE, base, base.editable)
                 }
-                _editor.value = EditorUiState(draft)
-                if (!draft.locked) restartAutosaver(draft)
-                watchEditorDishes(draft)
+                _editor.value = EditorUiState(input)
+                watchEditorDishes(input)
                 if (!create) scope.launch { try { repository.refreshDetail(accountId, ref) } catch (e: CancellationException) { throw e } catch (_: Exception) { } }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { _editor.value = EditorUiState(message = errorText(e)) }
         }
     }
-    private fun watchEditorDishes(draft: SavedDraft) {
+    private fun watchEditorDishes(input: SaveInput) {
         editorDishesJob?.cancel(); _editorDishes.value = emptyList()
-        if (draft.ref.kind != RecordKind.RESTAURANT || draft.baseSnapshot == null) return
-        val query = ListQuery(RecordKind.DISH, draft.ref.id)
+        if (input.ref.kind != RecordKind.RESTAURANT || input.baseSnapshot == null) return
+        val query = ListQuery(RecordKind.DISH, input.ref.id)
         editorDishesJob = scope.launch {
             launch { try { repository.refreshList(accountId, query) } catch (e: CancellationException) { throw e } catch (_: Exception) { } }
             repository.observeList(accountId, query).collect { _editorDishes.value = it.items }
         }
     }
-    private fun restartAutosaver(draft: SavedDraft) {
-        autosaver?.cancel()
-        autosaver = DraftAutosaver(scope) { current -> try { repository.storeDraft(current) }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _editor.value = _editor.value.copy(message = "本地草稿保存失败：${errorText(e)}") } }
-        autosaver?.schedule(draft)
-    }
     fun editField(field: String, value: String?) {
-        val current = _editor.value.draft ?: return
-        if (current.locked || _editor.value.saving || current.action !in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)) return
-        val next = DraftRules.edit(current, current.localFields + (field to value), System.currentTimeMillis())
-        _editor.value = _editor.value.copy(draft = next, message = null, errors = emptyMap())
-        autosaver?.schedule(next)
+        val current = _editor.value.input ?: return
+        if (_editor.value.saving || current.action !in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)) return
+        _editor.value = _editor.value.copy(input = current.copy(localFields = current.localFields + (field to value)), message = null, errors = emptyMap())
     }
     fun editFirstVisit(value: FirstVisitInput?) {
-        val current = _editor.value.draft ?: return
-        if (current.locked || _editor.value.saving) return
-        val next = current.copy(firstVisit = value, original = null, updatedAt = System.currentTimeMillis())
-        _editor.value = _editor.value.copy(draft = next, message = null); autosaver?.schedule(next)
+        val current = _editor.value.input ?: return
+        if (_editor.value.saving) return
+        _editor.value = _editor.value.copy(input = current.copy(firstVisit = value), message = null)
     }
-    fun leaveEditor(onReady: () -> Unit) { scope.launch { autosaver?.stopAndFlush(); autosaver = null; onReady() } }
-    fun discardEditor(onReady: () -> Unit) { scope.launch {
-        autosaver?.cancel(); autosaver = null
-        _editor.value.draft?.let { repository.discardDraft(accountId, it.id) }; _editor.value = EditorUiState(); onReady()
-    } }
+    fun leaveEditor(onReady: () -> Unit) {
+        if (_editor.value.saving) return
+        editorKey = null; editorLoadJob?.cancel()
+        editorDishesJob?.cancel(); _editorDishes.value = emptyList()
+        _editor.value = EditorUiState(); onReady()
+    }
     fun saveEditor() {
         if (_editor.value.saving) return
-        val draft = _editor.value.draft ?: return
-        val errors = if (draft.locked) emptyMap() else validateDraft(draft)
+        val input = _editor.value.input ?: return
+        val errors = validateInput(input)
         if (errors.isNotEmpty()) { _editor.value = _editor.value.copy(errors = errors, message = "请检查标记的输入"); return }
-        // Lock input synchronously, before the Room flush suspends. The payload
-        // captured below must be the same payload the user sees as submitting.
+        // Freeze the visible fields synchronously before any suspension.
         _editor.value = _editor.value.copy(saving = true, message = null)
         scope.launch {
-            autosaver?.stopAndFlush(); autosaver = null
-            try { handleOutcome(repository.submit(draft)) }
+            try { handleOutcome(repository.submit(input)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _editor.value = _editor.value.copy(saving = false, message = errorText(e)) }
+            catch (_: Exception) { _editor.value = _editor.value.copy(saving = false, message = "保存失败，请检查网络后重试") }
         }
     }
     private suspend fun handleOutcome(outcome: SaveOutcome) {
         when (outcome) {
             is SaveOutcome.Saved -> {
+                editorKey = null
                 _editor.value = EditorUiState(message = "已保存到服务器")
                 _operationVisible.value = false
                 refresh(); refreshDetail(); _apply.value = null
                 eventChannel.send(ProductEvent.Saved(outcome.snapshot.ref, actionFromEditor))
             }
-            is SaveOutcome.Kept -> {
-                _editor.value = EditorUiState(outcome.draft, message = outcome.message)
-                if (!outcome.draft.locked) restartAutosaver(outcome.draft)
-            }
-            is SaveOutcome.Conflict -> _editor.value = EditorUiState(outcome.draft, conflict = outcome.comparison, message = "服务器已有更新，草稿已保留")
-            is SaveOutcome.Expired -> _editor.value = EditorUiState(outcome.draft, expired = outcome)
+            is SaveOutcome.Failed -> _editor.value = EditorUiState(outcome.input, message = outcome.message)
+            is SaveOutcome.Conflict -> _editor.value = EditorUiState(outcome.input, conflict = outcome.comparison, message = "服务器已有更新，请比较未提交值")
         }
     }
     fun confirmConflict(choices: Map<String, ConflictChoice>) {
         val comparison = _editor.value.conflict ?: return
-        val draft = comparison.confirmed(choices, System.currentTimeMillis())
-        if (draft.changedFields.isEmpty()) {
+        val input = comparison.confirmed(choices)
+        if (input.changedFields.isEmpty()) {
             scope.launch {
-                repository.discardDraft(accountId, draft.id); _editor.value = EditorUiState(message = "已保留服务器值")
+                editorKey = null
+                _editor.value = EditorUiState(message = "已保留服务器值")
                 _operationVisible.value = false
                 refresh(); refreshDetail(); eventChannel.send(ProductEvent.Saved(comparison.serverCurrent.ref, actionFromEditor))
             }
             return
         }
-        _editor.value = EditorUiState(draft)
-        restartAutosaver(draft); saveEditor()
+        _editor.value = EditorUiState(input)
+        saveEditor()
     }
     fun dismissComparison() {
         if (_editor.value.saving) return
-        _editor.value = _editor.value.copy(conflict = null, expired = null)
-        _editor.value.draft?.takeUnless { it.locked }?.let(::restartAutosaver)
+        _editor.value = _editor.value.copy(conflict = null)
     }
     fun dismissOperation() { if (!_editor.value.saving) _operationVisible.value = false }
-    fun confirmExpired() {
-        val review = _editor.value.expired ?: return
-        scope.launch { _editor.value = _editor.value.copy(saving = true)
-            try { handleOutcome(repository.confirmExpired(review.draft, review.serverCurrent)) }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _editor.value = _editor.value.copy(saving = false, message = errorText(e)) }
-        }
-    }
-    fun acceptServer() { scope.launch {
-        val review = _editor.value.expired ?: return@launch
-        repository.discardDraft(accountId, review.draft.id)
-        _editor.value = EditorUiState(message = "已保留服务器当前记录")
-        _operationVisible.value = false
-        refresh(); refreshDetail()
-        review.serverCurrent?.let { eventChannel.send(ProductEvent.Saved(it.ref, actionFromEditor)) }
-    } }
     fun mutate(snapshot: RecordSnapshot, action: WriteAction) {
         if (_editor.value.saving || _editor.value.loading) return
         actionFromEditor = false
-        val draft = SavedDraft(accountId, "${action.name}:${snapshot.ref.kind.name}:${snapshot.ref.id}", snapshot.ref, action, snapshot, snapshot.editable)
-        _editor.value = EditorUiState(loading = true); _operationVisible.value = true
-        scope.launch {
-            try {
-                autosaver?.stopAndFlush(); autosaver = null
-                val previous = repository.findDraft(accountId, draft.id)
-                // Closing the operation dialog does not resolve a lost response.
-                // Reopening delete/restore must preserve the exact stored request.
-                val pending = previous?.takeIf { it.locked || it.original != null }
-                _editor.value = EditorUiState(pending ?: draft,
-                    message = if (pending != null) "原操作结果尚未确认；请重试原请求，草稿已保留" else null)
-                if (pending == null) saveEditor()
-            } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { _editor.value = EditorUiState(message = errorText(e)) }
-        }
+        _editor.value = EditorUiState(SaveInput(accountId, snapshot.ref, action, snapshot, snapshot.editable))
+        _operationVisible.value = true; saveEditor()
     }
     fun previewApply(revision: RecordSnapshot) { scope.launch {
         try {
-            val pending = repository.findDraft(accountId, "apply:${revision.ref.id}")?.takeIf { it.locked || it.original != null }
-            if (pending != null) {
-                actionFromEditor = false
-                _editor.value = EditorUiState(pending, message = "原重新应用结果尚未确认；请重试原请求后再选择其他字段")
-                _operationVisible.value = true
-                return@launch
-            }
             val kind = RecordKind.valueOf(requireNotNull(revision.fields["entity_type"]).uppercase())
             val ref = RecordRef(kind, requireNotNull(revision.fields["entity_id"]), if (kind == RecordKind.RESTAURANT) null else revision.ref.restaurantId)
             _apply.value = ApplyUiState(revision, repository.refreshDetail(accountId, ref))
@@ -341,9 +287,9 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         val preview = _apply.value ?: return
         if (_editor.value.saving || preview.selected.isEmpty() || preview.current.deletedAt != null) return
         val values = preview.current.editable + preview.eligible.filter { it.field in preview.selected }.associate { it.field to preview.proposed(it) }
-        val draft = SavedDraft(accountId, "apply:${preview.source.ref.id}", preview.current.ref, WriteAction.APPLY, preview.current, values,
+        val input = SaveInput(accountId, preview.current.ref, WriteAction.APPLY, preview.current, values,
             sourceRevisionId = preview.source.ref.id, applySide = preview.side, applyFields = preview.selected.toList())
-        _apply.value = null; actionFromEditor = false; _editor.value = EditorUiState(draft); _operationVisible.value = true; saveEditor()
+        _apply.value = null; actionFromEditor = false; _editor.value = EditorUiState(input); _operationVisible.value = true; saveEditor()
     }
     fun loadSettings() { scope.launch {
         _settings.value = _settings.value.copy(loading = true, message = null)
@@ -379,25 +325,25 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
         } catch (e: CancellationException) { throw e }
         catch (e: Exception) { _settings.value = _settings.value.copy(busy = false, passwordUnknown = e is ProductFailure && e.code == "AUTH_RESULT_UNKNOWN", message = errorText(e)) }
     } }
-    override fun onCleared() { autosaver?.cancel(); job.cancel(); _settings.value = SettingsUiState() }
+    override fun onCleared() { job.cancel(); _settings.value = SettingsUiState() }
 }
 fun validFilters(filters: ListFilters): Boolean =
     (filters.from.isBlank() || validDate(filters.from)) && (filters.to.isBlank() || validDate(filters.to)) &&
         (filters.from.isBlank() || filters.to.isBlank() || filters.from <= filters.to) &&
         (filters.minRating == null || filters.maxRating == null || requireNotNull(filters.minRating) <= requireNotNull(filters.maxRating))
-fun validateDraft(draft: SavedDraft): Map<String, String> = buildMap {
-    if (draft.action in setOf(WriteAction.DELETE, WriteAction.RESTORE)) return@buildMap
-    val kind = draft.ref.kind
+fun validateInput(input: SaveInput): Map<String, String> = buildMap {
+    if (input.action in setOf(WriteAction.DELETE, WriteAction.RESTORE)) return@buildMap
+    val kind = input.ref.kind
     val required = when (kind) { RecordKind.RESTAURANT -> setOf("name", "category"); RecordKind.DISH -> setOf("name"); RecordKind.VISIT -> setOf("dining_date"); else -> emptySet() }
-    required.forEach { if (draft.localFields[it].isNullOrBlank()) put(it, "请填写${fieldLabel(it)}") }
-    draft.localFields.forEach { (field, value) ->
+    required.forEach { if (input.localFields[it].isNullOrBlank()) put(it, "请填写${fieldLabel(it)}") }
+    input.localFields.forEach { (field, value) ->
         val limit = when (field) { "name" -> 120; "cuisine" -> 60; "address" -> 500; "review", "note" -> if (kind == RecordKind.RESTAURANT) 4000 else if (kind == RecordKind.REVISION) 500 else 2000; else -> Int.MAX_VALUE }
         if (value != null && (value.codePointCount(0, value.length) > limit || '\u0000' in value)) put(field, "最多 $limit 个字符，不能含空字符")
     }
-    draft.localFields["rating_tenths"]?.let { if (it.toIntOrNull() !in 10..50) put("rating_tenths", "评分需 ★ 1.0 至 ★ 5.0") }
-    if (kind == RecordKind.VISIT && !validDate(draft.localFields["dining_date"] ?: "")) put("dining_date", "请输入有效日期 YYYY-MM-DD（1900–2100）")
-    draft.firstVisit?.let { if (!validDate(it.date)) put("first_visit", "请输入有效首访日期 YYYY-MM-DD（1900–2100）") }
-    draft.firstVisit?.note?.let { if (it.codePointCount(0, it.length) > 2000 || '\u0000' in it) put("first_visit_note", "首访备注最多 2000 个字符，不能含空字符") }
+    input.localFields["rating_tenths"]?.let { if (it.toIntOrNull() !in 10..50) put("rating_tenths", "评分需 ★ 1.0 至 ★ 5.0") }
+    if (kind == RecordKind.VISIT && !validDate(input.localFields["dining_date"] ?: "")) put("dining_date", "请输入有效日期 YYYY-MM-DD（1900–2100）")
+    input.firstVisit?.let { if (!validDate(it.date)) put("first_visit", "请输入有效首访日期 YYYY-MM-DD（1900–2100）") }
+    input.firstVisit?.note?.let { if (it.codePointCount(0, it.length) > 2000 || '\u0000' in it) put("first_visit_note", "首访备注最多 2000 个字符，不能含空字符") }
 }
 fun isOffline(error: Exception) = error is ProductFailure && error.offline || error is AuthFailure && error.code == "NETWORK_ERROR"
 fun errorText(error: Exception): String = when (error) {

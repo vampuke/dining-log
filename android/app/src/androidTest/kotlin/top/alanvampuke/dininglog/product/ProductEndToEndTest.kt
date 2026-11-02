@@ -3,6 +3,7 @@ package top.alanvampuke.dininglog.product
 import top.alanvampuke.dininglog.BuildConfig
 
 import android.content.Context
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
@@ -44,6 +45,7 @@ import top.alanvampuke.dininglog.data.local.*
 import top.alanvampuke.dininglog.data.remote.*
 import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.auth.*
+import top.alanvampuke.dininglog.feature.components.ImeBottomPx
 import top.alanvampuke.dininglog.feature.theme.*
 
 // This test uses the real, unmodified Worker and isolated local D1 running on
@@ -112,13 +114,21 @@ class ProductEndToEndTest {
                     ProductRoot(model, session.username, ThemeChoice.DARK, {}, logout, version = BuildConfig.VERSION_NAME + " debug")
                 })
             } }
+            compose.onNodeWithTag("auth-submit").assertTextEquals("登录")
+            assertSecureWindow(true, "login")
+            compose.onNodeWithText("恢复账号").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-recovery").assertExists()
+            assertSecureWindow(true, "account recovery")
             compose.onNodeWithText("注册账号").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-submit").assertTextEquals("注册账号")
+            assertSecureWindow(true, "registration")
             compose.onNodeWithTag("auth-username").performScrollTo().performTextInput(username)
             compose.onNodeWithTag("auth-password").performScrollTo().performTextInput(password)
             compose.onNodeWithTag("auth-submit").performScrollTo().performClick()
             waitFor { account.session.value != null }
             compose.onNodeWithText("复制恢复码").performScrollTo().performClick()
             assertEquals(8, copied.size); assertEquals(8, copied.toSet().size)
+            assertSecureWindow(true, "one-time recovery codes")
             compose.onNodeWithText("我已安全保存").performScrollTo().performClick()
             waitFor { ::vm.isInitialized && !vm.list.value.isRefreshing && !vm.list.value.localScope }
             // Server data can be ready while registration IME resizing still
@@ -126,10 +136,13 @@ class ProductEndToEndTest {
             scroll("empty-state")
             compose.onNodeWithTag("empty-state").assertExists().assertIsDisplayed()
                 .assertTextEquals("还没有餐厅，记下第一家吧")
+            compose.onNodeWithTag("screen:restaurant:list").assertExists()
+            assertSecureWindow(false, "restaurant list after recovery-code acknowledgement")
 
             // New restaurant + first visit is an atomic create, no visit binding on dishes.
             phase = "create restaurant and first visit"
-            tap("add"); waitFor { vm.editor.value.draft != null }
+            tap("add"); waitFor { vm.editor.value.input != null }
+            assertSecureWindow(false, "restaurant editor")
             type("field:name", "P4兰记川味小馆")
             type("field:cuisine", "川菜")
             type("field:address", "上海愚园路123号")
@@ -140,17 +153,18 @@ class ProductEndToEndTest {
             tap("save"); waitFor { vm.detail.value.cached.snapshot?.title == "P4兰记川味小馆" && !vm.detail.value.refreshing }
             val restaurantId = vm.detail.value.cached.snapshot!!.ref.id
             val restaurantRef = RecordRef(RecordKind.RESTAURANT, restaurantId)
+            assertSecureWindow(false, "restaurant detail")
             assertEquals("1", server(restaurantRef).fields["visit_count"])
             assertEquals("40", server(restaurantRef).fields["rating_tenths"])
 
-            tap("add-dish"); waitFor { vm.editor.value.draft?.ref?.kind == RecordKind.DISH }
+            tap("add-dish"); waitFor { vm.editor.value.input?.ref?.kind == RecordKind.DISH }
             type("field:name", "辣子鸡"); type("field:review", "菜品短评花椒香"); progress("rating", 4.7f)
             tap("save"); waitFor { vm.detail.value.cached.snapshot?.ref?.kind == RecordKind.DISH && !vm.detail.value.refreshing }
             val dishRef = vm.detail.value.cached.snapshot!!.ref
             assertEquals(restaurantId, vm.detail.value.cached.snapshot!!.ref.restaurantId)
             assertFalse(writes.last().payload.contains("visit_id"))
             tap("back"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
-            tap("add-visit"); waitFor { vm.editor.value.draft?.ref?.kind == RecordKind.VISIT }
+            tap("add-visit"); waitFor { vm.editor.value.input?.ref?.kind == RecordKind.VISIT }
             type("field:dining_date", "2026-11-01"); type("field:note", "同一天第二次到店")
             tap("save"); waitFor { vm.detail.value.cached.snapshot?.ref?.kind == RecordKind.VISIT && !vm.detail.value.refreshing }
             val visitRef = vm.detail.value.cached.snapshot!!.ref
@@ -191,14 +205,17 @@ class ProductEndToEndTest {
             waitFor { vm.list.value.query.filters.from == "2026-11-02" && !vm.list.value.isRefreshing && vm.list.value.items.isEmpty() }
             tap("filter-clear"); tap("filters")
             waitFor { vm.list.value.query.filters == ListFilters() && !vm.list.value.isRefreshing && vm.list.value.items.singleOrNull()?.ref?.id == restaurantId }
-            tap("tab:visits"); waitFor { vm.list.value.query.kind == RecordKind.VISIT }
+            tap("tab:restaurants"); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
+            type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
+            tap("record:$restaurantId"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
+            tap("visit-history"); waitFor { vm.list.value.query.kind == RecordKind.VISIT && !vm.list.value.isRefreshing }
             type("search", "2026-11-01")
             waitFor { vm.list.value.query.query == "2026-11-01" && !vm.list.value.isRefreshing && vm.list.value.items.size == 2 }
             assertEquals(2, vm.list.value.items.map { it.ref.id }.toSet().size)
             tap("tab:restaurants"); type("search", "")
             waitFor { vm.list.value.query.query.isEmpty() && vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
             tap("record:$restaurantId"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
-            tap("edit"); waitFor { vm.editor.value.draft?.baseVersion != null }
+            tap("edit"); waitFor { vm.editor.value.input?.baseVersion != null }
             phase = "score history note hide restore and reapply"
             progress("rating", 4.3f); tap("save")
             waitFor { vm.detail.value.cached.snapshot?.fields?.get("rating_tenths") == "43" && !vm.detail.value.refreshing }
@@ -209,7 +226,7 @@ class ProductEndToEndTest {
             tap("record:${scoreRevision.ref.id}"); waitFor { vm.detail.value.cached.snapshot?.ref?.id == scoreRevision.ref.id && !vm.detail.value.refreshing }
             scroll("before:rating_tenths"); compose.onNodeWithTag("before:rating_tenths").assertTextEquals("★ 4.0")
             scroll("after:rating_tenths"); compose.onNodeWithTag("after:rating_tenths").assertTextEquals("★ 4.3")
-            tap("history-note"); waitFor { vm.editor.value.draft?.ref?.kind == RecordKind.REVISION }
+            tap("history-note"); waitFor { vm.editor.value.input?.ref?.kind == RecordKind.REVISION }
             type("field:note", "第一次调整评分的说明"); tap("save")
             waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "第一次调整评分的说明" && !vm.detail.value.refreshing }
             tap("hide-history"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt != null && !vm.detail.value.refreshing }
@@ -228,48 +245,48 @@ class ProductEndToEndTest {
             tap("tab:restaurants"); type("search", ""); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
             tap("record:$restaurantId"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
             online.value = false; compose.runOnIdle { vm.refreshDetail() }
-            phase = "offline cache and manual draft save"
+            phase = "offline cache and manual input save"
             waitFor { vm.detail.value.offline && !vm.detail.value.refreshing }
             scroll("offline"); compose.onNodeWithTag("offline").assertIsDisplayed()
-            tap("edit"); waitFor { vm.editor.value.draft?.ref == restaurantRef }
-            type("field:note", "离线保留的草稿")
-            waitFor { vm.drafts.value.any { it.localFields["note"] == "离线保留的草稿" } }
-            tap("save"); waitFor { vm.editor.value.message == "已保留草稿，联网后再保存" }
+            tap("edit"); waitFor { vm.editor.value.input?.ref == restaurantRef }
+            type("field:note", "离线未提交值")
+            waitFor { vm.editor.value.input?.localFields?.get("note") == "离线未提交值" }
+            tap("save"); waitFor { vm.editor.value.message == "保存失败，请检查网络后重试" }
             assertEquals("笔记和朋友一起到店", server(restaurantRef).fields["note"])
             online.value = true
             waitFor { !vm.detail.value.offline && !vm.detail.value.refreshing }
             assertEquals("笔记和朋友一起到店", server(restaurantRef).fields["note"]) // Recovery never auto-uploads.
-            tap("save"); waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "离线保留的草稿" && !vm.detail.value.refreshing }
+            tap("save"); waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "离线未提交值" && !vm.detail.value.refreshing }
 
-            // Lose a real committed response: original key/body are replayed once by the user.
-            phase = "unknown response replay"
-            tap("edit"); waitFor { vm.editor.value.draft?.ref == restaurantRef }
+            // A lost response keeps editable input. Refreshing detail confirms the acknowledged save.
+            phase = "lost response and detail confirmation"
+            tap("edit"); waitFor { vm.editor.value.input?.ref == restaurantRef }
             type("field:note", "响应丢失后确认的备注")
             val beforeVersion = server(restaurantRef).version
             dropResponse.set(true); tap("save")
-            waitFor { vm.editor.value.draft?.status == DraftStatus.RESULT_UNKNOWN }
-            scroll("field:note"); compose.onNodeWithTag("field:note").assertIsNotEnabled()
-            val unknown = vm.editor.value.draft!!
-            assertEquals(unknown.original, runBlocking { actualRepository.findDraft(account.session.value!!.userId, unknown.id) }!!.original)
-            val first = writes.last()
-            tap("save"); waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "响应丢失后确认的备注" && !vm.detail.value.refreshing }
-            assertEquals(first, writes.last()); assertEquals(beforeVersion + 1, server(restaurantRef).version)
+            waitFor { vm.editor.value.message == "保存失败，请检查网络后重试" && !vm.editor.value.saving }
+            scroll("field:note"); compose.onNodeWithTag("field:note").assertIsEnabled()
+            assertEquals("响应丢失后确认的备注", vm.editor.value.input!!.localFields["note"])
+            tap("back"); tap("detail-refresh")
+            waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "响应丢失后确认的备注" && !vm.detail.value.refreshing }
+            assertNull(vm.editor.value.input)
+            assertEquals(beforeVersion + 1, server(restaurantRef).version)
 
             // A second real login session edits the same field before the local CAS.
             phase = "cross-session CAS conflict"
-            tap("edit"); waitFor { vm.editor.value.draft?.ref == restaurantRef }
-            type("field:note", "本机冲突草稿")
-            val local = vm.editor.value.draft!!
+            tap("edit"); waitFor { vm.editor.value.input?.ref == restaurantRef }
+            type("field:note", "本机冲突值")
+            val local = vm.editor.value.input!!
             val other = runBlocking { gateway.login(username, password) }
             patchWithOtherSession(other, restaurantId, local.baseVersion!!, "另一设备备注")
             tap("save"); waitFor { vm.editor.value.conflict != null }
             val comparison = vm.editor.value.conflict!!
             assertEquals("响应丢失后确认的备注", comparison.baseSnapshot!!.fields["note"])
             assertEquals("另一设备备注", comparison.serverCurrent.fields["note"])
-            assertEquals("本机冲突草稿", comparison.localDraft.localFields["note"])
+            assertEquals("本机冲突值", comparison.localInput.localFields["note"])
             compose.onNodeWithTag("confirm-merge").assertIsNotEnabled()
-            compose.onNodeWithText("使用草稿").performScrollTo().performClick(); tap("confirm-merge")
-            waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "本机冲突草稿" && !vm.detail.value.refreshing }
+            compose.onNodeWithText("使用未提交值").performScrollTo().performClick(); tap("confirm-merge")
+            waitFor { vm.detail.value.cached.snapshot?.fields?.get("note") == "本机冲突值" && !vm.detail.value.refreshing }
             val conflictWrite = writes[writes.size - 2]; val mergedWrite = writes.last()
             assertNotEquals(conflictWrite.key, mergedWrite.key)
             assertEquals(comparison.serverCurrent.version.toString(), Json.parseToJsonElement(mergedWrite.payload).jsonObject["expected_version"]!!.jsonPrimitive.content)
@@ -284,16 +301,16 @@ class ProductEndToEndTest {
 
             // Dishes are managed inside restaurant editing, never in a global tab.
             phase = "dish editing history deletion and restore inside restaurant"
-            tap("edit"); waitFor { vm.editor.value.draft?.ref == restaurantRef }
+            tap("edit"); waitFor { vm.editor.value.input?.ref == restaurantRef }
             tap("record:${dishRef.id}"); waitFor { vm.detail.value.cached.snapshot?.ref == dishRef && !vm.detail.value.refreshing }
-            tap("edit"); waitFor { vm.editor.value.draft?.ref == dishRef }
+            tap("edit"); waitFor { vm.editor.value.input?.ref == dishRef }
             type("field:review", "编辑后的菜品短评"); tap("save")
             waitFor { vm.detail.value.cached.snapshot?.ref == dishRef && vm.detail.value.cached.snapshot?.fields?.get("review") == "编辑后的菜品短评" && !vm.detail.value.refreshing }
             tap("history"); waitFor { vm.list.value.query.historyEntityId == dishRef.id && !vm.list.value.isRefreshing && vm.list.value.items.isNotEmpty() }
             assertTrue(vm.list.value.items.all { it.fields["entity_type"] == "dish" && it.fields["entity_id"] == dishRef.id })
             tap("back"); waitFor { vm.detail.value.cached.snapshot?.ref == dishRef && !vm.detail.value.refreshing }
             tap("delete"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt != null && !vm.detail.value.refreshing }
-            tap("back"); waitFor { vm.editor.value.draft?.ref == restaurantRef }
+            tap("back"); waitFor { vm.editor.value.input?.ref == restaurantRef }
             tap("edit-manage-dishes"); waitFor { vm.list.value.query.kind == RecordKind.DISH && !vm.list.value.isRefreshing }
             assertTrue(vm.list.value.items.none { it.ref.id == dishRef.id })
             tap("trash"); waitFor { vm.list.value.query.deleted == DeletedFilter.ONLY && !vm.list.value.isRefreshing && vm.list.value.items.any { it.ref.id == dishRef.id } }
@@ -301,46 +318,55 @@ class ProductEndToEndTest {
             tap("restore"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt == null && !vm.detail.value.refreshing }
             assertEquals("1", server(restaurantRef).fields["dish_count"])
 
-            phase = "global visits edit delete restore and restaurant filter"
-            tap("tab:visits"); waitFor { vm.list.value.query.kind == RecordKind.VISIT }
+            phase = "restaurant visit history edit delete and restore"
+            tap("tab:restaurants"); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
+            type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
+            tap("record:$restaurantId"); waitFor { vm.detail.value.cached.snapshot?.ref == restaurantRef && !vm.detail.value.refreshing }
+            tap("visit-history"); waitFor { vm.list.value.query.kind == RecordKind.VISIT && !vm.list.value.isRefreshing }
             type("search", ""); waitFor { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing && vm.list.value.items.size == 2 }
             tap("record:${visitRef.id}"); waitFor { vm.detail.value.cached.snapshot?.ref == visitRef && !vm.detail.value.refreshing }
-            tap("edit"); waitFor { vm.editor.value.draft?.ref == visitRef }
+            tap("edit"); waitFor { vm.editor.value.input?.ref == visitRef }
             type("field:dining_date", "2026-11-02"); type("field:note", "编辑后的到店备注"); tap("save")
             waitFor { vm.detail.value.cached.snapshot?.ref == visitRef && vm.detail.value.cached.snapshot?.fields?.get("dining_date") == "2026-11-02" && !vm.detail.value.refreshing }
             tap("delete"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt != null && !vm.detail.value.refreshing }
-            tap("tab:visits"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing && vm.list.value.items.none { it.ref.id == visitRef.id } }
+            tap("back"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing && vm.list.value.items.none { it.ref.id == visitRef.id } }
             tap("trash"); waitFor { vm.list.value.query.deleted == DeletedFilter.ONLY && !vm.list.value.isRefreshing && vm.list.value.items.any { it.ref.id == visitRef.id } }
             tap("record:${visitRef.id}"); waitFor { vm.detail.value.cached.snapshot?.ref == visitRef && !vm.detail.value.refreshing }
             tap("restore"); tap("confirm"); waitFor { vm.detail.value.cached.snapshot?.deletedAt == null && !vm.detail.value.refreshing }
-            tap("tab:visits"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing }
-            tap("choose-restaurant"); waitFor { vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
-            tap("record:$restaurantId"); waitFor { vm.list.value.query.kind == RecordKind.VISIT && vm.list.value.query.restaurantId == restaurantId && !vm.list.value.isRefreshing }
-            assertEquals(2, vm.list.value.items.size); assertTrue(vm.list.value.items.all { it.ref.restaurantId == restaurantId })
-            tap("clear-restaurant"); waitFor { vm.list.value.query.restaurantId == null && !vm.list.value.isRefreshing && vm.list.value.items.size == 2 }
+            tap("back"); tap("back"); waitFor { vm.list.value.query.deleted == DeletedFilter.EXCLUDE && !vm.list.value.isRefreshing }
+            assertEquals(2, vm.list.value.items.size)
+            assertTrue(vm.list.value.items.all { it.ref.restaurantId == restaurantId })
+            compose.onNodeWithTag("tab:visits").assertDoesNotExist()
 
             phase = "sessions password logout and fresh login"
             tap("tab:settings"); waitFor { !vm.settings.value.loading && vm.settings.value.sessions.any { it.id == other.sessionId } }
+            assertSecureWindow(false, "ordinary settings")
             tap("revoke:${other.sessionId}"); tap("confirm"); waitFor { vm.settings.value.sessions.none { it.id == other.sessionId } && !vm.settings.value.loading }
             tap("change-password")
+            compose.onNodeWithTag("screen:password").assertExists()
+            assertSecureWindow(true, "change password")
             type("current-password", password); type("new-password", newPassword); type("repeat-password", newPassword)
             tap("password-save"); waitFor { vm.settings.value.passwordRevision > 0 && !vm.settings.value.loading }
+            compose.onNodeWithTag("screen:password").assertDoesNotExist()
+            assertSecureWindow(false, "settings after successful password change")
             assertEquals(account.session.value!!.sessionId, store.read()!!.sessionId)
             tap("logout"); tap("confirm"); waitFor { account.session.value == null }
             assertNull(store.read())
             runBlocking { withContext(Dispatchers.IO) {
-                for (table in listOf("cached_summaries", "cached_details", "cached_queries", "page_members", "saved_drafts")) {
+                for (table in listOf("cached_summaries", "cached_details", "cached_queries", "page_members")) {
                     db.openHelper.readableDatabase.query("SELECT count(*) FROM $table").use { cursor ->
                         assertTrue(cursor.moveToFirst()); assertEquals("Logout must clear $table", 0, cursor.getInt(0))
                     }
                 }
             } }
             compose.onNodeWithTag("tab:restaurants").assertDoesNotExist()
+            assertSecureWindow(true, "login after logout")
             compose.onNodeWithTag("auth-username").performScrollTo().performTextInput(username)
             compose.onNodeWithTag("auth-password").performScrollTo().performTextInput(newPassword)
             compose.onNodeWithTag("auth-submit").performScrollTo().performClick()
             waitFor { account.session.value != null && ::vm.isInitialized && vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
             compose.onNodeWithTag("screen:restaurant:list").assertExists()
+            assertSecureWindow(false, "restaurant list after login")
             compose.onNodeWithTag("screen:edit").assertDoesNotExist(); compose.onNodeWithTag("screen:history").assertDoesNotExist()
         } catch (failure: Throwable) {
             val folder = context.getExternalFilesDir("p4-screenshots")!!
@@ -352,7 +378,7 @@ class ProductEndToEndTest {
             if (::vm.isInitialized) android.util.Log.e("DiningP4", "P4 E2E diagnostic: phase=$phase, query=${vm.list.value.query}, listError=${vm.list.value.error}, " +
                 "detail=${vm.detail.value.cached.snapshot?.ref}, detailError=${vm.detail.value.error}, " +
                 "items=${vm.list.value.items.map { it.ref.id to it.fields["dining_date"] }}, " +
-                "draft=${vm.editor.value.draft?.ref}, draftStatus=${vm.editor.value.draft?.status}, " +
+                "input=${vm.editor.value.input?.ref}, " +
                 "saving=${vm.editor.value.saving}, message=${vm.editor.value.message}, fields=${vm.editor.value.errors}")
             throw failure
         } finally {
@@ -360,6 +386,14 @@ class ProductEndToEndTest {
             runBlocking { account.clear() }
             tokenFile.delete(); java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null); deleteEntry(alias) }
             db.close()
+        }
+    }
+    private fun assertSecureWindow(expected: Boolean, screen: String) {
+        compose.waitForIdle()
+        compose.activityRule.scenario.onActivity { activity ->
+            assertEquals("FLAG_SECURE on $screen",
+                if (expected) WindowManager.LayoutParams.FLAG_SECURE else 0,
+                activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
     private fun server(ref: RecordRef) = runBlocking { direct.detail(ref) }
@@ -380,25 +414,63 @@ class ProductEndToEndTest {
     }
     private fun scroll(tag: String) {
         if (tag in setOf("save", "confirm", "apply-save", "confirm-merge", "password-save") || tag.startsWith("tab:")) return
-        if (tag in setOf("refresh", "trash", "choose-restaurant", "clear-restaurant")) {
+        if (tag in setOf("refresh", "trash")) {
             if (compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isEmpty()) {
                 scroll("list-more")
                 compose.onNodeWithTag("list-more").performClick()
             }
             compose.onNodeWithTag(tag).assertIsDisplayed()
+            compose.onNodeWithTag("choose-restaurant").assertDoesNotExist()
+            compose.onNodeWithTag("clear-restaurant").assertDoesNotExist()
             return
         }
-        val dialog = listOf("screen:apply", "screen:conflict", "screen:expired", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
+        val dialog = listOf("screen:apply", "screen:conflict", "screen:password").any { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
         if (dialog) { compose.onNodeWithTag(tag).performScrollTo(); return }
         val lazy = listOf("edit-scroll", "record-list", "detail-scroll", "history-scroll", "settings-scroll").firstOrNull { compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty() }
-        if (lazy != null) compose.onNodeWithTag(lazy, useUnmergedTree = true).performScrollToNode(hasTestTag(tag))
+        if (lazy != null) {
+            val scroller = compose.onNodeWithTag(lazy, useUnmergedTree = true)
+            scroller.performScrollToNode(hasTestTag(tag))
+            if (compose.onAllNodesWithTag("floating-tabs").fetchSemanticsNodes().isNotEmpty()) {
+                val capsule = compose.onNodeWithTag("floating-tabs").getUnclippedBoundsInRoot()
+                val target = compose.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
+                val overlap = target.bottom.value - capsule.top.value + 8f
+                if (overlap > 0f) scroller.performSemanticsAction(SemanticsActions.ScrollBy) {
+                    it(0f, overlap * compose.activity.resources.displayMetrics.density)
+                }
+                assertTrue("$tag must be above floating navigation before tapping",
+                    compose.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot().bottom <=
+                        compose.onNodeWithTag("floating-tabs").getUnclippedBoundsInRoot().top)
+            }
+        }
     }
-    private fun tap(tag: String) { scroll(tag); compose.onNodeWithTag(tag).performClick() }
+    private fun tap(tag: String) {
+        if (tag.startsWith("tab:")) {
+            // P8 intentionally hides navigation while typing. Dismiss only the IME, preserving the page.
+            compose.activityRule.scenario.onActivity {
+                androidx.core.view.WindowInsetsControllerCompat(it.window, it.window.decorView).hide(androidx.core.view.WindowInsetsCompat.Type.ime())
+            }
+            compose.waitUntil(5000) { compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty() }
+        }
+        scroll(tag); compose.onNodeWithTag(tag).performClick()
+    }
     private fun choose(text: String) {
         compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasText(text))
         compose.onNodeWithText(text).performClick()
     }
-    private fun type(tag: String, value: String) { scroll(tag); compose.onNodeWithTag(tag).performTextReplacement(value) }
+    private fun type(tag: String, value: String) {
+        scroll(tag)
+        // Tapping also reopens the IME when this field retained focus after tab
+        // navigation. Wait for ScreenFrame to observe it before scrolling again;
+        // Compose idleness alone does not wait for the platform keyboard.
+        compose.onNodeWithTag(tag).performClick()
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(SemanticsMatcher.keyIsDefined(ImeBottomPx), useUnmergedTree = true)
+                .fetchSemanticsNodes().any { it.config[ImeBottomPx] > 0 }
+        }
+        compose.waitForIdle()
+        scroll(tag)
+        compose.onNodeWithTag(tag).assertIsFocused().performTextReplacement(value)
+    }
     private fun progress(tag: String, value: Float) { scroll(tag); compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(value) } }
     private fun patchWithOtherSession(session: AuthSession, id: String, version: Int, note: String) = runBlocking {
         withContext(Dispatchers.IO) {

@@ -10,17 +10,10 @@ interface DishRepository {
     fun observeDetail(accountId: String, ref: RecordRef): Flow<CachedDetail>
     suspend fun refreshDetail(accountId: String, ref: RecordRef): RecordSnapshot
 }
-interface VisitRepository {
-    fun observeDrafts(accountId: String): Flow<List<SavedDraft>>
-    suspend fun findDraft(accountId: String, draftId: String): SavedDraft?
-    suspend fun storeDraft(draft: SavedDraft)
-    suspend fun discardDraft(accountId: String, draftId: String)
-}
 interface RevisionRepository {
-    suspend fun submit(draft: SavedDraft): SaveOutcome
-    suspend fun confirmExpired(draft: SavedDraft, current: RecordSnapshot?): SaveOutcome
+    suspend fun submit(input: SaveInput): SaveOutcome
 }
-interface ProductRepository : RestaurantRepository, DishRepository, VisitRepository, RevisionRepository {
+interface ProductRepository : RestaurantRepository, DishRepository, RevisionRepository {
     val connectivity: Flow<Boolean>
 }
 data class AccountInfo(val id: String, val username: String, val displayName: String, val createdAt: String)

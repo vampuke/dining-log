@@ -87,7 +87,7 @@ class P6UiTest {
         for (night in listOf(false, true)) {
             compose.runOnIdle { dark = night }
             val colors = if (night) QuietGridDark else QuietGridLight
-            for (id in listOf("restaurants", "visits", "settings")) {
+            for (id in listOf("restaurants", "settings")) {
                 val other = if (id == "restaurants") "settings" else "restaurants"
                 compose.runOnIdle { selected = other }
                 val icon = compose.onNodeWithTag("tab-icon:$id", useUnmergedTree = true)
@@ -116,10 +116,10 @@ class P6UiTest {
         val ref = RecordRef(RecordKind.RESTAURANT, "p6-minimal")
         val fields = mapOf("name" to "只填名称的小馆", "category" to "restaurant", "address" to null, "cuisine" to null, "review" to null, "note" to null)
         val record = RecordSnapshot(ref, 1, fields, "2026-11-01T08:00:00.000Z")
-        val draft = SavedDraft("p6-owner", "p6-minimal-draft", ref, WriteAction.CREATE, null, fields)
-        assertTrue(validateDraft(draft).isEmpty())
+        val input = SaveInput("p6-owner", ref, WriteAction.CREATE, null, fields)
+        assertTrue(validateInput(input).isEmpty())
         compose.setContent { QuietGridTheme(true) {
-            if (editing) EditScreen(EditorUiState(draft), { _, _ -> }, {}, { saved++ }, {}, {})
+            if (editing) EditScreen(EditorUiState(input), { _, _ -> }, {}, { saved++ }, {})
             else RecordDetailScreen(DetailUiState(CachedDetail(record)), {}, {}, {}, {}, {}, {})
         } }
         for (field in listOf("address", "cuisine", "review", "note")) compose.onNodeWithTag("detail:$field").assertDoesNotExist()
@@ -128,18 +128,19 @@ class P6UiTest {
         compose.runOnIdle { editing = true }
         compose.onNodeWithTag("edit-scroll", useUnmergedTree = true).performScrollToNode(hasTestTag("field:address"))
         compose.onNodeWithText("地址 · 选填", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("放弃本机草稿").assertDoesNotExist()
         compose.onNodeWithTag("save").assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, saved) }
     }
 
-    @Test fun allThreeTabReselectionsKeepTheSameBackStackEntryAndScrollToTop() {
+    @Test fun bothTabReselectionsKeepTheSameBackStackEntryAndScrollToTop() {
         val fixture = Fixture()
         try {
             compose.setContent { QuietGridTheme(true) {
                 ProductRoot(fixture.vm, "p6_owner", ThemeChoice.DARK, {}, {}, "0.6.0")
             } }
             waitForRows(fixture, RecordKind.RESTAURANT)
-            for (tab in listOf("restaurants", "visits", "settings")) {
+            for (tab in listOf("restaurants", "settings")) {
                 compose.onNodeWithTag("tab:$tab").performClick()
                 if (tab == "settings") compose.waitUntil(5000) { fixture.vm.settings.value.sessions.size == 12 && !fixture.vm.settings.value.loading }
                 else waitForRows(fixture, if (tab == "restaurants") RecordKind.RESTAURANT else RecordKind.VISIT)
@@ -169,6 +170,26 @@ class P6UiTest {
         } finally { fixture.close() }
     }
 
+    @Test fun centeredAddCreatesARestaurantFromEitherTab() {
+        val fixture = Fixture()
+        try {
+            compose.setContent { QuietGridTheme(true) { ProductRoot(fixture.vm, "p8_owner", ThemeChoice.DARK, {}, {}, "0.7.0") } }
+            waitForRows(fixture, RecordKind.RESTAURANT)
+            for (tab in listOf("restaurants", "settings")) {
+                compose.onNodeWithTag("tab:$tab").performClick()
+                compose.onNodeWithTag("tab:visits").assertDoesNotExist()
+                compose.onNodeWithTag("nav-add").assertIsDisplayed().performClick()
+                compose.waitUntil(5000) { fixture.vm.editor.value.input != null && !fixture.vm.editor.value.loading }
+                val input = fixture.vm.editor.value.input!!
+                assertEquals(RecordKind.RESTAURANT, input.ref.kind)
+                assertEquals(WriteAction.CREATE, input.action)
+                assertNull(input.ref.restaurantId)
+                compose.onNodeWithTag("back").performClick()
+                compose.waitUntil(5000) { fixture.vm.editor.value.input == null }
+            }
+        } finally { fixture.close() }
+    }
+
     @Test fun systemRemoveAnimationsIsObservedAndDarkNavigationFramesNeverPaintWhite() {
         val resolver = compose.activity.contentResolver
         val previous = Settings.Global.getString(resolver, Settings.Global.ANIMATOR_DURATION_SCALE)?.toFloatOrNull()
@@ -179,7 +200,7 @@ class P6UiTest {
             waitForRows(fixture, RecordKind.RESTAURANT)
             compose.onNodeWithTag("product-navigation").assert(SemanticsMatcher.expectValue(NavigationAnimationsEnabled, true))
             compose.mainClock.autoAdvance = false
-            compose.onNodeWithTag("tab:visits").performClick()
+            compose.onNodeWithTag("tab:settings").performClick()
             repeat(15) { frame ->
                 if (frame > 0) compose.mainClock.advanceTimeBy(16)
                 val bitmap = compose.onNodeWithTag("product-navigation").captureToImage().asAndroidBitmap()
@@ -269,12 +290,7 @@ class P6UiTest {
         override suspend fun refreshList(accountId: String, query: ListQuery, loadMore: Boolean) { refreshes.incrementAndGet() }
         override fun observeDetail(accountId: String, ref: RecordRef) = flowOf(CachedDetail(RecordSnapshot(ref, 1, mapOf("name" to "餐厅", "category" to "restaurant"), "2026-11-01T08:00:00.000Z")))
         override suspend fun refreshDetail(accountId: String, ref: RecordRef) = RecordSnapshot(ref, 1, mapOf("name" to "餐厅", "category" to "restaurant"), "2026-11-01T08:00:00.000Z")
-        override fun observeDrafts(accountId: String) = flowOf(emptyList<SavedDraft>())
-        override suspend fun findDraft(accountId: String, draftId: String): SavedDraft? = null
-        override suspend fun storeDraft(draft: SavedDraft) { }
-        override suspend fun discardDraft(accountId: String, draftId: String) { }
-        override suspend fun submit(draft: SavedDraft): SaveOutcome = error("Unexpected UI fixture write")
-        override suspend fun confirmExpired(draft: SavedDraft, current: RecordSnapshot?): SaveOutcome = error("Unexpected UI fixture write")
+        override suspend fun submit(input: SaveInput): SaveOutcome = error("Unexpected UI fixture write")
     }
     private class Security : AccountSecurity {
         val profiles = AtomicInteger()

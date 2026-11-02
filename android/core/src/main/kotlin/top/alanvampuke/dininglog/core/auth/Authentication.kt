@@ -21,12 +21,11 @@ interface AuthGateway {
     suspend fun logout(token: String)
 }
 interface AccountLocalData { suspend fun clear() }
-// Every account transition clears these states, including future list/draft consumers.
+// Every account transition clears these states, including future list/input consumers.
 class AccountMemory : AccountLocalData {
     val lists = mutableListOf<String>()
-    val drafts = mutableMapOf<String, String>()
     val navigation = mutableListOf<String>()
-    override suspend fun clear() { lists.clear(); drafts.clear(); navigation.clear() }
+    override suspend fun clear() { lists.clear(); navigation.clear() }
 }
 class AccountSession(private val store: SecureTokenStore, private val local: AccountLocalData) {
     private val transition = Mutex()

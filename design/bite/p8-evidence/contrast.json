@@ -1,0 +1,460 @@
+{
+  "light": {
+    "tokens": {
+      "bg": "#FFFDF5",
+      "surface": "#FFFFFF",
+      "ink": "#111111",
+      "secondary": "#514B40",
+      "tertiary": "#5D564A",
+      "border": "#111111",
+      "accent": "#FFD60A",
+      "onAccent": "#111111",
+      "danger": "#A61B27",
+      "accentInk": "#111111",
+      "cta": "#FFD60A",
+      "accentSoft": "#FFD60A",
+      "borderStrong": "#111111",
+      "gallery": "#FAF4E4",
+      "paper": "#FAF4E4",
+      "shadow": "#111111",
+      "dieCut": "#FFFFFF",
+      "dots": "#D8D0C1",
+      "butter": "#FFD60A",
+      "popRed": "#FF595E",
+      "mint": "#06D6A0",
+      "klein": "#3A86FF",
+      "lilac": "#8338EC",
+      "peach": "#FF9F1C",
+      "bubble": "#FF70A6",
+      "stickerInk": "#111111"
+    },
+    "pairs": [
+      {
+        "foreground": "ink",
+        "background": "bg",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFFDF5",
+        "ratio": 18.5419
+      },
+      {
+        "foreground": "ink",
+        "background": "surface",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFFFFF",
+        "ratio": 18.8831
+      },
+      {
+        "foreground": "ink",
+        "background": "paper",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FAF4E4",
+        "ratio": 17.1974
+      },
+      {
+        "foreground": "ink",
+        "background": "dots",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 12.3299
+      },
+      {
+        "foreground": "secondary",
+        "background": "bg",
+        "foregroundHex": "#514B40",
+        "backgroundHex": "#FFFDF5",
+        "ratio": 8.4847
+      },
+      {
+        "foreground": "secondary",
+        "background": "surface",
+        "foregroundHex": "#514B40",
+        "backgroundHex": "#FFFFFF",
+        "ratio": 8.6408
+      },
+      {
+        "foreground": "secondary",
+        "background": "paper",
+        "foregroundHex": "#514B40",
+        "backgroundHex": "#FAF4E4",
+        "ratio": 7.8694
+      },
+      {
+        "foreground": "secondary",
+        "background": "dots",
+        "foregroundHex": "#514B40",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 5.6421
+      },
+      {
+        "foreground": "tertiary",
+        "background": "bg",
+        "foregroundHex": "#5D564A",
+        "backgroundHex": "#FFFDF5",
+        "ratio": 7.1218
+      },
+      {
+        "foreground": "tertiary",
+        "background": "surface",
+        "foregroundHex": "#5D564A",
+        "backgroundHex": "#FFFFFF",
+        "ratio": 7.2528
+      },
+      {
+        "foreground": "tertiary",
+        "background": "paper",
+        "foregroundHex": "#5D564A",
+        "backgroundHex": "#FAF4E4",
+        "ratio": 6.6054
+      },
+      {
+        "foreground": "tertiary",
+        "background": "dots",
+        "foregroundHex": "#5D564A",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 4.7358
+      },
+      {
+        "foreground": "danger",
+        "background": "bg",
+        "foregroundHex": "#A61B27",
+        "backgroundHex": "#FFFDF5",
+        "ratio": 7.3449
+      },
+      {
+        "foreground": "danger",
+        "background": "surface",
+        "foregroundHex": "#A61B27",
+        "backgroundHex": "#FFFFFF",
+        "ratio": 7.48
+      },
+      {
+        "foreground": "danger",
+        "background": "paper",
+        "foregroundHex": "#A61B27",
+        "backgroundHex": "#FAF4E4",
+        "ratio": 6.8123
+      },
+      {
+        "foreground": "danger",
+        "background": "dots",
+        "foregroundHex": "#A61B27",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 4.8842
+      },
+      {
+        "foreground": "accentInk",
+        "background": "bg",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFFDF5",
+        "ratio": 18.5419
+      },
+      {
+        "foreground": "accentInk",
+        "background": "surface",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFFFFF",
+        "ratio": 18.8831
+      },
+      {
+        "foreground": "accentInk",
+        "background": "paper",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FAF4E4",
+        "ratio": 17.1974
+      },
+      {
+        "foreground": "accentInk",
+        "background": "dots",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#D8D0C1",
+        "ratio": 12.3299
+      },
+      {
+        "foreground": "onAccent",
+        "background": "cta",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFD60A",
+        "ratio": 13.3755
+      },
+      {
+        "foreground": "accentInk",
+        "background": "accentSoft",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFD60A",
+        "ratio": 13.3755
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "butter",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFD60A",
+        "ratio": 13.3755
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "popRed",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FF595E",
+        "ratio": 6.1528
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "mint",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#06D6A0",
+        "ratio": 10.0116
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "klein",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#3A86FF",
+        "ratio": 5.4257
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "peach",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FF9F1C",
+        "ratio": 9.197
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "bubble",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FF70A6",
+        "ratio": 7.3017
+      }
+    ],
+    "failures": 0
+  },
+  "dark": {
+    "tokens": {
+      "bg": "#14120E",
+      "surface": "#24211B",
+      "ink": "#F5F2E8",
+      "secondary": "#D3CBBB",
+      "tertiary": "#BCB3A2",
+      "border": "#F5F2E8",
+      "accent": "#FFD60A",
+      "onAccent": "#111111",
+      "danger": "#FF9398",
+      "accentInk": "#F5F2E8",
+      "cta": "#FFD60A",
+      "accentSoft": "#393326",
+      "borderStrong": "#F5F2E8",
+      "gallery": "#14120E",
+      "paper": "#302B23",
+      "shadow": "#B5A88C",
+      "dieCut": "#E6DDCA",
+      "dots": "#343026",
+      "butter": "#FFD60A",
+      "popRed": "#FF595E",
+      "mint": "#06D6A0",
+      "klein": "#3A86FF",
+      "lilac": "#8338EC",
+      "peach": "#FF9F1C",
+      "bubble": "#FF70A6",
+      "stickerInk": "#111111"
+    },
+    "pairs": [
+      {
+        "foreground": "ink",
+        "background": "bg",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#14120E",
+        "ratio": 16.7009
+      },
+      {
+        "foreground": "ink",
+        "background": "surface",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#24211B",
+        "ratio": 14.3296
+      },
+      {
+        "foreground": "ink",
+        "background": "paper",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#302B23",
+        "ratio": 12.5367
+      },
+      {
+        "foreground": "ink",
+        "background": "dots",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#343026",
+        "ratio": 11.7415
+      },
+      {
+        "foreground": "secondary",
+        "background": "bg",
+        "foregroundHex": "#D3CBBB",
+        "backgroundHex": "#14120E",
+        "ratio": 11.6067
+      },
+      {
+        "foreground": "secondary",
+        "background": "surface",
+        "foregroundHex": "#D3CBBB",
+        "backgroundHex": "#24211B",
+        "ratio": 9.9586
+      },
+      {
+        "foreground": "secondary",
+        "background": "paper",
+        "foregroundHex": "#D3CBBB",
+        "backgroundHex": "#302B23",
+        "ratio": 8.7126
+      },
+      {
+        "foreground": "secondary",
+        "background": "dots",
+        "foregroundHex": "#D3CBBB",
+        "backgroundHex": "#343026",
+        "ratio": 8.16
+      },
+      {
+        "foreground": "tertiary",
+        "background": "bg",
+        "foregroundHex": "#BCB3A2",
+        "backgroundHex": "#14120E",
+        "ratio": 9.0041
+      },
+      {
+        "foreground": "tertiary",
+        "background": "surface",
+        "foregroundHex": "#BCB3A2",
+        "backgroundHex": "#24211B",
+        "ratio": 7.7256
+      },
+      {
+        "foreground": "tertiary",
+        "background": "paper",
+        "foregroundHex": "#BCB3A2",
+        "backgroundHex": "#302B23",
+        "ratio": 6.759
+      },
+      {
+        "foreground": "tertiary",
+        "background": "dots",
+        "foregroundHex": "#BCB3A2",
+        "backgroundHex": "#343026",
+        "ratio": 6.3303
+      },
+      {
+        "foreground": "danger",
+        "background": "bg",
+        "foregroundHex": "#FF9398",
+        "backgroundHex": "#14120E",
+        "ratio": 8.7999
+      },
+      {
+        "foreground": "danger",
+        "background": "surface",
+        "foregroundHex": "#FF9398",
+        "backgroundHex": "#24211B",
+        "ratio": 7.5505
+      },
+      {
+        "foreground": "danger",
+        "background": "paper",
+        "foregroundHex": "#FF9398",
+        "backgroundHex": "#302B23",
+        "ratio": 6.6058
+      },
+      {
+        "foreground": "danger",
+        "background": "dots",
+        "foregroundHex": "#FF9398",
+        "backgroundHex": "#343026",
+        "ratio": 6.1867
+      },
+      {
+        "foreground": "accentInk",
+        "background": "bg",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#14120E",
+        "ratio": 16.7009
+      },
+      {
+        "foreground": "accentInk",
+        "background": "surface",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#24211B",
+        "ratio": 14.3296
+      },
+      {
+        "foreground": "accentInk",
+        "background": "paper",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#302B23",
+        "ratio": 12.5367
+      },
+      {
+        "foreground": "accentInk",
+        "background": "dots",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#343026",
+        "ratio": 11.7415
+      },
+      {
+        "foreground": "onAccent",
+        "background": "cta",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFD60A",
+        "ratio": 13.3755
+      },
+      {
+        "foreground": "accentInk",
+        "background": "accentSoft",
+        "foregroundHex": "#F5F2E8",
+        "backgroundHex": "#393326",
+        "ratio": 11.1899
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "butter",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FFD60A",
+        "ratio": 13.3755
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "popRed",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FF595E",
+        "ratio": 6.1528
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "mint",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#06D6A0",
+        "ratio": 10.0116
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "klein",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#3A86FF",
+        "ratio": 5.4257
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "peach",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FF9F1C",
+        "ratio": 9.197
+      },
+      {
+        "foreground": "stickerInk",
+        "background": "bubble",
+        "foregroundHex": "#111111",
+        "backgroundHex": "#FF70A6",
+        "ratio": 7.3017
+      }
+    ],
+    "failures": 0
+  }
+}

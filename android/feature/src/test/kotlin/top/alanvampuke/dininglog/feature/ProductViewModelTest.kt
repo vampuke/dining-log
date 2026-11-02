@@ -20,27 +20,23 @@ class ProductViewModelTest {
         override val connectivity = MutableStateFlow(true)
         val page = MutableStateFlow(CachedPage(listOf(row), "cursor", true, 1, false))
         val detail = MutableStateFlow(CachedDetail(snapshot, 1))
-        val drafts = MutableStateFlow<List<SavedDraft>>(emptyList())
         val refreshes = mutableListOf<Pair<ListQuery, Boolean>>()
-        val stored = mutableListOf<SavedDraft>()
-        val submitted = mutableListOf<SavedDraft>()
+        val submitted = mutableListOf<SaveInput>()
         var refreshBody: suspend (ListQuery, Boolean) -> Unit = { _, _ -> }
-        var storeGate: CompletableDeferred<Unit>? = null
-        var outcome: (SavedDraft) -> SaveOutcome = { SaveOutcome.Saved(snapshot.copy(version = 2, fields = it.localFields)) }
+        var submitGate: CompletableDeferred<Unit>? = null
+        var detailGate: CompletableDeferred<Unit>? = null
+        var detailObservations = 0
+        var outcome: (SaveInput) -> SaveOutcome = { SaveOutcome.Saved(snapshot.copy(version = 2, fields = it.localFields)) }
         override fun observeList(accountId: String, query: ListQuery) = page
         override suspend fun refreshList(accountId: String, query: ListQuery, loadMore: Boolean) {
             refreshes += query to loadMore; refreshBody(query, loadMore)
         }
-        override fun observeDetail(accountId: String, ref: RecordRef) = detail
-        override suspend fun refreshDetail(accountId: String, ref: RecordRef) = snapshot
-        override fun observeDrafts(accountId: String) = drafts
-        override suspend fun findDraft(accountId: String, draftId: String) = drafts.value.firstOrNull { it.id == draftId }
-        override suspend fun storeDraft(draft: SavedDraft) {
-            storeGate?.await(); stored += draft; drafts.value = listOf(draft)
+        override fun observeDetail(accountId: String, ref: RecordRef) = flow {
+            detailObservations++; detailGate?.await(); emitAll(detail)
         }
-        override suspend fun discardDraft(accountId: String, draftId: String) { drafts.value = emptyList() }
-        override suspend fun submit(draft: SavedDraft): SaveOutcome { submitted += draft; return outcome(draft) }
-        override suspend fun confirmExpired(draft: SavedDraft, current: RecordSnapshot?) = error("unexpected")
+        override suspend fun refreshDetail(accountId: String, ref: RecordRef) = snapshot
+        override suspend fun submit(input: SaveInput): SaveOutcome { submitGate?.await(); submitted += input; return outcome(input) }
+
     }
     private class Security : AccountSecurity {
         var unknown = false
@@ -71,21 +67,21 @@ class ProductViewModelTest {
     private fun TestScope.start() { runCurrent(); advanceTimeBy(300); runCurrent() }
 
     @Test fun restaurantWithOnlyNameAndCategoryCanBeSavedAndOptionalTextStillHasLimits() {
-        val minimal = SavedDraft("A", "minimal", ref, WriteAction.CREATE, null,
+        val minimal = SaveInput("A", ref, WriteAction.CREATE, null,
             mapOf("name" to "只填名称", "category" to "restaurant"))
-        assertTrue(validateDraft(minimal).isEmpty())
+        assertTrue(validateInput(minimal).isEmpty())
         for (address in listOf(null, "", "   ")) {
-            assertTrue(validateDraft(minimal.copy(localFields = minimal.localFields + ("address" to address))).isEmpty())
+            assertTrue(validateInput(minimal.copy(localFields = minimal.localFields + ("address" to address))).isEmpty())
         }
-        assertEquals(setOf("name"), validateDraft(minimal.copy(localFields = minimal.localFields + ("name" to "   "))).keys)
-        assertEquals(setOf("category"), validateDraft(minimal.copy(localFields = minimal.localFields - "category")).keys)
-        assertEquals(setOf("address"), validateDraft(minimal.copy(localFields = minimal.localFields + ("address" to "x".repeat(501)))).keys)
+        assertEquals(setOf("name"), validateInput(minimal.copy(localFields = minimal.localFields + ("name" to "   "))).keys)
+        assertEquals(setOf("category"), validateInput(minimal.copy(localFields = minimal.localFields - "category")).keys)
+        assertEquals(setOf("address"), validateInput(minimal.copy(localFields = minimal.localFields + ("address" to "x".repeat(501)))).keys)
     }
 
     @Test fun newRestaurantEditorSubmitsWithOnlyANameAndTheDefaultCategory() = runTest { fixture { vm, repo, _, _ ->
         start(); vm.openEditor(ref, true); runCurrent()
-        assertEquals("restaurant", vm.editor.value.draft!!.localFields["category"])
-        assertNull(vm.editor.value.draft!!.localFields["address"])
+        assertEquals("restaurant", vm.editor.value.input!!.localFields["category"])
+        assertNull(vm.editor.value.input!!.localFields["address"])
         vm.editField("name", "只填名称的小馆")
         vm.saveEditor(); runCurrent()
         assertTrue(vm.editor.value.errors.isEmpty())
@@ -131,34 +127,32 @@ class ProductViewModelTest {
         assertEquals("cafe", vm.list.value.query.filters.category)
     } }
 
-    @Test fun saveLocksInputBeforeSuspendingRoomFlushAndSubmitsOnce() = runTest { fixture { vm, repo, _, _ ->
+    @Test fun saveLocksInputBeforeSuspendingSubmissionAndSubmitsOnce() = runTest { fixture { vm, repo, _, _ ->
         start(); vm.openEditor(ref, false); runCurrent()
         vm.editField("note", "点击保存时的内容")
-        val gate = CompletableDeferred<Unit>(); repo.storeGate = gate
+        val gate = CompletableDeferred<Unit>(); repo.submitGate = gate
         vm.saveEditor()
         assertTrue(vm.editor.value.saving)
         vm.editField("note", "不能替换在途请求"); vm.saveEditor(); runCurrent()
-        assertEquals("点击保存时的内容", vm.editor.value.draft!!.localFields["note"])
+        assertEquals("点击保存时的内容", vm.editor.value.input!!.localFields["note"])
         assertTrue(repo.submitted.isEmpty())
         gate.complete(Unit); runCurrent()
         assertEquals(1, repo.submitted.size)
         assertEquals("点击保存时的内容", repo.submitted.single().localFields["note"])
     } }
 
-    @Test fun dismissingConflictResumes500msAutosaveWithoutAnAutomaticSubmit() = runTest { fixture { vm, repo, _, _ ->
-        start(); vm.openEditor(ref, false); runCurrent(); vm.editField("note", "本机草稿")
-        repo.outcome = { draft -> SaveOutcome.Conflict(draft, compareConflict(draft,
+    @Test fun dismissingConflictKeepsMemoryInputWithoutAnAutomaticSubmit() = runTest { fixture { vm, repo, _, _ ->
+        start(); vm.openEditor(ref, false); runCurrent(); vm.editField("note", "未提交值")
+        repo.outcome = { input -> SaveOutcome.Conflict(input, compareConflict(input,
             snapshot.copy(version = 2, fields = snapshot.fields + ("note" to "服务器备注")))) }
         vm.saveEditor(); runCurrent(); assertNotNull(vm.editor.value.conflict)
         vm.dismissComparison(); vm.editField("note", "关闭面板后继续输入"); runCurrent()
-        val before = repo.stored.size
-        advanceTimeBy(499); runCurrent(); assertEquals(before, repo.stored.size)
-        advanceTimeBy(1); runCurrent()
-        assertEquals("关闭面板后继续输入", repo.stored.last().localFields["note"])
-        assertEquals(1, repo.submitted.size); assertEquals(1, vm.editor.value.draft!!.baseVersion)
+        advanceTimeBy(500); runCurrent()
+        assertEquals("关闭面板后继续输入", vm.editor.value.input!!.localFields["note"])
+        assertEquals(1, repo.submitted.size); assertEquals(1, vm.editor.value.input!!.baseVersion)
     } }
 
-    @Test fun connectivityRecoveryRefreshesInForegroundAndNeverUploadsDrafts() = runTest { fixture { vm, repo, _, _ ->
+    @Test fun connectivityRecoveryRefreshesInForegroundAndNeverSubmitsUnsavedInput() = runTest { fixture { vm, repo, _, _ ->
         start(); vm.openEditor(ref, false); runCurrent(); vm.editField("note", "未提交内容")
         val count = repo.refreshes.size
         repo.connectivity.value = false; runCurrent(); repo.connectivity.value = true; runCurrent()
@@ -181,38 +175,106 @@ class ProductViewModelTest {
         assertEquals(PasswordInputs(), vm.settings.value.passwordInputs)
     } }
 
-    @Test fun reopeningAnUnknownDeleteKeepsStoredPayloadAndKeyUntilManualRetry() = runTest { fixture { vm, repo, _, _ ->
-        start()
-        val original = OriginalRequest("DELETE", "restaurants/${ref.id}", "{\"expected_version\":1}", "original-delete-key", 1000)
-        val pending = SavedDraft("A", "DELETE:RESTAURANT:${ref.id}", ref, WriteAction.DELETE,
-            snapshot, snapshot.editable, status = DraftStatus.RESULT_UNKNOWN, original = original)
-        repo.drafts.value = listOf(pending)
-        vm.mutate(snapshot.copy(version = 2), WriteAction.DELETE); runCurrent()
-        assertTrue(vm.operationVisible.value)
-        assertEquals(pending, vm.editor.value.draft)
-        assertTrue(repo.submitted.isEmpty(), "Reopening a pending operation must ask for manual retry")
-        vm.dismissOperation(); vm.mutate(snapshot.copy(version = 3), WriteAction.DELETE); runCurrent()
-        assertEquals(original, vm.editor.value.draft!!.original)
+    @Test fun failedSaveKeepsEditorInputUntilRetryAndLeavingClearsIt() = runTest { fixture { vm, repo, _, _ ->
+        start(); vm.openEditor(ref, false); runCurrent(); vm.editField("note", "未提交值")
+        repo.outcome = { throw ProductFailure("NETWORK_ERROR") }
         vm.saveEditor(); runCurrent()
-        assertEquals(listOf(pending), repo.submitted)
+        assertFalse(vm.editor.value.saving)
+        assertEquals("保存失败，请检查网络后重试", vm.editor.value.message)
+        assertEquals("未提交值", vm.editor.value.input!!.localFields["note"])
+        vm.editField("note", "重试前修改")
+        repo.outcome = { SaveOutcome.Saved(snapshot.copy(version = 2, fields = it.localFields)) }
+        vm.saveEditor(); runCurrent()
+        assertEquals(2, repo.submitted.size)
+        assertEquals("重试前修改", repo.submitted.last().localFields["note"])
+        vm.openEditor(ref, false); runCurrent(); vm.editField("note", "离开前输入")
+        var left = false; vm.leaveEditor { left = true }
+        assertTrue(left); assertNull(vm.editor.value.input)
+        vm.openEditor(ref, false); runCurrent()
+        assertEquals("开始编辑时", vm.editor.value.input!!.localFields["note"])
     } }
 
-    @Test fun reopeningUnknownHistoryApplyCannotReplaceItsSelectedFieldsOrRequest() = runTest { fixture { vm, repo, _, _ ->
+    @Test fun reopeningAfterRecreationKeepsInputValidationFailureAndConflictInMemory() = runTest { fixture { vm, repo, _, _ ->
+        start(); vm.openEditor(ref, true); runCurrent()
+        vm.editField("note", "旋转前的备注"); vm.saveEditor()
+        val invalid = vm.editor.value
+        assertTrue(invalid.errors.containsKey("name"))
+        vm.openEditor(ref, true); runCurrent()
+        assertEquals(invalid, vm.editor.value)
+        vm.editField("name", "旋转前的名称")
+        val typed = vm.editor.value
+        vm.openEditor(ref, true); runCurrent(); assertEquals(typed, vm.editor.value)
+        repo.outcome = { SaveOutcome.Failed(it, "保存失败，保留输入") }
+        vm.saveEditor(); runCurrent()
+        val failed = vm.editor.value
+        vm.openEditor(ref, true); runCurrent(); assertEquals(failed, vm.editor.value)
+        repo.outcome = { SaveOutcome.Conflict(it, compareConflict(it,
+            snapshot.copy(version = 2, fields = snapshot.fields + ("note" to "服务器备注")))) }
+        vm.saveEditor(); runCurrent()
+        val conflict = vm.editor.value
+        assertNotNull(conflict.conflict)
+        vm.openEditor(ref, true); runCurrent(); assertEquals(conflict, vm.editor.value)
+        assertEquals(2, repo.submitted.size)
+    } }
+
+    @Test fun reopeningDuringBlockedSaveKeepsSavingFlagAndDoesNotSubmitTwice() = runTest { fixture { vm, repo, _, _ ->
+        start(); vm.openEditor(ref, false); runCurrent(); vm.editField("note", "在途输入")
+        val gate = CompletableDeferred<Unit>(); repo.submitGate = gate
+        vm.saveEditor(); runCurrent()
+        val saving = vm.editor.value
+        assertTrue(saving.saving)
+        vm.openEditor(ref, false); runCurrent(); assertEquals(saving, vm.editor.value)
+        vm.saveEditor(); vm.editField("note", "不能覆盖")
+        assertEquals(saving, vm.editor.value)
+        gate.complete(Unit); runCurrent()
+        assertEquals(1, repo.submitted.size)
+        vm.openEditor(ref, false); runCurrent()
+        assertEquals("开始编辑时", vm.editor.value.input!!.localFields["note"])
+    } }
+
+    @Test fun reopeningDuringLoadDoesNotDuplicateItAndLeavingCancelsIt() = runTest { fixture { vm, repo, _, _ ->
+        start(); val gate = CompletableDeferred<Unit>(); repo.detailGate = gate
+        vm.openEditor(ref, false); vm.openEditor(ref, false); runCurrent()
+        assertTrue(vm.editor.value.loading); assertEquals(1, repo.detailObservations)
+        vm.openEditor(ref, false); runCurrent(); assertEquals(1, repo.detailObservations)
+        vm.leaveEditor {}; gate.complete(Unit); runCurrent()
+        assertNull(vm.editor.value.input); assertFalse(vm.editor.value.loading)
+        vm.openEditor(ref, false); runCurrent(); assertNotNull(vm.editor.value.input)
+    } }
+
+    @Test fun editorKeyIncludesKindIdParentAndCreateFlag() = runTest { fixture { vm, _, _, _ ->
         start()
+        for ((recordRef, create) in listOf(ref to true, ref.copy(id = "other") to true,
+            ref.copy(kind = RecordKind.DISH) to true, ref.copy(kind = RecordKind.DISH, restaurantId = "parent") to true,
+            ref.copy(kind = RecordKind.DISH, restaurantId = "other-parent") to true, ref to true, ref to false)) {
+            vm.openEditor(recordRef, create); runCurrent()
+            assertEquals(if (create) WriteAction.CREATE else WriteAction.UPDATE, vm.editor.value.input!!.action)
+            if (create) assertEquals(recordRef, vm.editor.value.input!!.ref)
+            assertNotEquals("前一个编辑器", vm.editor.value.input!!.localFields["note"])
+            vm.editField("note", "前一个编辑器")
+        }
+    } }
+
+    @Test fun deleteSubmitsCurrentSnapshotAndHistoryApplyKeepsSelectedFields() = runTest { fixture { vm, repo, _, _ ->
+        start(); vm.mutate(snapshot.copy(version = 3), WriteAction.DELETE); runCurrent()
+        assertEquals(WriteAction.DELETE, repo.submitted.single().action)
+        assertEquals(3, repo.submitted.single().baseVersion)
         val revision = RecordSnapshot(RecordRef(RecordKind.REVISION, "revision", ref.id), 1,
             mapOf("entity_type" to "restaurant", "entity_id" to ref.id), snapshot.updatedAt,
             diff = listOf(Change("rating_tenths", "40", "43")))
-        val original = OriginalRequest("POST", "revisions", "original-apply-payload", "original-apply-key", 1000)
-        val pending = SavedDraft("A", "apply:revision", ref, WriteAction.APPLY, snapshot,
-            snapshot.editable + ("rating_tenths" to "43"), sourceRevisionId = "revision",
-            applySide = "after", applyFields = listOf("rating_tenths"), status = DraftStatus.RESULT_UNKNOWN, original = original)
-        repo.drafts.value = listOf(pending)
-        vm.previewApply(revision); runCurrent()
-        assertNull(vm.apply.value)
-        assertEquals(pending, vm.editor.value.draft)
-        assertTrue(vm.operationVisible.value); assertTrue(repo.submitted.isEmpty())
-        vm.saveEditor(); runCurrent()
-        assertEquals(original, repo.submitted.single().original)
-        assertEquals(listOf("rating_tenths"), repo.submitted.single().applyFields)
+        vm.previewApply(revision); runCurrent(); assertNotNull(vm.apply.value)
+        vm.applySide("after"); vm.selectApply("rating_tenths", true); vm.submitApply(); runCurrent()
+        assertEquals(WriteAction.APPLY, repo.submitted.last().action)
+        assertEquals(listOf("rating_tenths"), repo.submitted.last().applyFields)
+        assertEquals("43", repo.submitted.last().localFields["rating_tenths"])
     } }
+    @Test fun legacyVisitTabFallsBackToRestaurantsAndSelectionStoresOnlySupportedTabs() = runTest { fixture { _, repo, account, security ->
+        val saved = androidx.lifecycle.SavedStateHandle(mapOf("tab" to "visits"))
+        val restored = ProductViewModel("A", repo, security, account, saved)
+        assertEquals("restaurants", restored.restoredTab)
+        restored.selectTab("visits"); assertEquals("restaurants", saved.get<String>("tab"))
+        restored.selectTab("settings"); assertEquals("settings", saved.get<String>("tab"))
+        assertNull(restored.editor.value.input)
+    } }
+
 }
