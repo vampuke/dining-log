@@ -4,9 +4,7 @@ import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Intent
-import android.content.ActivityNotFoundException
 import android.net.Uri
-import android.widget.Toast
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
 import android.os.Bundle

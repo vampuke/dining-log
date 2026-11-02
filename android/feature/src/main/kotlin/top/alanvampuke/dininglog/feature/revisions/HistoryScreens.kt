@@ -85,7 +85,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
     }
 }
-@Composable fun ComparisonColumns(fields: List<ConflictField>, baseVersion: Int?, serverVersion: Int?) {
+@Composable fun ComparisonColumns(fields: List<ConflictField>, serverVersion: Int?) {
     val width = if (LocalDensity.current.fontScale > 1.3f) 220.dp else 170.dp
     Column(Modifier.horizontalScroll(rememberScrollState()).width(width * 2), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row {
@@ -110,7 +110,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             modifier = Modifier.fillMaxWidth().testTag("confirm-merge")) { Text(if (busy) "正在保存…" else "确认选择并保存") }
     }) {
         GridText(if (comparison.mergeAllowed) "横向滑动比较两栏。不同字段已提供合并建议，同一字段必须选择。确认后使用服务器当前版本保存。" else "删除冲突或记录不可用，不能强制合并保存；请先恢复或刷新，请返回后刷新详情。")
-        ComparisonColumns(comparison.fields, comparison.baseSnapshot?.version, comparison.serverCurrent.version)
+        ComparisonColumns(comparison.fields, comparison.serverCurrent.version)
         comparison.fields.filter { it.requiresChoice }.forEach { field ->
             GridText("${fieldLabel(field.name)}发生冲突，请选择", style = MaterialTheme.typography.titleMedium)
             ChoiceChips(listOf("server" to "使用服务器", "local" to "使用未提交值"), choices[field.name]?.name?.lowercase(), { choice ->
