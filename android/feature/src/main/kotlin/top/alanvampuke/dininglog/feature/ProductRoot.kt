@@ -51,13 +51,15 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable fun ProductRoot(vm: ProductViewModel, username: String, theme: ThemeChoice, onTheme: (ThemeChoice) -> Unit,
     onLogout: () -> Unit, version: String,
     updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {}) {
-    val nav = rememberNavController()
+    // New registry key prevents an upgrade from restoring the removed tab destination.
+    val nav = key("p8-navigation") { rememberNavController() }
     val animate = rememberNavigationAnimationsEnabled()
     val motionPx = with(LocalDensity.current) { 12.dp.roundToPx() }
     val restaurantScroll = rememberLazyListState()
     val settingsScroll = rememberLazyListState()
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable { mutableStateOf(vm.restoredTab) }
+    SideEffect { if (selectedTab !in setOf("restaurants", "settings")) selectedTab = "restaurants" }
     val list by vm.list.collectAsStateWithLifecycle()
     val search by vm.search.collectAsStateWithLifecycle()
     val filters by vm.filters.collectAsStateWithLifecycle()

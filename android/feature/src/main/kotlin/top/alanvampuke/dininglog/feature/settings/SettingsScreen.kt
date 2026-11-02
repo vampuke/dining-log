@@ -74,6 +74,8 @@ import top.alanvampuke.dininglog.feature.theme.*
                     Switch(checked = updateState.enabled, onCheckedChange = onUpdateToggle,
                         modifier = Modifier.testTag("update-checks").semantics { contentDescription = "启动时检查更新" })
                 }
+            }
+            item {
                 BiteTextButton(onClick = { logout = true }, modifier = Modifier.testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
             }
         }

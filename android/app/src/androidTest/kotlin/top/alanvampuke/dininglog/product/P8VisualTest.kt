@@ -132,7 +132,10 @@ class P8VisualTest {
                 label = "字段名称", minLines = lines)
         } }
         for (night in listOf(false, true)) for (active in listOf(true, false)) for (invalid in listOf(false, true)) for (minLines in listOf(1, 3)) {
-            compose.runOnIdle { focus.clearFocus(force = true); dark = night; enabled = active; error = invalid; lines = minLines; value = "" }
+            compose.runOnIdle { dark = night; enabled = active; error = invalid; lines = minLines; value = "" }
+            // Apply the new field configuration before clearing any restored focus.
+            compose.runOnIdle { focus.clearFocus(force = true) }
+            compose.onNodeWithTag("field:name").assertIsNotFocused()
             val c = if (night) QuietGridDark else QuietGridLight
             compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.tertiary.toArgb()))
             compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.secondary.toArgb()))
@@ -144,6 +147,12 @@ class P8VisualTest {
         }
     }
     private fun assertTail(tag: String) {
+        // Scroll to the actual end, including the reserved capsule clearance.
+        // performScrollToNode considers a node under an overlay to be displayed.
+        val scroller = listOf("record-list", "detail-scroll", "settings-scroll").first {
+            compose.onAllNodesWithTag(it).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag(scroller).performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
         compose.onNodeWithTag(tag).assertIsDisplayed()
         val tail = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
         val capsule = compose.onNodeWithTag("floating-tabs").getUnclippedBoundsInRoot()
