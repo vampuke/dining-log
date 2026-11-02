@@ -949,5 +949,185 @@
       "Landscape uses both physical emulator rotations and injected side insets: API 35 adds cutouts; API 26 tests side bars because typed synthetic cutout insets are unsupported. Hardware/OEM cutouts were not exercised.",
       "Abrupt process termination, real signed APK download/install, OEM installers and unknown-app permission return were not tested on hardware. JVM file fixtures cover orphan cleanup, verification and rename; UI captures are deterministic fixtures."
     ]
+  },
+  "p9b": {
+    "phase": "P9 R9",
+    "branch": "p8-ux-fixes",
+    "briefSource": {
+      "file": "design/P9_R9_SCREENSHOT.md",
+      "commit": "d4aa7476bba5f77b478c9c970e9a22b56f8d5dca",
+      "readInFullFromGitHistory": true
+    },
+    "implementationCommit": "79392f227d1587c8dbdb3ec5de432cd7ddc01eab",
+    "findings": {
+      "R9": {
+        "locations": [
+          "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt:62",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:16",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:19",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:20",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:21",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:22",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:23",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt:28",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/auth/AuthScreens.kt:67",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt:23",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt:91",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt:96"
+        ],
+        "behavior": "The activity starts without global FLAG_SECURE. AuthRoot enables protection only for unauthenticated LOGIN/REGISTER/RECOVER and unacknowledged recovery-code display. PasswordDialog enables the activity flag and explicitly sets SecureFlagPolicy.SecureOn for its separate dialog window. DisposableEffect clears on disable and on sensitive-screen disposal. Recovery-code sensitive clipboard handling is unchanged.",
+        "tests": [
+          {
+            "file": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt:69",
+            "method": "plan104RegistrationThroughOfflineConflictRestorePasswordAndLogin",
+            "assertionHelper": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt:391",
+            "coverage": "Real AuthRoot/ProductRoot flow in dark mode: SET on login, recovery, registration, recovery-code display and change password; CLEAR on restaurant list after acknowledgement and after fresh login, restaurant editor/detail, ordinary settings and after successful password change."
+          },
+          {
+            "file": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt:26",
+            "method": "passwordDismissalAndNavigationRestoreScreenshotsInBothThemes",
+            "assertionHelper": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt:73",
+            "coverage": "Real SettingsScreen/RecordListScreen in light and dark themes: initial restaurant list CLEAR, settings CLEAR, password dialog SET, dismissal CLEAR, then restaurant list CLEAR. Reopen/dismiss twice in each theme to catch stale flags."
+          }
+        ],
+        "assertion": "Read activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE on the activity UI thread; assert equality to FLAG_SECURE for sensitive screens and 0 for normal screens.",
+        "commits": [
+          {
+            "sha": "79392f227d1587c8dbdb3ec5de432cd7ddc01eab",
+            "subject": "fix(p9-r9): scope screenshot protection to sensitive screens"
+          },
+          {
+            "sha": "fdbd6c4f7c7ebb96ec8ad5e3d968f517c3301584",
+            "subject": "test(p9-r9): assert secure flags and cleanup across screen flows"
+          },
+          {
+            "sha": "435d8b665f9afd279922a77d9da21f87c271a9dd",
+            "subject": "test(p9-r9): wait for keyboard transitions in screenshot flows"
+          },
+          {
+            "sha": "a823bb7298f515647e666cb63d043386a8a4fff4",
+            "subject": "test(p9c): keep screenshot-flow tabs outside the IME-gated overlay"
+          },
+          {
+            "sha": "cfe417161830836712d2474fed8f2889e5ef26b4",
+            "subject": "docs(p9c): record successful API 26 and 35 CI validation"
+          }
+        ],
+        "testInteractionFixes": [
+          {
+            "location": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt:460",
+            "waitLocation": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt:466",
+            "behavior": "Tap the field to reopen its keyboard even when focus was retained; wait for the existing ScreenFrame ImeBottomPx semantics to become positive before the second scroll. This prevents floating-tabs from disappearing between the presence check and bounds read."
+          },
+          {
+            "location": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt:31",
+            "navigationLocation": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt:44",
+            "tapLocation": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt:69",
+            "behavior": "Keep the real BottomTabs as a sibling below the real list/settings screens in the test fixture, outside the IME-gated floating overlay. Assert tab presence and visibility before clicking; retain all secure-flag and theme/dismissal assertions."
+          }
+        ]
+      }
+    },
+    "verification": {
+      "local": {
+        "visualVerifiers": "verify_bite_visuals.py and verify_p6_visuals.py passed; all 56 contrast pairs pass in both themes.",
+        "existingAndroidAssertionLinesPreserved": 556,
+        "backendContractsDiffSinceTaskBase": "empty",
+        "versionCode": 7,
+        "versionName": "0.7.0",
+        "sensitiveClipboardCallback": "byte-for-byte unchanged from e8d341168cc83250081f483ac5339ba02a159764",
+        "gradleAndEmulator": "not run locally, as instructed",
+        "previousR9AssertionLinesPreserved": 587
+      },
+      "ci": {
+        "run": 41407187375,
+        "url": "https://github.com/vampuke/dining-log/actions/runs/41407187375",
+        "status": "completed",
+        "conclusion": "success",
+        "sourceCommit": "a823bb7298f515647e666cb63d043386a8a4fff4",
+        "jobs": [
+          {
+            "name": "backend",
+            "status": "completed",
+            "conclusion": "success",
+            "id": 125151781473,
+            "failedSteps": []
+          },
+          {
+            "name": "android",
+            "status": "completed",
+            "conclusion": "success",
+            "id": 125151781614,
+            "failedSteps": []
+          },
+          {
+            "name": "android-auth-instrumentation (35)",
+            "status": "completed",
+            "conclusion": "success",
+            "id": 125151781654,
+            "failedSteps": []
+          },
+          {
+            "name": "android-auth-instrumentation (26)",
+            "status": "completed",
+            "conclusion": "success",
+            "id": 125151781697,
+            "failedSteps": []
+          }
+        ],
+        "testsPassedPerApi": {
+          "26": 34,
+          "35": 34
+        },
+        "previousSuccessfulRun": {
+          "run": 41405811890,
+          "url": "https://github.com/vampuke/dining-log/actions/runs/41405811890",
+          "sourceCommit": "435d8b665f9afd279922a77d9da21f87c271a9dd",
+          "status": "completed",
+          "conclusion": "success",
+          "testsPassedPerApi": {
+            "26": 34,
+            "35": 34
+          }
+        },
+        "previousRun": {
+          "run": 41402772135,
+          "url": "https://github.com/vampuke/dining-log/actions/runs/41402772135",
+          "sourceCommit": "fdbd6c4f7c7ebb96ec8ad5e3d968f517c3301584",
+          "status": "completed",
+          "conclusion": "failure",
+          "androidBuildLintAndJvmTests": "success",
+          "failures": [
+            {
+              "api": 26,
+              "test": "ScreenshotSecurityTest.passwordDismissalAndNavigationRestoreScreenshotsInBothThemes",
+              "reason": "tab:restaurants absent while the keyboard kept floating navigation hidden"
+            },
+            {
+              "api": 35,
+              "test": "ProductEndToEndTest.plan104RegistrationThroughOfflineConflictRestorePasswordAndLogin",
+              "reason": "floating-tabs disappeared during the second input-field scroll after focus, before IME visibility reached the screen"
+            }
+          ]
+        }
+      }
+    },
+    "limitations": [
+      "No local Gradle builds, lint/JVM tests or emulator execution, as instructed.",
+      "Physical-device screenshots, screen recording, recent-task thumbnails and OEM behavior were not manually exercised."
+    ],
+    "delivery": {
+      "pullRequest": "https://github.com/vampuke/dining-log/pull/12",
+      "merged": false,
+      "releaseTriggered": false,
+      "summaryFile": "logs/p9b_summary.md",
+      "preservedLocalChanges": [
+        "design/run_p9b.sh",
+        "design/run_p9c.sh"
+      ],
+      "preservedLocalChangesNote": "Untracked dispatcher scripts are preserved. The concurrent P9c fixture follow-up a823bb7 and logs/p9c_summary.md are kept as committed and covered by the final recorded CI source."
+    },
+    "sourceCommit": "a823bb7298f515647e666cb63d043386a8a4fff4",
+    "referenceSourceCommit": "a823bb7298f515647e666cb63d043386a8a4fff4"
   }
 }
