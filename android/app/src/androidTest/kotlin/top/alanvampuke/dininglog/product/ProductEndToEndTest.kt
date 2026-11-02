@@ -3,6 +3,7 @@ package top.alanvampuke.dininglog.product
 import top.alanvampuke.dininglog.BuildConfig
 
 import android.content.Context
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.*
@@ -112,13 +113,21 @@ class ProductEndToEndTest {
                     ProductRoot(model, session.username, ThemeChoice.DARK, {}, logout, version = BuildConfig.VERSION_NAME + " debug")
                 })
             } }
+            compose.onNodeWithTag("auth-submit").assertTextEquals("登录")
+            assertSecureWindow(true, "login")
+            compose.onNodeWithText("恢复账号").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-recovery").assertExists()
+            assertSecureWindow(true, "account recovery")
             compose.onNodeWithText("注册账号").performScrollTo().performClick()
+            compose.onNodeWithTag("auth-submit").assertTextEquals("注册账号")
+            assertSecureWindow(true, "registration")
             compose.onNodeWithTag("auth-username").performScrollTo().performTextInput(username)
             compose.onNodeWithTag("auth-password").performScrollTo().performTextInput(password)
             compose.onNodeWithTag("auth-submit").performScrollTo().performClick()
             waitFor { account.session.value != null }
             compose.onNodeWithText("复制恢复码").performScrollTo().performClick()
             assertEquals(8, copied.size); assertEquals(8, copied.toSet().size)
+            assertSecureWindow(true, "one-time recovery codes")
             compose.onNodeWithText("我已安全保存").performScrollTo().performClick()
             waitFor { ::vm.isInitialized && !vm.list.value.isRefreshing && !vm.list.value.localScope }
             // Server data can be ready while registration IME resizing still
@@ -126,10 +135,13 @@ class ProductEndToEndTest {
             scroll("empty-state")
             compose.onNodeWithTag("empty-state").assertExists().assertIsDisplayed()
                 .assertTextEquals("还没有餐厅，记下第一家吧")
+            compose.onNodeWithTag("screen:restaurant:list").assertExists()
+            assertSecureWindow(false, "restaurant list after recovery-code acknowledgement")
 
             // New restaurant + first visit is an atomic create, no visit binding on dishes.
             phase = "create restaurant and first visit"
             tap("add"); waitFor { vm.editor.value.input != null }
+            assertSecureWindow(false, "restaurant editor")
             type("field:name", "P4兰记川味小馆")
             type("field:cuisine", "川菜")
             type("field:address", "上海愚园路123号")
@@ -140,6 +152,7 @@ class ProductEndToEndTest {
             tap("save"); waitFor { vm.detail.value.cached.snapshot?.title == "P4兰记川味小馆" && !vm.detail.value.refreshing }
             val restaurantId = vm.detail.value.cached.snapshot!!.ref.id
             val restaurantRef = RecordRef(RecordKind.RESTAURANT, restaurantId)
+            assertSecureWindow(false, "restaurant detail")
             assertEquals("1", server(restaurantRef).fields["visit_count"])
             assertEquals("40", server(restaurantRef).fields["rating_tenths"])
 
@@ -326,10 +339,15 @@ class ProductEndToEndTest {
 
             phase = "sessions password logout and fresh login"
             tap("tab:settings"); waitFor { !vm.settings.value.loading && vm.settings.value.sessions.any { it.id == other.sessionId } }
+            assertSecureWindow(false, "ordinary settings")
             tap("revoke:${other.sessionId}"); tap("confirm"); waitFor { vm.settings.value.sessions.none { it.id == other.sessionId } && !vm.settings.value.loading }
             tap("change-password")
+            compose.onNodeWithTag("screen:password").assertExists()
+            assertSecureWindow(true, "change password")
             type("current-password", password); type("new-password", newPassword); type("repeat-password", newPassword)
             tap("password-save"); waitFor { vm.settings.value.passwordRevision > 0 && !vm.settings.value.loading }
+            compose.onNodeWithTag("screen:password").assertDoesNotExist()
+            assertSecureWindow(false, "settings after successful password change")
             assertEquals(account.session.value!!.sessionId, store.read()!!.sessionId)
             tap("logout"); tap("confirm"); waitFor { account.session.value == null }
             assertNull(store.read())
@@ -341,11 +359,13 @@ class ProductEndToEndTest {
                 }
             } }
             compose.onNodeWithTag("tab:restaurants").assertDoesNotExist()
+            assertSecureWindow(true, "login after logout")
             compose.onNodeWithTag("auth-username").performScrollTo().performTextInput(username)
             compose.onNodeWithTag("auth-password").performScrollTo().performTextInput(newPassword)
             compose.onNodeWithTag("auth-submit").performScrollTo().performClick()
             waitFor { account.session.value != null && ::vm.isInitialized && vm.list.value.query.kind == RecordKind.RESTAURANT && !vm.list.value.isRefreshing }
             compose.onNodeWithTag("screen:restaurant:list").assertExists()
+            assertSecureWindow(false, "restaurant list after login")
             compose.onNodeWithTag("screen:edit").assertDoesNotExist(); compose.onNodeWithTag("screen:history").assertDoesNotExist()
         } catch (failure: Throwable) {
             val folder = context.getExternalFilesDir("p4-screenshots")!!
@@ -365,6 +385,14 @@ class ProductEndToEndTest {
             runBlocking { account.clear() }
             tokenFile.delete(); java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null); deleteEntry(alias) }
             db.close()
+        }
+    }
+    private fun assertSecureWindow(expected: Boolean, screen: String) {
+        compose.waitForIdle()
+        compose.activityRule.scenario.onActivity { activity ->
+            assertEquals("FLAG_SECURE on $screen",
+                if (expected) WindowManager.LayoutParams.FLAG_SECURE else 0,
+                activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
     private fun server(ref: RecordRef) = runBlocking { direct.detail(ref) }
