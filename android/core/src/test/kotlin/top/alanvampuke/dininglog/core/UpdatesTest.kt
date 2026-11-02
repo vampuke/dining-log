@@ -89,6 +89,40 @@ class UpdatesTest {
             file.delete(); assertFalse(verifyApkSha256(file, digest))
         } finally { file.delete() }
     }
+    @Test fun interruptedPackagesAreSweptAndOnlyVerifiedBytesReceiveTheFinalName() {
+        val directory = java.nio.file.Files.createTempDirectory("p9-updates").toFile()
+        val digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        fun packageFile(name: String, bytes: String = "abc") = java.io.File(directory, name).apply { writeText(bytes) }
+        try {
+            val partial = packageFile("app-8.apk.part", "interrupted")
+            val otherPartial = packageFile("app-9.apk.part", "interrupted")
+            val legacy = packageFile("app-6.apk", "old partial APK")
+            val current = packageFile("app-8.apk")
+            val unrelated = packageFile("readme.txt")
+            val subdirectory = java.io.File(directory, "keep.part").apply { mkdir() }
+            sweepUpdateOrphans(directory, 8)
+            assertFalse(partial.exists()); assertFalse(otherPartial.exists()); assertFalse(legacy.exists())
+            assertTrue(current.exists()); assertTrue(unrelated.exists()); assertTrue(subdirectory.isDirectory)
+            // A new controller has no retained installation state, so all old APKs are orphaned.
+            sweepUpdateOrphans(directory)
+            assertFalse(current.exists()); assertTrue(unrelated.exists())
+            partial.writeText("ab")
+            assertFalse(current.exists())
+            assertFailsWith<IOException> { promoteVerifiedApk(partial, current, digest) }
+            assertFalse(partial.exists()); assertFalse(current.exists())
+            partial.writeText("abc")
+            promoteVerifiedApk(partial, current, digest)
+            assertFalse(partial.exists()); assertEquals("abc", current.readText())
+            assertTrue(verifyApkSha256(current, digest))
+            sweepUpdateOrphans(directory, 9)
+            assertFalse(current.exists())
+            // Failed renames must not turn a partial file into a ready package.
+            partial.writeText("abc"); current.mkdir()
+            java.io.File(current, "block-replacement").writeText("fixture")
+            assertFailsWith<IOException> { promoteVerifiedApk(partial, current, digest) }
+            assertTrue(partial.exists()); assertTrue(current.isDirectory)
+        } finally { directory.deleteRecursively() }
+    }
     @Test fun downloadWhitelistRejectsArbitraryHostsCredentialsTraversalAndInsecureRedirects() {
         val api = "https://dining.alanvampuke.top/api/v1/"
         assertTrue(isAllowedUpdateUrl(release.url, api))

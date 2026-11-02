@@ -25,12 +25,15 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
     private val installScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     @Volatile private var cancelled = false
     @Volatile private var connection: HttpURLConnection? = null
-    private fun apk(release: AppRelease) = File(File(context.cacheDir, "updates"), "app-${release.versionCode}.apk")
+    private val directory = File(context.cacheDir, "updates")
+    init { sweepUpdateOrphans(directory) }
+    private fun apk(release: AppRelease) = File(directory, "app-${release.versionCode}.apk")
 
     fun open(release: AppRelease) {
         if (mutableState.value.busy || mutableState.value.release == release) return
         if (!release.valid || !isNewerVersion(release.versionCode, BuildConfig.VERSION_CODE) ||
             !isAllowedUpdateUrl(release.url, ApiConfiguration.BASE_URL)) return
+        sweepUpdateOrphans(directory, release.versionCode)
         mutableState.value = UpdateInstallState(release)
     }
     fun startDownload() {
@@ -61,6 +64,7 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
     suspend fun download() {
         val release = state.value.release ?: return
         val file = apk(release)
+        val partial = File(directory, "${file.name}.part")
         try {
             // Fetch from the injected /app/version gateway again, never from Intent extras or user input.
             val current = versions.latest()
@@ -69,6 +73,7 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
             currentCoroutineContext().ensureActive()
             if (cancelled) throw CancellationException()
             check(file.parentFile!!.isDirectory || file.parentFile!!.mkdirs()) { "无法创建下载目录，请打开下载页" }
+            check(!file.exists() || file.delete()) { "无法清理旧安装包，请打开下载页" }
             var address = current.url
             var redirects = 0
             while (true) {
@@ -91,7 +96,7 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
                 val total = request.contentLengthLong.takeIf { it > 0 }
                 // Missing Content-Length is legal. Show bytes and an indeterminate total in that case.
                 mutableState.value = state.value.copy(total = total)
-                request.inputStream.use { input -> file.outputStream().use { output ->
+                request.inputStream.use { input -> partial.outputStream().use { output ->
                     val buffer = ByteArray(64 * 1024)
                     var bytes = 0L
                     while (true) {
@@ -109,17 +114,15 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
             currentCoroutineContext().ensureActive()
             if (cancelled) throw CancellationException()
             mutableState.value = state.value.copy(stage = UpdateStage.VERIFYING)
-            if (!verifyApkSha256(file, current.sha256)) {
-                file.delete(); fail("安装包校验失败，请重试或打开下载页"); return
-            }
+            promoteVerifiedApk(partial, file, current.sha256)
             currentCoroutineContext().ensureActive()
             if (cancelled) throw CancellationException()
             mutableState.value = state.value.copy(stage = UpdateStage.READY, packageVerified = true)
         } catch (e: CancellationException) {
-            file.delete()
+            partial.delete(); file.delete()
             throw e
         } catch (e: Exception) {
-            file.delete()
+            partial.delete(); file.delete()
             if (!cancelled) fail(e.message?.takeIf { e is IllegalStateException || e is IOException } ?: "下载失败，请检查网络后重试或打开下载页")
         } finally { connection?.disconnect(); connection = null }
     }

@@ -1,6 +1,7 @@
 package top.alanvampuke.dininglog.core
 
 import java.io.File
+import java.io.IOException
 import java.net.URI
 import java.security.MessageDigest
 
@@ -37,6 +38,22 @@ fun verifyApkSha256(file: File, expected: String): Boolean {
     }
     val wanted = expected.chunked(2).map { it.toInt(16).toByte() }.toByteArray()
     return MessageDigest.isEqual(digest.digest(), wanted)
+}
+
+// No download survives process recreation: only the currently selected version may be retained.
+fun sweepUpdateOrphans(directory: File, versionCode: Int? = null) {
+    val retained = versionCode?.let { "app-$it.apk" }
+    directory.listFiles()?.filter { it.isFile && (it.name.endsWith(".part") ||
+        (it.name.matches(Regex("app-[0-9]+\\.apk")) && it.name != retained)) }?.forEach { it.delete() }
+}
+
+fun promoteVerifiedApk(partial: File, destination: File, expected: String) {
+    require(partial.parentFile == destination.parentFile) { "Package files must share a directory" }
+    if (!verifyApkSha256(partial, expected)) {
+        partial.delete()
+        throw IOException("安装包校验失败，请重试或打开下载页")
+    }
+    if (!partial.renameTo(destination)) throw IOException("无法保存安装包，请重试或打开下载页")
 }
 
 enum class UpdateStage { IDLE, DOWNLOADING, VERIFYING, READY, NEED_PERMISSION, INSTALLING, FAILED, CANCELED }
