@@ -1,0 +1,1579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BITE! 吃啥档案 - 潮流贴纸风 Android UI 设计图与交互原型</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: '#FFFDF5',
+                        paper: '#FAF4E4',
+                        ink: '#111111',
+                        butter: '#FFD60A',
+                        popRed: '#FF595E',
+                        mint: '#06D6A0',
+                        klein: '#3A86FF',
+                        lilac: '#8338EC',
+                        peach: '#FF9F1C',
+                        bubble: '#FF70A6'
+                    },
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '"Noto Sans SC"', 'sans-serif'],
+                        mono: ['"Space Mono"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 新粗野主义波点背景 */
+        body {
+            background-color: #F6F1E3;
+            background-image: radial-gradient(#111111 1.15px, transparent 1.15px);
+            background-size: 22px 22px;
+            color: #111111;
+            overflow-x: hidden;
+        }
+
+        .cream-grid-bg {
+            background-color: #FFFDF5;
+            background-image: radial-gradient(#D8D0C1 1.2px, transparent 1.2px);
+            background-size: 16px 16px;
+        }
+
+        /* 核心粗黑描边与硬投影 (Neo-Brutalism) */
+        .brutal-box {
+            border: 3px solid #111111;
+            box-shadow: 4px 4px 0px #111111;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .brutal-box-sm {
+            border: 2.5px solid #111111;
+            box-shadow: 3px 3px 0px #111111;
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
+        }
+
+        .brutal-btn {
+            border: 2.5px solid #111111;
+            box-shadow: 3px 3px 0px #111111;
+            transition: all 0.12s cubic-bezier(0.2, 0.8, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .brutal-btn:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px #111111;
+        }
+
+        .brutal-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px #111111;
+        }
+
+        /* 模切贴纸白边效果 (Die-cut Sticker) */
+        .die-cut-sticker {
+            border: 2.5px solid #111111;
+            outline: 3.5px solid #FFFFFF;
+            box-shadow: 5px 5px 0px rgba(17, 17, 17, 0.92);
+        }
+
+        /* 复古热敏小票上下锯齿边缘 */
+        .receipt-jagged-top {
+            background: linear-gradient(-45deg, #FFFFFF 8px, transparent 0), linear-gradient(45deg, #FFFFFF 8px, transparent 0);
+            background-position: left-bottom;
+            background-repeat: repeat-x;
+            background-size: 16px 16px;
+            height: 12px;
+            width: 100%;
+        }
+
+        .receipt-jagged-bottom {
+            background: linear-gradient(-135deg, #FFFFFF 8px, transparent 0), linear-gradient(135deg, #FFFFFF 8px, transparent 0);
+            background-position: left-top;
+            background-repeat: repeat-x;
+            background-size: 16px 16px;
+            height: 12px;
+            width: 100%;
+        }
+
+        /* 波普半调网点纹理 */
+        .halftone-pattern {
+            background-image: radial-gradient(rgba(17, 17, 17, 0.14) 1.5px, transparent 0);
+            background-size: 8px 8px;
+        }
+
+        /* 隐藏滚动条 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 粗野主义评分滑块 */
+        input[type=range].brutal-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range].brutal-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 14px;
+            cursor: pointer;
+            background: #FFFDF5;
+            border: 2.5px solid #111111;
+            border-radius: 999px;
+        }
+        input[type=range].brutal-slider::-webkit-slider-thumb {
+            height: 26px;
+            width: 26px;
+            border-radius: 6px;
+            background: #FF595E;
+            border: 2.5px solid #111111;
+            box-shadow: 2px 2px 0px #111111;
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -8px;
+        }
+
+        /* 印章倾斜边框 */
+        .stamp-badge {
+            border: 2.5px dashed #FF595E;
+            color: #FF595E;
+            transform: rotate(-6deg);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 sm:p-6 select-none">
+
+    <!-- ==================== 顶部设计图控制台 ==================== -->
+    <header class="max-w-7xl w-full mx-auto mb-6">
+        <div class="bg-cream brutal-box rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <!-- 左侧品牌与当前选中图标预览 -->
+            <div class="flex items-center gap-3.5">
+                <div id="header-app-icon" onclick="switchViewMode('icons')" title="点击切换更多贴纸图标" class="w-14 h-14 rounded-2xl bg-butter die-cut-sticker flex items-center justify-center cursor-pointer -rotate-3 hover:rotate-0 transition shrink-0">
+                    <!-- 默认图标 SVG -->
+                </div>
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-xl sm:text-2xl font-black tracking-tight text-ink">BITE! 吃啥档案</h1>
+                        <span class="px-2.5 py-0.5 text-xs font-black bg-popRed text-white border-2 border-ink rounded-full shadow-[2px_2px_0px_#111] -rotate-2">
+                            NEO-BRUTALISM 贴纸风
+                        </span>
+                    </div>
+                    <p class="text-xs font-bold text-neutral-600 mt-0.5">
+                        高饱和复古波普 · 模切贴纸徽章 · 超市小票清单 · 完整修改记录溯源
+                    </p>
+                </div>
+            </div>
+
+            <!-- 右侧四大视图模式切换器 -->
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="switchViewMode('prototype')" id="modeBtn-prototype" class="brutal-btn px-3.5 py-2 rounded-xl text-xs font-black bg-butter text-ink flex items-center gap-1.5">
+                    <span>📱 1. 交互手机原型</span>
+                </button>
+                <button onclick="switchViewMode('allscreens')" id="modeBtn-allscreens" class="brutal-btn px-3.5 py-2 rounded-xl text-xs font-black bg-white text-ink flex items-center gap-1.5">
+                    <span>🗺️ 2. 全套界面总览图 (4屏同看)</span>
+                </button>
+                <button onclick="switchViewMode('icons')" id="modeBtn-icons" class="brutal-btn px-3.5 py-2 rounded-xl text-xs font-black bg-mint text-ink flex items-center gap-1.5">
+                    <span>✨ 3. 贴纸图标库 (8款可选) & 规范</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== 视图模式 1：高保真手机交互原型 + 贴纸设计亮点 ==================== -->
+    <main id="view-prototype" class="max-w-7xl w-full mx-auto my-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        <!-- 左侧：Android 手机交互容器 (占 5 列) -->
+        <div class="lg:col-span-5 flex flex-col items-center">
+            <!-- 粗野主义手机外框 -->
+            <div class="relative w-full max-w-[392px] h-[790px] bg-ink rounded-[48px] p-3 shadow-[10px_10px_0px_#111111] border-4 border-ink flex flex-col">
+                
+                <!-- 手机内屏 -->
+                <div class="w-full h-full cream-grid-bg rounded-[36px] overflow-hidden flex flex-col relative border-2 border-ink">
+
+                    <!-- Android 状态栏 -->
+                    <div class="h-10 px-6 flex items-center justify-between text-xs font-mono font-bold text-ink bg-butter border-b-2 border-ink shrink-0 z-30">
+                        <span>12:30</span>
+                        <!-- 居中挖孔镜头 -->
+                        <div class="w-3.5 h-3.5 rounded-full bg-ink flex items-center justify-center">
+                            <div class="w-1 h-1 rounded-full bg-white"></div>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-1 bg-ink text-butter text-[9px] rounded">5G</span>
+                            <div class="w-5 h-2.5 border-2 border-ink rounded-sm p-0.5 bg-white flex items-center">
+                                <div class="w-3 h-full bg-popRed"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ==================== 手机屏幕 A：首页 (探店手账列表) ==================== -->
+                    <div id="screen-home" class="flex-1 flex flex-col overflow-hidden relative">
+                        
+                        <!-- 顶部波普报头 Header -->
+                        <div class="px-4 pt-3 pb-2.5 shrink-0">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2">
+                                    <div id="phone-mini-icon" class="w-9 h-9 rounded-xl bg-butter brutal-box-sm flex items-center justify-center -rotate-3"></div>
+                                    <div>
+                                        <div class="flex items-center gap-1">
+                                            <h2 class="text-lg font-black tracking-tight text-ink leading-none">BITE! 吃啥档案</h2>
+                                            <span class="text-[10px] font-mono font-bold px-1.5 py-0.2 bg-bubble text-ink border border-ink rounded-full rotate-3">VOL.04</span>
+                                        </div>
+                                        <p class="text-[11px] font-bold text-neutral-600 mt-0.5">私人美食雷达 & 避坑贴纸簿</p>
+                                    </div>
+                                </div>
+                                <button onclick="openEditor()" class="brutal-btn px-3 py-1.5 rounded-xl bg-popRed text-white font-black text-xs flex items-center gap-1">
+                                    <span class="text-sm leading-none">+</span> 记一笔
+                                </button>
+                            </div>
+
+                            <!-- 复古集点卡式统计横幅 -->
+                            <div class="bg-white brutal-box-sm rounded-2xl p-2.5 mb-3 relative overflow-hidden halftone-pattern">
+                                <div class="grid grid-cols-3 divide-x-2 divide-ink text-center">
+                                    <div class="px-1">
+                                        <div class="text-[10px] font-bold text-neutral-600">已打卡餐厅</div>
+                                        <div class="text-lg font-black font-mono text-ink mt-0.5"><span id="stat-total">4</span><span class="text-xs ml-0.5">家</span></div>
+                                    </div>
+                                    <div class="px-1">
+                                        <div class="text-[10px] font-bold text-neutral-600">平均美味度</div>
+                                        <div class="text-lg font-black font-mono text-popRed mt-0.5"><span id="stat-avg">4.4</span><span class="text-xs ml-0.5">★</span></div>
+                                    </div>
+                                    <div class="px-1">
+                                        <div class="text-[10px] font-bold text-neutral-600">已测评菜品</div>
+                                        <div class="text-lg font-black font-mono text-klein mt-0.5"><span id="stat-dishes">12</span><span class="text-xs ml-0.5">道</span></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 搜索栏 -->
+                            <div class="relative mb-2.5">
+                                <input 
+                                    id="searchInput"
+                                    oninput="renderHomeList()"
+                                    type="text" 
+                                    placeholder="搜店名、菜品名称、地址或槽点..." 
+                                    class="w-full bg-white brutal-box-sm rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-ink placeholder-neutral-400 outline-none focus:bg-butter/20"
+                                >
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🔍</span>
+                            </div>
+
+                            <!-- 潮流贴纸筛选胶囊 -->
+                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                                <button onclick="setFilter('all')" id="chip-all" class="brutal-btn px-2.5 py-1 rounded-full text-[11px] font-black bg-ink text-butter shrink-0">
+                                    全部贴纸
+                                </button>
+                                <button onclick="setFilter('god')" id="chip-god" class="brutal-btn px-2.5 py-1 rounded-full text-[11px] font-black bg-butter text-ink shrink-0">
+                                    👑 封神必吃 (≥4.6)
+                                </button>
+                                <button onclick="setFilter('edited')" id="chip-edited" class="brutal-btn px-2.5 py-1 rounded-full text-[11px] font-black bg-mint text-ink shrink-0">
+                                    ✏️ 有修改记录
+                                </button>
+                                <button onclick="setFilter('bomb')" id="chip-bomb" class="brutal-btn px-2.5 py-1 rounded-full text-[11px] font-black bg-popRed text-white shrink-0">
+                                    💣 踩雷预警
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 餐厅手账卡片滚动流 -->
+                        <div id="records-list" class="flex-1 overflow-y-auto px-4 pb-24 space-y-4 no-scrollbar">
+                            <!-- 由 JS 动态渲染 -->
+                        </div>
+
+                        <!-- 底部波普悬浮导航栏 -->
+                        <div class="absolute bottom-3 left-3.5 right-3.5 h-14 bg-white brutal-box rounded-2xl px-5 flex items-center justify-between z-20">
+                            <button onclick="switchScreen('home')" class="flex items-center gap-1.5 text-ink font-black text-xs bg-butter px-3 py-1.5 rounded-xl border-2 border-ink shadow-[2px_2px_0px_#111]">
+                                <span>📒</span>
+                                <span>探店手账</span>
+                            </button>
+
+                            <!-- 中央贴纸风大加号 -->
+                            <button onclick="openEditor()" class="w-12 h-12 -mt-7 rounded-2xl bg-popRed text-white die-cut-sticker flex items-center justify-center text-2xl font-black rotate-6 hover:rotate-0 active:scale-95 transition">
+                                +
+                            </button>
+
+                            <button onclick="switchViewMode('icons')" class="flex items-center gap-1 text-ink font-black text-xs px-2.5 py-1.5 rounded-xl hover:bg-paper transition">
+                                <span>🎨</span>
+                                <span>换图标</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ==================== 手机屏幕 B：复古小票详情页 (含菜品清单 & 修改记录溯源) ==================== -->
+                    <div id="screen-detail" class="hidden flex-1 flex flex-col overflow-hidden cream-grid-bg z-20">
+                        <!-- 顶部操作栏 -->
+                        <div class="px-4 py-2.5 bg-butter border-b-2 border-ink flex items-center justify-between shrink-0">
+                            <button onclick="switchScreen('home')" class="brutal-btn px-2.5 py-1 rounded-lg bg-white text-ink text-xs font-black flex items-center gap-1">
+                                ← 返回手账
+                            </button>
+                            <span class="font-mono text-xs font-bold text-ink">RECEIPT // 探店小票</span>
+                            <button id="detail-edit-trigger" class="brutal-btn px-2.5 py-1 rounded-lg bg-mint text-ink text-xs font-black flex items-center gap-1">
+                                ✏️ 修改记录
+                            </button>
+                        </div>
+
+                        <!-- 复古小票主体内容滚动区 -->
+                        <div id="receipt-detail-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+                            <!-- 由 JS 动态渲染小票详情与修改历史 -->
+                        </div>
+                    </div>
+
+                    <!-- ==================== 手机屏幕 C：新增 / 修改探店记录终端 ==================== -->
+                    <div id="screen-editor" class="hidden flex-1 flex flex-col overflow-hidden cream-grid-bg z-30">
+                        <!-- 顶栏 -->
+                        <div class="px-4 py-2.5 bg-mint border-b-2 border-ink flex items-center justify-between shrink-0">
+                            <button onclick="switchScreen('home')" class="brutal-btn px-2.5 py-1 rounded-lg bg-white text-ink text-xs font-black">
+                                取消
+                            </button>
+                            <div class="text-center">
+                                <h3 id="editor-header-title" class="text-sm font-black text-ink">贴一张新探店档案</h3>
+                            </div>
+                            <button onclick="saveRecordForm()" class="brutal-btn px-3 py-1 rounded-lg bg-butter text-ink text-xs font-black">
+                                💾 保存档案
+                            </button>
+                        </div>
+
+                        <!-- 表单滚动区 -->
+                        <div class="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
+                            <input type="hidden" id="edit-record-id">
+
+                            <!-- 1. 餐厅名称 -->
+                            <div class="bg-white brutal-box-sm rounded-2xl p-3">
+                                <label class="block text-[11px] font-black uppercase text-ink mb-1 flex items-center justify-between">
+                                    <span>🏪 01. 餐厅名称 *</span>
+                                    <span class="text-[10px] font-mono bg-butter px-1.5 rounded border border-ink">必填</span>
+                                </label>
+                                <input id="field-name" type="text" placeholder="例如：阿婆牛杂铺 / 炙柒和牛烧肉" class="w-full bg-cream border-2 border-ink rounded-xl px-3 py-2 text-xs font-bold text-ink outline-none focus:bg-butter/20">
+                            </div>
+
+                            <!-- 2. 评分与就餐日期 -->
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="bg-white brutal-box-sm rounded-2xl p-3">
+                                    <label class="block text-[11px] font-black text-ink mb-1">📅 02. 就餐日期</label>
+                                    <input id="field-date" type="date" class="w-full bg-cream border-2 border-ink rounded-xl px-2 py-1.5 text-xs font-mono font-bold text-ink outline-none">
+                                </div>
+                                <div class="bg-butter brutal-box-sm rounded-2xl p-3">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="text-[11px] font-black text-ink">⭐ 03. 评分</label>
+                                        <span id="field-rating-badge" class="px-1.5 py-0.5 bg-ink text-butter font-mono text-xs font-bold rounded">4.8 ★</span>
+                                    </div>
+                                    <input id="field-rating" type="range" min="1.0" max="5.0" step="0.1" value="4.8" oninput="updateEditorRating(this.value)" class="brutal-slider mt-1">
+                                </div>
+                            </div>
+
+                            <!-- 3. 餐厅地址与一键定位 -->
+                            <div class="bg-white brutal-box-sm rounded-2xl p-3">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="text-[11px] font-black text-ink">📍 04. 餐厅地址</label>
+                                    <button type="button" onclick="fillMockLocation()" class="brutal-btn px-2 py-0.5 rounded-md bg-klein text-white text-[10px] font-black">
+                                        🎯 自动定位填入
+                                    </button>
+                                </div>
+                                <input id="field-address" type="text" placeholder="输入商圈、街道门牌号或地铁口..." class="w-full bg-cream border-2 border-ink rounded-xl px-3 py-2 text-xs font-bold text-ink outline-none">
+                            </div>
+
+                            <!-- 4. 餐厅整体评价 -->
+                            <div class="bg-white brutal-box-sm rounded-2xl p-3">
+                                <label class="block text-[11px] font-black text-ink mb-1">💬 05. 餐厅整体评价</label>
+                                <textarea id="field-review" rows="2" placeholder="环境吵不吵？服务态度如何？排队多久？还会不会二刷？" class="w-full bg-cream border-2 border-ink rounded-xl p-2.5 text-xs font-bold text-ink outline-none resize-none"></textarea>
+                            </div>
+
+                            <!-- 5. 菜品名称 & 菜品评价清单 -->
+                            <div class="bg-paper brutal-box-sm rounded-2xl p-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div>
+                                        <label class="block text-xs font-black text-ink">🍽️ 06. 菜品红黑榜 (菜名 + 评价)</label>
+                                        <p class="text-[10px] font-bold text-neutral-600">为每道菜贴上「惊艳/推荐/一般/踩雷」贴纸</p>
+                                    </div>
+                                    <button type="button" onclick="appendDishEditorRow()" class="brutal-btn px-2.5 py-1 rounded-xl bg-butter text-ink text-xs font-black">
+                                        + 加一道菜
+                                    </button>
+                                </div>
+
+                                <div id="editor-dishes-list" class="space-y-2.5">
+                                    <!-- 动态添加菜品行 -->
+                                </div>
+                            </div>
+
+                            <!-- 6. 修改备注 (仅在二次编辑时显示，记录修改原因) -->
+                            <div id="revision-note-box" class="hidden bg-bubble/30 brutal-box-sm rounded-2xl p-3">
+                                <label class="block text-[11px] font-black text-ink mb-1">📝 07. 本次修改备注 (自动计入修改记录)</label>
+                                <input id="field-revision-note" type="text" placeholder="例如：二刷后微调了评分、补充了新菜品评价..." class="w-full bg-white border-2 border-ink rounded-xl px-3 py-1.5 text-xs font-bold text-ink outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 手机内部波普贴纸 Toast -->
+                    <div id="brutal-toast" class="pointer-events-none opacity-0 transition-all duration-200 absolute top-14 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-butter text-ink border-3 border-ink shadow-[4px_4px_0px_#111] text-xs font-black z-50 whitespace-nowrap -rotate-2">
+                        ✨ 已贴好！
+                    </div>
+
+                    <!-- Android 底部导航横条 -->
+                    <div class="h-5 bg-cream border-t-2 border-ink flex items-center justify-center shrink-0">
+                        <div class="w-28 h-1.5 rounded-full bg-ink"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：潮流贴纸风交互说明 & 快速挑选图标预览 (占 7 列) -->
+        <div class="lg:col-span-7 space-y-5">
+            
+            <!-- 亮点介绍卡 -->
+            <div class="bg-cream brutal-box rounded-3xl p-6 relative overflow-hidden">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div>
+                        <span class="px-2.5 py-0.5 text-xs font-mono font-bold bg-mint border-2 border-ink rounded-md">
+                            NEO-BRUTALISM UI SYSTEM
+                        </span>
+                        <h2 class="text-2xl font-black text-ink mt-1.5">为什么「潮流贴纸 + 复古小票」最适合美食记录？</h2>
+                    </div>
+                    <button onclick="resetAllRecords()" class="brutal-btn px-3 py-1.5 rounded-xl bg-white text-xs font-black">
+                        🔄 恢复默认演示数据
+                    </button>
+                </div>
+
+                <p class="text-xs sm:text-sm font-bold text-neutral-700 leading-relaxed mb-5">
+                    告别冷冰冰的表格！我们将**每家餐厅卡片设计成“街头潮牌价签与便签贴纸”**，点击卡片后展开一张**带锯齿边缘的“超市复古热敏小票”**。无论是高分必吃还是踩雷吐槽，都像往手账本上贴贴纸一样解压、直观、有食欲！
+                </p>
+
+                <!-- 6大功能需求落地说明 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div class="bg-butter/40 brutal-box-sm rounded-2xl p-3.5">
+                        <div class="flex items-center gap-2 font-black text-sm text-ink mb-1">
+                            <span class="w-6 h-6 rounded-lg bg-butter border-2 border-ink flex items-center justify-center text-xs">1</span>
+                            餐厅名称 + 评分价签 + 总评
+                        </div>
+                        <p class="text-xs font-bold text-neutral-700">采用醒目的波普撞色角标展示 0.0~5.0 评分，并根据分值自动贴上「👑封神必吃」或「💣踩雷快跑」模切贴纸。</p>
+                    </div>
+
+                    <div class="bg-mint/30 brutal-box-sm rounded-2xl p-3.5">
+                        <div class="flex items-center gap-2 font-black text-sm text-ink mb-1">
+                            <span class="w-6 h-6 rounded-lg bg-mint border-2 border-ink flex items-center justify-center text-xs">2</span>
+                            菜品名称 + 单品红黑榜评价
+                        </div>
+                        <p class="text-xs font-bold text-neutral-700">在小票详情页以清单形式列出每道菜品的名称、单品贴纸（惊艳/推荐/一般/踩雷）与详细口感点评。</p>
+                    </div>
+
+                    <div class="bg-klein/20 brutal-box-sm rounded-2xl p-3.5">
+                        <div class="flex items-center gap-2 font-black text-sm text-ink mb-1">
+                            <span class="w-6 h-6 rounded-lg bg-klein text-white border-2 border-ink flex items-center justify-center text-xs">3</span>
+                            就餐日期 + 餐厅地址胶囊
+                        </div>
+                        <p class="text-xs font-bold text-neutral-700">每张卡片清晰印有就餐日期戳与地图定位胶囊，录入时支持「🎯自动定位填入」模拟商圈地址。</p>
+                    </div>
+
+                    <div class="bg-bubble/30 brutal-box-sm rounded-2xl p-3.5">
+                        <div class="flex items-center gap-2 font-black text-sm text-ink mb-1">
+                            <span class="w-6 h-6 rounded-lg bg-bubble border-2 border-ink flex items-center justify-center text-xs">4</span>
+                            完整的修改记录与历史溯源
+                        </div>
+                        <p class="text-xs font-bold text-neutral-700">支持随时二次编辑餐厅或增删菜品，自动加盖红色「REVISED 已修订」印章，并在小票底部完整记录每次修改时间与变动内容。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速图标挑选预览栏 (点击直接换装) -->
+            <div class="bg-white brutal-box rounded-3xl p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="text-base font-black text-ink">🎨 潮流贴纸应用图标（点击任意图标实时应用到手机）</h3>
+                        <p class="text-xs font-bold text-neutral-500">为您设计了 8 款不同创意的 Die-Cut 模切贴纸风 App 图标</p>
+                    </div>
+                    <button onclick="switchViewMode('icons')" class="brutal-btn px-3 py-1 rounded-xl bg-butter text-xs font-black">
+                        放大查看全部 8 款图标 →
+                    </button>
+                </div>
+                <div id="mini-icon-selector" class="grid grid-cols-4 sm:grid-cols-8 gap-3 pt-1">
+                    <!-- 由 JS 渲染 8 个贴纸图标缩略图 -->
+                </div>
+            </div>
+
+            <!-- 快捷操作引导 -->
+            <div class="bg-butter brutal-box rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">👉</span>
+                    <div class="text-xs font-black text-ink">
+                        想一次性看清所有页面的完整设计图？点击上方 <span class="underline">「2. 全套界面总览图 (4屏同看)」</span> 即可平铺检视！
+                    </div>
+                </div>
+                <button onclick="switchViewMode('allscreens')" class="brutal-btn px-3.5 py-1.5 rounded-xl bg-ink text-butter text-xs font-black">
+                    立即展开 4 屏总览图
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- ==================== 视图模式 2：全套界面设计总览看板 (4 屏同看设计稿) ==================== -->
+    <section id="view-allscreens" class="hidden max-w-7xl w-full mx-auto my-auto space-y-6">
+        <div class="bg-butter brutal-box rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <span class="text-xs font-mono font-bold uppercase bg-ink text-butter px-2 py-0.5 rounded">FULL UI BLUEPRINT // 4 SCREENS OVERVIEW</span>
+                <h2 class="text-xl font-black text-ink mt-1">「BITE! 吃啥档案」全套 4 大核心界面设计总览图</h2>
+            </div>
+            <button onclick="switchViewMode('prototype')" class="brutal-btn px-4 py-2 rounded-xl bg-white text-ink text-xs font-black">
+                ← 返回可交互手机原型
+            </button>
+        </div>
+
+        <!-- 四屏平铺网格 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            
+            <!-- 画板 01：探店手账首页 -->
+            <div class="flex flex-col">
+                <div class="mb-2 flex items-center justify-between px-1">
+                    <span class="font-mono text-xs font-black bg-ink text-butter px-2 py-0.5 rounded">SCREEN 01</span>
+                    <span class="text-xs font-black text-ink">探店手账首页 (列表 & 筛选)</span>
+                </div>
+                <div class="cream-grid-bg brutal-box rounded-[32px] p-3.5 flex-1 flex flex-col justify-between space-y-3">
+                    <div>
+                        <div class="flex items-center justify-between bg-butter border-2 border-ink rounded-xl px-3 py-2 mb-2.5">
+                            <span class="font-black text-sm">BITE! 吃啥档案</span>
+                            <span class="px-2 py-0.5 bg-popRed text-white text-[10px] font-black rounded border border-ink">+ 记一笔</span>
+                        </div>
+                        <div class="flex gap-1.5 mb-2.5">
+                            <span class="px-2 py-0.5 bg-ink text-butter text-[10px] font-black rounded-full">全部</span>
+                            <span class="px-2 py-0.5 bg-butter border border-ink text-[10px] font-black rounded-full">👑 封神必吃</span>
+                            <span class="px-2 py-0.5 bg-mint border border-ink text-[10px] font-black rounded-full">✏️ 已修订</span>
+                        </div>
+                        <!-- 示例卡片 1 -->
+                        <div class="bg-white brutal-box-sm rounded-2xl p-3 mb-3 relative">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[10px] font-mono font-bold bg-mint px-1.5 rounded border border-ink">📅 2026-10-28</span>
+                                    <h4 class="text-sm font-black mt-1">炙柒·极上和牛烧肉专门店</h4>
+                                </div>
+                                <div class="bg-butter border-2 border-ink px-2 py-1 rounded-xl font-mono font-black text-xs -rotate-3 shadow-[2px_2px_0px_#111]">
+                                    4.9 ★
+                                </div>
+                            </div>
+                            <p class="text-[11px] font-bold text-neutral-600 mt-1.5">📍 静安区南京西路1788号国际中心B1</p>
+                            <p class="text-xs font-bold text-ink mt-1.5 bg-cream p-2 rounded-lg border border-ink">“全程专人代烤，M9横膈膜奶香味十足，今年吃过最爽的烧肉！”</p>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <span class="text-[10px] font-black bg-butter px-2 py-0.5 rounded-md border border-ink">🤩 M9横膈膜</span>
+                                <span class="text-[10px] font-black bg-mint px-2 py-0.5 rounded-md border border-ink">👍 黑松露釜饭</span>
+                            </div>
+                        </div>
+                        <!-- 示例卡片 2 -->
+                        <div class="bg-white brutal-box-sm rounded-2xl p-3 relative">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <span class="text-[10px] font-mono font-bold bg-bubble/40 px-1.5 rounded border border-ink">📅 2026-10-15 · 已修订</span>
+                                    <h4 class="text-sm font-black mt-1">肥猫泰式大排档·冬阴功</h4>
+                                </div>
+                                <div class="bg-popRed text-white border-2 border-ink px-2 py-1 rounded-xl font-mono font-black text-xs rotate-2 shadow-[2px_2px_0px_#111]">
+                                    2.8 ★
+                                </div>
+                            </div>
+                            <p class="text-[11px] font-bold text-neutral-600 mt-1.5">📍 天河区体育西路六运小区12号</p>
+                            <p class="text-xs font-bold text-ink mt-1.5 bg-cream p-2 rounded-lg border border-ink">“排队一小时，冬阴功汤太甜像糖水，网红滤镜太重。”</p>
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <span class="text-[10px] font-black bg-popRed text-white px-2 py-0.5 rounded-md border border-ink">💣 泰式冬阴功</span>
+                                <span class="text-[10px] font-black bg-butter px-2 py-0.5 rounded-md border border-ink">🤩 炭烤猪颈肉</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] font-mono font-bold text-center text-neutral-500 pt-2 border-t-2 border-dashed border-ink">
+                        底部悬浮波普导航 + 贴纸筛选器
+                    </div>
+                </div>
+            </div>
+
+            <!-- 画板 02：复古小票详情页 -->
+            <div class="flex flex-col">
+                <div class="mb-2 flex items-center justify-between px-1">
+                    <span class="font-mono text-xs font-black bg-popRed text-white px-2 py-0.5 rounded">SCREEN 02</span>
+                    <span class="text-xs font-black text-ink">复古锯齿小票详情页 (菜品清单)</span>
+                </div>
+                <div class="cream-grid-bg brutal-box rounded-[32px] p-3.5 flex-1 flex flex-col justify-between">
+                    <div class="bg-white border-2 border-ink p-3.5 shadow-[4px_4px_0px_#111] relative">
+                        <div class="flex justify-between items-start border-b-2 border-dashed border-ink pb-2.5">
+                            <div>
+                                <div class="text-[10px] font-mono font-bold text-neutral-500">RECEIPT #101 · 2026-10-28</div>
+                                <h4 class="text-base font-black text-ink">炙柒·极上和牛烧肉专门店</h4>
+                                <div class="text-[11px] font-bold text-neutral-600 mt-0.5">📍 静安区南京西路1788号B1</div>
+                            </div>
+                            <div class="bg-butter border-2 border-ink px-2.5 py-1 rounded-xl font-mono font-black text-sm">
+                                4.9 ★
+                            </div>
+                        </div>
+
+                        <!-- 总评 -->
+                        <div class="py-2.5 border-b-2 border-dashed border-ink">
+                            <div class="text-[10px] font-mono font-bold text-neutral-500 mb-1">OVERALL REVIEW // 总体评价</div>
+                            <p class="text-xs font-bold text-ink">全程专人代烤，火候精准，排烟系统极佳，肉食控必冲！</p>
+                        </div>
+
+                        <!-- 菜品小票明细 -->
+                        <div class="py-2.5 border-b-2 border-dashed border-ink space-y-2">
+                            <div class="text-[10px] font-mono font-bold text-neutral-500">DISH ITEMIZED // 菜品评价明细</div>
+                            <div class="bg-cream p-2 rounded-lg border border-ink">
+                                <div class="flex justify-between text-xs font-black">
+                                    <span>01. M9+ 极上横膈膜</span>
+                                    <span class="bg-butter px-1.5 rounded border border-ink text-[10px]">🤩 惊艳必点</span>
+                                </div>
+                                <p class="text-[11px] font-bold text-neutral-600 mt-0.5">肉汁锁得完美，配山葵海盐一绝。</p>
+                            </div>
+                            <div class="bg-cream p-2 rounded-lg border border-ink">
+                                <div class="flex justify-between text-xs font-black">
+                                    <span>02. 黑松露温泉蛋釜饭</span>
+                                    <span class="bg-butter px-1.5 rounded border border-ink text-[10px]">🤩 惊艳必点</span>
+                                </div>
+                                <p class="text-[11px] font-bold text-neutral-600 mt-0.5">戳破蛋液拌饭香气炸裂。</p>
+                            </div>
+                            <div class="bg-cream p-2 rounded-lg border border-ink">
+                                <div class="flex justify-between text-xs font-black">
+                                    <span>03. 柚子胡椒厚切牛舌</span>
+                                    <span class="bg-mint px-1.5 rounded border border-ink text-[10px]">👍 值得推荐</span>
+                                </div>
+                                <p class="text-[11px] font-bold text-neutral-600 mt-0.5">脆弹爽口，稍微有一点点偏咸。</p>
+                            </div>
+                        </div>
+
+                        <!-- 条形码装饰 -->
+                        <div class="pt-2.5 text-center">
+                            <div class="h-6 w-full bg-[repeating-linear-gradient(90deg,#111,#111_2px,transparent_2px,transparent_5px)]"></div>
+                            <div class="text-[10px] font-mono font-bold mt-1">THANK YOU FOR TASTING!</div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] font-mono font-bold text-center text-neutral-500 pt-2">
+                        热敏小票排版 + 菜品逐一红黑榜
+                    </div>
+                </div>
+            </div>
+
+            <!-- 画板 03：新增与二次修改表单页 -->
+            <div class="flex flex-col">
+                <div class="mb-2 flex items-center justify-between px-1">
+                    <span class="font-mono text-xs font-black bg-mint text-ink px-2 py-0.5 rounded border border-ink">SCREEN 03</span>
+                    <span class="text-xs font-black text-ink">新增 / 修改记录表单终端</span>
+                </div>
+                <div class="cream-grid-bg brutal-box rounded-[32px] p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+                    <div class="space-y-2.5">
+                        <div class="bg-mint border-2 border-ink rounded-xl px-3 py-2 flex justify-between items-center">
+                            <span class="text-xs font-black">✏️ 修改探店档案</span>
+                            <span class="px-2 py-0.5 bg-butter border border-ink rounded text-[10px] font-black">保存</span>
+                        </div>
+                        <div class="bg-white border-2 border-ink rounded-xl p-2.5">
+                            <div class="text-[10px] font-black text-neutral-500">🏪 餐厅名称</div>
+                            <div class="text-xs font-black mt-0.5">炙柒·极上和牛烧肉专门店</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-white border-2 border-ink rounded-xl p-2">
+                                <div class="text-[10px] font-black text-neutral-500">📅 就餐日期</div>
+                                <div class="text-xs font-mono font-bold mt-0.5">2026-10-28</div>
+                            </div>
+                            <div class="bg-butter border-2 border-ink rounded-xl p-2">
+                                <div class="text-[10px] font-black text-ink">⭐ 综合评分</div>
+                                <div class="text-xs font-mono font-black mt-0.5">4.9 ★ (滑块调节)</div>
+                            </div>
+                        </div>
+                        <div class="bg-white border-2 border-ink rounded-xl p-2.5">
+                            <div class="flex justify-between">
+                                <span class="text-[10px] font-black text-neutral-500">📍 餐厅地址</span>
+                                <span class="text-[10px] font-black text-klein">🎯 一键定位</span>
+                            </div>
+                            <div class="text-xs font-bold mt-0.5">静安区南京西路1788号B1</div>
+                        </div>
+                        <div class="bg-paper border-2 border-ink rounded-xl p-2.5 space-y-1.5">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] font-black">🍽️ 动态增删菜品与评价</span>
+                                <span class="px-1.5 py-0.2 bg-butter border border-ink rounded text-[10px] font-black">+ 加菜</span>
+                            </div>
+                            <div class="bg-white border border-ink rounded-lg p-1.5 text-[11px] font-bold">
+                                🥩 M9+ 极上横膈膜 · <span class="text-popRed">🤩惊艳</span>
+                            </div>
+                            <div class="bg-white border border-ink rounded-lg p-1.5 text-[11px] font-bold">
+                                🍲 黑松露温泉蛋釜饭 · <span class="text-popRed">🤩惊艳</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-[11px] font-mono font-bold text-center text-neutral-500 pt-2 border-t-2 border-dashed border-ink">
+                        模块化贴纸表单 + 动态多菜品录入
+                    </div>
+                </div>
+            </div>
+
+            <!-- 画板 04：修改记录溯源时间轴 (Revision History) -->
+            <div class="flex flex-col">
+                <div class="mb-2 flex items-center justify-between px-1">
+                    <span class="font-mono text-xs font-black bg-lilac text-white px-2 py-0.5 rounded">SCREEN 04</span>
+                    <span class="text-xs font-black text-ink">修改记录溯源面板 (多次探店修订)</span>
+                </div>
+                <div class="cream-grid-bg brutal-box rounded-[32px] p-3.5 flex-1 flex flex-col justify-between">
+                    <div class="space-y-3">
+                        <div class="bg-bubble/40 border-2 border-ink rounded-xl px-3 py-2 flex items-center justify-between">
+                            <span class="text-xs font-black">🕒 档案修改记录溯源</span>
+                            <span class="stamp-badge px-1.5 py-0.2 text-[10px] font-mono font-black bg-white">REVISED</span>
+                        </div>
+
+                        <p class="text-[11px] font-bold text-neutral-600">
+                            每次修改评分、地址或增补二刷菜品时，系统自动生成版本快照，方便对比餐厅出品变化：
+                        </p>
+
+                        <!-- 版本时间轴 -->
+                        <div class="space-y-2.5 relative pl-3 border-l-2 border-ink">
+                            <div class="bg-white brutal-box-sm rounded-xl p-2.5">
+                                <div class="flex justify-between text-[10px] font-mono font-bold">
+                                    <span class="bg-butter px-1.5 rounded border border-ink">REV #03 · 最新修改</span>
+                                    <span>2026-10-30 21:15</span>
+                                </div>
+                                <div class="text-xs font-black mt-1">评分由 4.7★ 上调至 4.9★</div>
+                                <p class="text-[11px] font-bold text-neutral-600 mt-0.5">备注：二刷新增「黑松露温泉蛋釜饭」菜品测评，出品依然稳定！</p>
+                            </div>
+
+                            <div class="bg-white brutal-box-sm rounded-xl p-2.5">
+                                <div class="flex justify-between text-[10px] font-mono font-bold">
+                                    <span class="bg-mint px-1.5 rounded border border-ink">REV #02 · 地址补充</span>
+                                    <span>2026-10-28 23:05</span>
+                                </div>
+                                <div class="text-xs font-black mt-1">修正餐厅详细楼层与地铁口坐标</div>
+                                <p class="text-[11px] font-bold text-neutral-600 mt-0.5">备注：补充了 B1-09 铺位号，方便下次带朋友找路。</p>
+                            </div>
+
+                            <div class="bg-paper border-2 border-ink rounded-xl p-2.5 opacity-80">
+                                <div class="flex justify-between text-[10px] font-mono font-bold">
+                                    <span class="bg-white px-1.5 rounded border border-ink">REV #01 · 首次建档</span>
+                                    <span>2026-10-28 19:40</span>
+                                </div>
+                                <div class="text-xs font-black mt-1">首次创建探店手账记录</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-[11px] font-mono font-bold text-center text-neutral-500 pt-2 border-t-2 border-dashed border-ink">
+                        每一次修改自动存档 · 真实还原二刷体验
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- ==================== 视图模式 3：8 款潮流贴纸应用图标库 & 视觉规范 ==================== -->
+    <section id="view-icons" class="hidden max-w-7xl w-full mx-auto my-auto space-y-6">
+        
+        <div class="bg-cream brutal-box rounded-3xl p-6">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                <div>
+                    <span class="px-2.5 py-0.5 text-xs font-mono font-bold bg-popRed text-white border-2 border-ink rounded">
+                        8 DIE-CUT STICKER APP ICONS
+                    </span>
+                    <h2 class="text-2xl font-black text-ink mt-1">为您定制的 8 款「潮流贴纸风」应用图标方案</h2>
+                    <p class="text-xs font-bold text-neutral-600 mt-0.5">
+                        全部采用粗黑描边 + 模切白边 (Die-Cut Outline) + 波普撞色设计。点击任意一款即可将其设为当前原型图标！
+                    </p>
+                </div>
+                <button onclick="switchViewMode('prototype')" class="brutal-btn px-4 py-2 rounded-xl bg-butter text-ink text-xs font-black">
+                    ← 返回手机原型体验
+                </button>
+            </div>
+
+            <!-- 8款图标大卡片网格 -->
+            <div id="full-icons-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                <!-- 由 JS 渲染 8 款高清矢量贴纸图标卡片 -->
+            </div>
+        </div>
+
+        <!-- 潮流贴纸风色彩与组件规范 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-cream brutal-box rounded-3xl p-5">
+                <h3 class="text-base font-black text-ink mb-3">🎨 波普贴纸色彩规范 (Retro Pop Palette)</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-black">
+                    <div class="p-3 rounded-2xl bg-butter border-2 border-ink shadow-[3px_3px_0px_#111]">
+                        <div>奶油芝士黄</div>
+                        <div class="font-mono text-[11px] mt-1">#FFD60A</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-popRed text-white border-2 border-ink shadow-[3px_3px_0px_#111]">
+                        <div>番茄波普红</div>
+                        <div class="font-mono text-[11px] mt-1">#FF595E</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-mint border-2 border-ink shadow-[3px_3px_0px_#111]">
+                        <div>薄荷苏打绿</div>
+                        <div class="font-mono text-[11px] mt-1">#06D6A0</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-klein text-white border-2 border-ink shadow-[3px_3px_0px_#111]">
+                        <div>克莱因电光蓝</div>
+                        <div class="font-mono text-[11px] mt-1">#3A86FF</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-bubble border-2 border-ink shadow-[3px_3px_0px_#111]">
+                        <div>泡泡糖粉</div>
+                        <div class="font-mono text-[11px] mt-1">#FF70A6</div>
+                    </div>
+                    <div class="p-3 rounded-2xl bg-cream border-2 border-ink shadow-[3px_3px_0px_#111]">
+                        <div>手账暖米底</div>
+                        <div class="font-mono text-[11px] mt-1">#FFFDF5</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-cream brutal-box rounded-3xl p-5 flex flex-col justify-between">
+                <div>
+                    <h3 class="text-base font-black text-ink mb-2">📐 Android 落地开发参数 (Compose / XML)</h3>
+                    <ul class="space-y-2 text-xs font-bold text-neutral-700">
+                        <li>• <strong class="text-ink">描边宽度 (Stroke)</strong>：主卡片统一 `2.5dp ~ 3dp` 纯黑 (`#111111`)，内部胶囊标签 `1.5dp`。</li>
+                        <li>• <strong class="text-ink">硬投影偏移 (Hard Shadow)</strong>：无模糊半径 (`blurRadius = 0dp`)，X/Y 偏移 `4dp`，按压态偏移缩减至 `1dp`。</li>
+                        <li>• <strong class="text-ink">模切贴纸效果 (Die-Cut)</strong>：外层 `3dp` 纯白描边包裹内层 `2.5dp` 纯黑描边，配合 `-3° ~ +3°` 随机微倾角。</li>
+                    </ul>
+                </div>
+                <div class="mt-4 p-3 rounded-xl bg-butter/40 border-2 border-dashed border-ink text-xs font-black text-ink">
+                    💡 提示：这套高对比度暖色系不仅在手机桌面上辨识度极高，而且纯矢量图形在 Android 端无需加载沉重的图片资源，运行极其丝滑！
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // ==================== 1. 8款潮流贴纸风 App 图标定义 (纯手绘感高保真 SVG) ====================
+        const STICKER_ICONS = [
+            {
+                id: 'icon-burger',
+                name: 'V1. 波普笑脸汉堡贴纸',
+                desc: '经典美式街头波普风，双层芝士汉堡搭配高分星标贴纸，最具食欲与亲和力。',
+                bg: 'bg-butter',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 45 C20 22, 80 22, 80 45 Z" fill="#FF9F1C"/>
+                        <rect x="16" y="45" width="68" height="10" rx="5" fill="#06D6A0"/>
+                        <polygon points="22,55 40,65 55,55 82,55" fill="#FFD60A"/>
+                        <rect x="18" y="55" width="64" height="12" rx="6" fill="#FF595E"/>
+                        <path d="M22 67 L78 67 C78 80, 22 80, 22 67 Z" fill="#FF9F1C"/>
+                        <circle cx="38" cy="36" r="3" fill="#111"/>
+                        <circle cx="62" cy="36" r="3" fill="#111"/>
+                        <path d="M44 40 Q50 45 56 40" fill="none" stroke-width="3.5"/>
+                        <polygon points="75,60 80,70 91,71 83,79 85,90 75,84 65,90 67,79 59,71 70,70" fill="#FFD60A" stroke-width="3.5"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-ramen',
+                name: 'V2. 一番拉面热气贴纸',
+                desc: '暖红碗身配Q弹面条与溏心蛋，顶部冒出波普感热气，适合热腾腾的探店记录。',
+                bg: 'bg-popRed',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="28" y1="22" x2="85" y2="14" stroke="#FFF" stroke-width="6"/>
+                        <line x1="28" y1="22" x2="85" y2="14" stroke="#111" stroke-width="3.5"/>
+                        <path d="M35 20 Q35 45 45 45 M50 18 Q50 45 60 45" fill="none" stroke="#FFD60A" stroke-width="5"/>
+                        <ellipse cx="38" cy="48" rx="12" ry="8" fill="#FFF"/>
+                        <circle cx="38" cy="48" r="5" fill="#FF9F1C"/>
+                        <path d="M16 48 L84 48 C82 78, 65 84, 50 84 C35 84, 18 78, 16 48 Z" fill="#FFD60A"/>
+                        <rect x="36" y="82" width="28" height="7" rx="2" fill="#FFF"/>
+                        <path d="M26 62 L74 62" stroke="#FF595E" stroke-width="4"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-receipt',
+                name: 'V3. 复古小票打卡印章',
+                desc: '锯齿边缘热敏小票造型，上面盖着醒目的大五角星与刀叉，直击“美食账单/评价”主题。',
+                bg: 'bg-mint',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22,14 30,20 38,14 46,20 54,14 62,20 70,14 78,20 78,86 70,80 62,86 54,80 46,86 38,80 30,86 22,80" fill="#FFFDF5"/>
+                        <line x1="32" y1="32" x2="68" y2="32"/>
+                        <line x1="32" y1="42" x2="56" y2="42"/>
+                        <polygon points="52,46 57,57 69,58 60,66 63,78 52,72 41,78 44,66 35,58 47,57" fill="#FF595E"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-bite',
+                name: 'V4. BITE! 咬一口吐司徽章',
+                desc: '右上角被咬掉一大口的奶油吐司，露出诱人果酱，呼应“BITE! 吃一口”的品牌名。',
+                bg: 'bg-klein',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 36 C16 24, 35 16, 50 22 C54 24, 58 22, 62 22 C60 32, 68 40, 78 38 C80 55, 78 78, 74 82 L26 82 C22 78, 20 55, 22 36 Z" fill="#FFD60A"/>
+                        <rect x="32" y="44" width="32" height="24" rx="6" fill="#FF70A6"/>
+                        <circle cx="41" cy="54" r="2.5" fill="#111"/>
+                        <circle cx="55" cy="54" r="2.5" fill="#111"/>
+                        <path d="M45 60 Q48 64 51 60" fill="none"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-radar',
+                name: 'V5. 寻味坐标餐叉 Pin',
+                desc: '将地图定位图标 (Map Pin) 与餐叉巧妙合体，突出“记录餐厅地址 + 探店打卡”属性。',
+                bg: 'bg-bubble',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M50 88 C50 88, 22 58, 22 38 C22 21, 35 12, 50 12 C65 12, 78 21, 78 38 C78 58, 50 88, 50 88 Z" fill="#FFD60A"/>
+                        <circle cx="50" cy="38" r="16" fill="#FFF"/>
+                        <path d="M44 28 L44 38 M50 28 L50 48 M56 28 L56 38 M44 38 Q50 43 56 38" fill="none" stroke-width="3.5"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-price',
+                name: 'V6. 必吃封神皇冠价签',
+                desc: '复古潮牌吊牌与皇冠结合，印着 5.0 满分字样，态度鲜明，适合红黑榜测评控。',
+                bg: 'bg-lilac',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="20,42 42,20 82,20 82,60 60,82 20,82" fill="#06D6A0"/>
+                        <circle cx="66" cy="34" r="5" fill="#FFF"/>
+                        <polygon points="30,66 34,44 45,54 54,40 62,54 72,46 68,66" fill="#FFD60A"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-cloche',
+                name: 'V7. 米其林揭秘银质餐盖',
+                desc: '打开一半的西式餐盘罩，蹦出闪耀的星星与爱心贴纸，充满开盲盒般的探店惊喜感。',
+                bg: 'bg-peach',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 66 C18 38, 82 38, 82 66 Z" fill="#FFFDF5"/>
+                        <circle cx="50" cy="34" r="6" fill="#FF595E"/>
+                        <rect x="12" y="66" width="76" height="10" rx="5" fill="#FFD60A"/>
+                        <polygon points="50,46 53,53 61,54 55,59 57,66 50,62 43,66 45,59 39,54 47,53" fill="#3A86FF" stroke-width="3"/>
+                    </g>
+                </svg>`
+            },
+            {
+                id: 'icon-notebook',
+                name: 'V8. 吃货手账本与叉勺贴纸',
+                desc: '绑着横带的复古活页手账本，封面上贴着交叉的勺子与餐叉贴纸，最贴合“私人记录本”心智。',
+                bg: 'bg-butter',
+                svg: `<svg viewBox="0 0 100 100" class="w-full h-full p-1.5">
+                    <g stroke="#111" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="24" y="14" width="56" height="72" rx="8" fill="#FF595E"/>
+                        <rect x="30" y="14" width="10" height="72" fill="#111"/>
+                        <circle cx="58" cy="48" r="16" fill="#FFFDF5"/>
+                        <path d="M53 39 L63 57 M63 39 L53 57" stroke="#111" stroke-width="4"/>
+                    </g>
+                </svg>`
+            }
+        ];
+
+        let selectedIconId = 'icon-burger';
+
+        // ==================== 2. 初始探店手账数据 (包含多道菜品、地址、日期及修改历史日志) ====================
+        const INITIAL_RECORDS = [
+            {
+                id: 'rec-1',
+                name: '炙柒·极上和牛烧肉专门店',
+                rating: 4.9,
+                date: '2026-10-28',
+                address: '上海市静安区南京西路 1788 号国际中心 B1-09',
+                review: '店里是复古街头海报装潢，气氛超级嗨！全程有专人帮忙代烤，火候拿捏得死死的，抽风系统很强，吃完身上完全没味道，肉食动物必冲！',
+                dishes: [
+                    { name: 'M9+ 极上横膈膜', verdict: '惊艳', comment: '肉汁锁得极其完美，外焦里嫩，配山葵海盐一口封神！' },
+                    { name: '黑松露温泉蛋和牛釜饭', verdict: '惊艳', comment: '戳破温泉蛋拌匀后每粒米都裹着脂香，锅巴脆香。' },
+                    { name: '厚切牛舌芯', verdict: '推荐', comment: '1.5cm厚切口感脆弹，蘸柠檬汁很解腻。' }
+                ],
+                revisions: [
+                    { time: '2026-10-30 21:15', note: '二刷后将评分由 4.7★ 上调至 4.9★，新增黑松露釜饭评价' },
+                    { time: '2026-10-28 20:40', note: '首次建档记录探店体验' }
+                ]
+            },
+            {
+                id: 'rec-2',
+                name: '阿婆牛杂铺·广式老街糖水',
+                rating: 4.7,
+                date: '2026-10-21',
+                address: '广州市越秀区文明路 104 号老骑楼街铺 (近北京路地铁站)',
+                review: '开了二十多年的街坊老店，没有豪华装修但烟火气十足。牛杂炖得非常软烂入味，萝卜吸饱了浓郁的卤汁，人均三十块吃到扶墙出！',
+                dishes: [
+                    { name: '招牌五宝牛杂煲', verdict: '惊艳', comment: '牛肠和牛肺处理得极干净，挂满柱侯酱汁，咸香回甘。' },
+                    { name: '手工陈皮红豆沙', verdict: '推荐', comment: '起沙绵密，十年新会陈皮香气很正，甜度克制。' },
+                    { name: '咖喱鱼蛋拼猪皮', verdict: '一般', comment: '鱼蛋挺弹牙，但猪皮稍微煮得有点过软了。' }
+                ],
+                revisions: [
+                    { time: '2026-10-21 18:10', note: '首次建档记录探店体验' }
+                ]
+            },
+            {
+                id: 'rec-3',
+                name: 'BISTRO 404 酸面团披萨实验室',
+                rating: 4.5,
+                date: '2026-10-14',
+                address: '杭州市上城区中山中路 218 号转角红砖楼 1F',
+                review: '美式复古社区小馆，窑炉现烤披萨饼边有漂亮的豹纹焦斑，气孔很大且有嚼劲。适合周末下午坐在街边吹风小酌。',
+                dishes: [
+                    { name: '无花果帕尔玛火腿披萨', verdict: '惊艳', comment: '咸鲜火腿配新鲜无花果和马苏里拉芝士，甜咸永动机！' },
+                    { name: '恶魔辣肉肠芝士卷边', verdict: '推荐', comment: '微辣开胃，饼底麦香味很足。' },
+                    { name: '松露薯条配蒜香蛋黄酱', verdict: '推荐', comment: '刚出锅巨脆，蒜香酱给得很慷慨。' }
+                ],
+                revisions: [
+                    { time: '2026-10-16 12:30', note: '补充了详细门牌号与无花果披萨的点评' },
+                    { time: '2026-10-14 21:00', note: '首次建档记录探店体验' }
+                ]
+            },
+            {
+                id: 'rec-4',
+                name: '肥猫泰式夜市大排档',
+                rating: 2.8,
+                date: '2026-10-05',
+                address: '深圳市南山区粤海街道海岸城西座 2F-18',
+                review: '门口贴满泰文海报看着很潮，结果排队等了快一个小时。上菜慢且分量偏少，冬阴功汤调味太甜像糖水，属于典型的网红滤镜店，拔草避坑！',
+                dishes: [
+                    { name: '炭烤松板猪颈肉', verdict: '推荐', comment: '全场唯一在线的菜，外焦里嫩，配青柠酸辣汁还行。' },
+                    { name: '泰式妈妈面冬阴功汤', verdict: '踩雷', comment: '椰浆放太多甜到发腻，大虾也不够新鲜，不值68元。' },
+                    { name: '火山排骨', verdict: '踩雷', comment: '肉质偏柴，酸辣汁完全没入味，只适合拍照。' }
+                ],
+                revisions: [
+                    { time: '2026-10-05 22:15', note: '首次建档，贴上踩雷预警标签' }
+                ]
+            }
+        ];
+
+        let records = JSON.parse(JSON.stringify(INITIAL_RECORDS));
+        let activeFilter = 'all';
+        let currentDetailId = null;
+
+        // ==================== 3. 贴纸样式映射工具函数 ====================
+        function getVerdictSticker(verdict) {
+            switch (verdict) {
+                case '惊艳':
+                    return { bg: 'bg-butter text-ink', emoji: '🤩', text: '惊艳必点' };
+                case '推荐':
+                    return { bg: 'bg-mint text-ink', emoji: '👍', text: '值得推荐' };
+                case '一般':
+                    return { bg: 'bg-paper text-ink', emoji: '😐', text: '中规中矩' };
+                case '踩雷':
+                    return { bg: 'bg-popRed text-white', emoji: '💣', text: '踩雷快跑' };
+                default:
+                    return { bg: 'bg-butter text-ink', emoji: '👍', text: verdict };
+            }
+        }
+
+        function getRatingBadgeStyle(rating) {
+            if (rating >= 4.6) return { bg: 'bg-butter text-ink', label: '👑 封神必吃' };
+            if (rating >= 4.0) return { bg: 'bg-mint text-ink', label: '👍 值得二刷' };
+            if (rating >= 3.2) return { bg: 'bg-peach text-ink', label: '😐 普通便餐' };
+            return { bg: 'bg-popRed text-white', label: '💣 踩雷预警' };
+        }
+
+        // ==================== 4. 渲染首页探店手账列表 ====================
+        function renderHomeList() {
+            // 更新顶部集点卡统计
+            const total = records.length;
+            const avg = total ? (records.reduce((s, r) => s + Number(r.rating), 0) / total).toFixed(1) : '0.0';
+            const dishCount = records.reduce((s, r) => s + (r.dishes ? r.dishes.length : 0), 0);
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-avg').textContent = avg;
+            document.getElementById('stat-dishes').textContent = dishCount;
+
+            const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+            const listEl = document.getElementById('records-list');
+
+            const filtered = records.filter(r => {
+                if (activeFilter === 'god' && r.rating < 4.6) return false;
+                if (activeFilter === 'edited' && (!r.revisions || r.revisions.length <= 1)) return false;
+                if (activeFilter === 'bomb' && r.rating >= 3.5) return false;
+
+                if (!query) return true;
+                const hitMain = r.name.toLowerCase().includes(query) ||
+                                r.address.toLowerCase().includes(query) ||
+                                r.review.toLowerCase().includes(query);
+                const hitDish = r.dishes.some(d => d.name.toLowerCase().includes(query) || d.comment.toLowerCase().includes(query));
+                return hitMain || hitDish;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-white brutal-box rounded-2xl p-6 text-center my-4">
+                        <div class="text-3xl mb-2">🍽️</div>
+                        <div class="text-sm font-black text-ink">手账本里还没有匹配的记录哦</div>
+                        <p class="text-xs font-bold text-neutral-500 mt-1">点击右上角「+ 记一笔」贴上你的第一张美食档案吧！</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map((r, index) => {
+                const badge = getRatingBadgeStyle(r.rating);
+                const isEdited = r.revisions && r.revisions.length > 1;
+                const tiltClass = index % 2 === 0 ? '-rotate-1' : 'rotate-1';
+
+                return `
+                    <div onclick="openReceiptDetail('${r.id}')" class="bg-white brutal-box rounded-2xl p-3.5 cursor-pointer hover:-translate-y-0.5 transition relative">
+                        
+                        <!-- 顶部：日期胶囊 + 修改印章 + 模切评分贴纸 -->
+                        <div class="flex items-start justify-between gap-2 mb-1.5">
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="px-2 py-0.5 rounded-md bg-paper border-2 border-ink font-mono text-[10px] font-bold text-ink">
+                                    📅 ${r.date}
+                                </span>
+                                <span class="px-2 py-0.5 rounded-md ${badge.bg} border-2 border-ink text-[10px] font-black">
+                                    ${badge.label}
+                                </span>
+                                ${isEdited ? `<span class="px-1.5 py-0.2 rounded bg-bubble text-ink border-2 border-ink text-[10px] font-black">✏️ 已修订(${r.revisions.length})</span>` : ''}
+                            </div>
+
+                            <!-- 模切价签评分 -->
+                            <div class="px-2.5 py-1 rounded-xl ${badge.bg} die-cut-sticker font-mono font-black text-xs shrink-0 ${tiltClass}">
+                                ${Number(r.rating).toFixed(1)} ★
+                            </div>
+                        </div>
+
+                        <!-- 餐厅名称 -->
+                        <h3 class="text-base font-black text-ink leading-snug mb-1">${escapeHtml(r.name)}</h3>
+
+                        <!-- 餐厅地址定位 -->
+                        <div class="flex items-center gap-1 text-[11px] font-bold text-neutral-600 mb-2">
+                            <span class="px-1.5 py-0.2 bg-klein text-white rounded border border-ink text-[9px] font-black shrink-0">📍 地址</span>
+                            <span class="truncate">${escapeHtml(r.address)}</span>
+                        </div>
+
+                        <!-- 餐厅总体评价便签框 -->
+                        <div class="bg-cream border-2 border-ink rounded-xl p-2.5 text-xs font-bold text-ink leading-relaxed mb-2.5">
+                            “${escapeHtml(r.review)}”
+                        </div>
+
+                        <!-- 菜品名称与评价贴纸预览 -->
+                        <div class="pt-2 border-t-2 border-dashed border-ink">
+                            <div class="flex items-center justify-between text-[10px] font-black text-neutral-500 mb-1.5">
+                                <span>🍽️ 已测评菜品 (${r.dishes.length}道)</span>
+                                <span class="text-ink underline">撕开小票详情 →</span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5">
+                                ${r.dishes.map(d => {
+                                    const st = getVerdictSticker(d.verdict);
+                                    return `
+                                        <span class="px-2 py-0.5 rounded-lg ${st.bg} border-2 border-ink text-[10px] font-black flex items-center gap-1 shadow-[1.5px_1.5px_0px_#111]">
+                                            <span>${st.emoji}</span>
+                                            <span>${escapeHtml(d.name)}</span>
+                                        </span>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== 5. 渲染复古锯齿小票详情页 (含菜品评价与修改记录溯源) ====================
+        function openReceiptDetail(id) {
+            const item = records.find(r => r.id === id);
+            if (!item) return;
+            currentDetailId = id;
+
+            document.getElementById('detail-edit-trigger').onclick = () => openEditor(item.id);
+
+            const badge = getRatingBadgeStyle(item.rating);
+            const isEdited = item.revisions && item.revisions.length > 1;
+            const container = document.getElementById('receipt-detail-container');
+
+            container.innerHTML = `
+                <!-- 复古锯齿热敏小票卡片 -->
+                <div class="drop-shadow-[5px_5px_0px_rgba(17,17,17,1)]">
+                    <!-- 顶部锯齿 -->
+                    <div class="receipt-jagged-top"></div>
+
+                    <!-- 小票白纸主体 -->
+                    <div class="bg-white border-x-3 border-ink px-4 py-3 relative">
+                        
+                        <!-- 已修订红色印章水印 -->
+                        ${isEdited ? `
+                            <div class="stamp-badge absolute right-4 top-16 px-2 py-0.5 font-mono text-[10px] font-black uppercase pointer-events-none">
+                                REVISED · 已修订 ${item.revisions.length} 次
+                            </div>
+                        ` : ''}
+
+                        <!-- 小票抬头 -->
+                        <div class="text-center border-b-2 border-dashed border-ink pb-3 mb-3">
+                            <div class="text-[10px] font-mono font-bold text-neutral-500">BITE! GASTRONOMY RECEIPT</div>
+                            <h2 class="text-lg font-black text-ink mt-0.5">${escapeHtml(item.name)}</h2>
+                            <div class="inline-flex items-center gap-2 mt-2">
+                                <span class="px-2.5 py-0.5 rounded-full ${badge.bg} border-2 border-ink text-xs font-black shadow-[2px_2px_0px_#111]">
+                                    综合评分: ${Number(item.rating).toFixed(1)} ★
+                                </span>
+                                <span class="px-2 py-0.5 rounded-full bg-paper border-2 border-ink font-mono text-xs font-bold">
+                                    📅 ${item.date}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 餐厅地址栏 -->
+                        <div class="bg-cream border-2 border-ink rounded-xl p-2.5 mb-3 flex items-start gap-2">
+                            <span class="px-2 py-0.5 bg-klein text-white border border-ink rounded text-[10px] font-black shrink-0 mt-0.5">📍 地址</span>
+                            <div class="text-xs font-bold text-ink leading-snug">${escapeHtml(item.address)}</div>
+                        </div>
+
+                        <!-- 餐厅总体评价 -->
+                        <div class="mb-3.5 pb-3 border-b-2 border-dashed border-ink">
+                            <div class="text-[10px] font-mono font-bold text-neutral-500 uppercase mb-1">01 // 餐厅综合评价 OVERALL REVIEW</div>
+                            <p class="text-xs font-bold text-ink leading-relaxed bg-butter/25 p-2.5 rounded-xl border-2 border-ink">
+                                “${escapeHtml(item.review)}”
+                            </p>
+                        </div>
+
+                        <!-- 菜品名称 & 菜品评价明细清单 -->
+                        <div class="mb-3.5 pb-3 border-b-2 border-dashed border-ink">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-mono font-bold text-neutral-500 uppercase">02 // 菜品测评清单 DISH LOGS</span>
+                                <span class="text-[11px] font-black text-ink">共 ${item.dishes.length} 道菜</span>
+                            </div>
+
+                            <div class="space-y-2.5">
+                                ${item.dishes.map((dish, idx) => {
+                                    const st = getVerdictSticker(dish.verdict);
+                                    return `
+                                        <div class="bg-cream border-2 border-ink rounded-xl p-2.5 shadow-[2px_2px_0px_#111]">
+                                            <div class="flex items-center justify-between gap-2 mb-1">
+                                                <div class="flex items-center gap-1.5">
+                                                    <span class="w-5 h-5 rounded bg-ink text-butter font-mono text-[10px] font-bold flex items-center justify-center">0${idx + 1}</span>
+                                                    <h4 class="text-xs font-black text-ink">${escapeHtml(dish.name)}</h4>
+                                                </div>
+                                                <span class="px-2 py-0.5 rounded-md ${st.bg} border-2 border-ink text-[10px] font-black shrink-0">
+                                                    ${st.emoji} ${st.text}
+                                                </span>
+                                            </div>
+                                            <p class="text-xs font-bold text-neutral-700 pl-6 leading-snug">
+                                                点评：${escapeHtml(dish.comment)}
+                                            </p>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 修改记录历史溯源 (Revision Log) -->
+                        <div class="mb-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-mono font-bold text-neutral-500 uppercase">03 // 档案修改记录 REVISION HISTORY</span>
+                                <span class="px-1.5 py-0.2 bg-bubble/40 border border-ink rounded text-[10px] font-black">${item.revisions.length} 条记录</span>
+                            </div>
+                            <div class="space-y-1.5 pl-2.5 border-l-2 border-ink">
+                                ${item.revisions.map((rev, rIdx) => `
+                                    <div class="text-[11px] bg-paper border border-ink rounded-lg p-2">
+                                        <div class="flex items-center justify-between font-mono text-[10px] font-bold text-neutral-600">
+                                            <span>${rIdx === 0 ? '⚡ 最新状态' : '🕒 历史版本'}</span>
+                                            <span>${rev.time}</span>
+                                        </div>
+                                        <div class="font-bold text-ink mt-0.5">${escapeHtml(rev.note)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- 底部条形码装饰 -->
+                        <div class="pt-2 text-center">
+                            <div class="h-6 w-full bg-[repeating-linear-gradient(90deg,#111,#111_2px,transparent_2px,transparent_5px)]"></div>
+                            <div class="font-mono text-[10px] font-bold text-neutral-500 mt-1">BITE-LOG-ID: ${item.id.toUpperCase()}</div>
+                        </div>
+                    </div>
+
+                    <!-- 底部锯齿 -->
+                    <div class="receipt-jagged-bottom"></div>
+                </div>
+
+                <!-- 底部操作按钮：修改记录 / 删除档案 -->
+                <div class="grid grid-cols-2 gap-3 pt-1 pb-6">
+                    <button onclick="openEditor('${item.id}')" class="brutal-btn py-2.5 rounded-xl bg-butter text-ink font-black text-xs flex items-center justify-center gap-1">
+                        ✏️ 修改此探店记录
+                    </button>
+                    <button onclick="deleteRecord('${item.id}')" class="brutal-btn py-2.5 rounded-xl bg-popRed text-white font-black text-xs flex items-center justify-center gap-1">
+                        🗑️ 撕掉这张小票
+                    </button>
+                </div>
+            `;
+
+            switchScreen('detail');
+        }
+
+        // ==================== 6. 新增 / 修改记录表单逻辑 ====================
+        function openEditor(editId = null) {
+            const dishContainer = document.getElementById('editor-dishes-list');
+            dishContainer.innerHTML = '';
+            const revBox = document.getElementById('revision-note-box');
+
+            if (editId) {
+                const item = records.find(r => r.id === editId);
+                if (!item) return;
+                document.getElementById('editor-header-title').textContent = '✏️ 修改探店档案';
+                document.getElementById('edit-record-id').value = item.id;
+                document.getElementById('field-name').value = item.name;
+                document.getElementById('field-date').value = item.date;
+                document.getElementById('field-rating').value = item.rating;
+                updateEditorRating(item.rating);
+                document.getElementById('field-address').value = item.address;
+                document.getElementById('field-review').value = item.review;
+                document.getElementById('field-revision-note').value = '';
+                revBox.classList.remove('hidden');
+
+                item.dishes.forEach(d => appendDishEditorRow(d.name, d.verdict, d.comment));
+            } else {
+                document.getElementById('editor-header-title').textContent = '✨ 贴一张新探店档案';
+                document.getElementById('edit-record-id').value = '';
+                document.getElementById('field-name').value = '';
+                document.getElementById('field-date').value = '2026-11-02';
+                document.getElementById('field-rating').value = 4.8;
+                updateEditorRating(4.8);
+                document.getElementById('field-address').value = '';
+                document.getElementById('field-review').value = '';
+                revBox.classList.add('hidden');
+
+                appendDishEditorRow('招牌脆皮烤鸡', '惊艳', '外皮酥脆爆汁，蘸辣椒粉绝了！');
+                appendDishEditorRow('', '推荐', '');
+            }
+
+            switchScreen('editor');
+        }
+
+        function appendDishEditorRow(name = '', verdict = '惊艳', comment = '') {
+            const container = document.getElementById('editor-dishes-list');
+            const row = document.createElement('div');
+            row.className = 'dish-editor-row bg-white border-2 border-ink rounded-xl p-2.5 space-y-2 shadow-[2px_2px_0px_#111]';
+            row.innerHTML = `
+                <div class="flex items-center gap-1.5">
+                    <input type="text" placeholder="菜品名称 (如: 招牌卤肉饭)" value="${escapeHtml(name)}" class="dish-name-inp flex-1 bg-cream border-2 border-ink rounded-lg px-2 py-1 text-xs font-bold text-ink outline-none">
+                    <select class="dish-verdict-inp bg-butter border-2 border-ink rounded-lg px-1.5 py-1 text-xs font-black text-ink outline-none">
+                        <option value="惊艳" ${verdict === '惊艳' ? 'selected' : ''}>🤩 惊艳</option>
+                        <option value="推荐" ${verdict === '推荐' ? 'selected' : ''}>👍 推荐</option>
+                        <option value="一般" ${verdict === '一般' ? 'selected' : ''}>😐 一般</option>
+                        <option value="踩雷" ${verdict === '踩雷' ? 'selected' : ''}>💣 踩雷</option>
+                    </select>
+                    <button type="button" onclick="this.closest('.dish-editor-row').remove()" class="w-7 h-7 rounded-lg bg-popRed text-white border-2 border-ink font-black text-xs flex items-center justify-center">
+                        ×
+                    </button>
+                </div>
+                <input type="text" placeholder="这道菜味道如何？填写菜品评价..." value="${escapeHtml(comment)}" class="dish-comment-inp w-full bg-cream border-2 border-ink rounded-lg px-2 py-1 text-xs font-bold text-ink outline-none">
+            `;
+            container.appendChild(row);
+        }
+
+        function saveRecordForm() {
+            const editId = document.getElementById('edit-record-id').value;
+            const name = document.getElementById('field-name').value.trim();
+            const date = document.getElementById('field-date').value || '2026-11-02';
+            const rating = parseFloat(document.getElementById('field-rating').value) || 4.5;
+            const address = document.getElementById('field-address').value.trim() || '未填写具体门牌地址';
+            const review = document.getElementById('field-review').value.trim() || '味道不错，先记一笔！';
+            const customRevNote = document.getElementById('field-revision-note').value.trim();
+
+            if (!name) {
+                showBrutalToast('⚠️ 请先输入餐厅名称哦！');
+                return;
+            }
+
+            const dishRows = document.querySelectorAll('.dish-editor-row');
+            const dishes = [];
+            dishRows.forEach(r => {
+                const dName = r.querySelector('.dish-name-inp').value.trim();
+                const dVerdict = r.querySelector('.dish-verdict-inp').value;
+                const dComment = r.querySelector('.dish-comment-inp').value.trim() || '出品稳定，值得打卡。';
+                if (dName) {
+                    dishes.push({ name: dName, verdict: dVerdict, comment: dComment });
+                }
+            });
+
+            if (dishes.length === 0) {
+                dishes.push({ name: '店内主打招牌菜', verdict: '推荐', comment: '味道在线' });
+            }
+
+            const nowTime = '2026-11-02 ' + new Date().toTimeString().slice(0, 5);
+
+            if (editId) {
+                const idx = records.findIndex(r => r.id === editId);
+                if (idx > -1) {
+                    const oldRating = records[idx].rating;
+                    const autoNote = customRevNote || `修改了档案内容（当前评分 ${rating.toFixed(1)}★，共收录 ${dishes.length} 道菜品）`;
+                    records[idx] = {
+                        ...records[idx],
+                        name,
+                        date,
+                        rating,
+                        address,
+                        review,
+                        dishes,
+                        revisions: [
+                            { time: nowTime, note: autoNote },
+                            ...(records[idx].revisions || [])
+                        ]
+                    };
+                }
+                renderHomeList();
+                openReceiptDetail(editId);
+                showBrutalToast('✅ 修改成功！已自动记入小票修订历史');
+            } else {
+                const newId = 'rec-' + Date.now();
+                records.unshift({
+                    id: newId,
+                    name,
+                    date,
+                    rating,
+                    address,
+                    review,
+                    dishes,
+                    revisions: [
+                        { time: nowTime, note: '首次建档记录探店体验' }
+                    ]
+                });
+                renderHomeList();
+                switchScreen('home');
+                showBrutalToast('🎉 新探店贴纸已贴入手账本！');
+            }
+        }
+
+        function deleteRecord(id) {
+            records = records.filter(r => r.id !== id);
+            renderHomeList();
+            switchScreen('home');
+            showBrutalToast('🗑️ 已撕掉该张探店小票');
+        }
+
+        function fillMockLocation() {
+            const spots = [
+                '上海市徐汇区安福路 198 号街角洋房 1F',
+                '北京市朝阳区三里屯太古里北区 B1-22',
+                '成都市锦江区镋钯街 66 号复古社区店',
+                '深圳市南山区华侨城创意文化园北区 A4 栋'
+            ];
+            document.getElementById('field-address').value = spots[Math.floor(Math.random() * spots.length)];
+            showBrutalToast('📍 已自动填入当前街头坐标！');
+        }
+
+        function updateEditorRating(val) {
+            document.getElementById('field-rating-badge').textContent = Number(val).toFixed(1) + ' ★';
+        }
+
+        // ==================== 7. 渲染 8 款潮流贴纸风应用图标选择器 ====================
+        function renderStickerIcons() {
+            const currentIcon = STICKER_ICONS.find(i => i.id === selectedIconId) || STICKER_ICONS[0];
+
+            // 更新顶部与手机内小图标
+            const headerIconEl = document.getElementById('header-app-icon');
+            headerIconEl.className = `w-14 h-14 rounded-2xl ${currentIcon.bg} die-cut-sticker flex items-center justify-center cursor-pointer -rotate-3 hover:rotate-0 transition shrink-0`;
+            headerIconEl.innerHTML = currentIcon.svg;
+
+            const phoneMiniEl = document.getElementById('phone-mini-icon');
+            phoneMiniEl.className = `w-9 h-9 rounded-xl ${currentIcon.bg} brutal-box-sm flex items-center justify-center -rotate-3`;
+            phoneMiniEl.innerHTML = currentIcon.svg;
+
+            // 渲染右侧快速选择栏
+            const miniGrid = document.getElementById('mini-icon-selector');
+            miniGrid.innerHTML = STICKER_ICONS.map((ic, idx) => `
+                <button onclick="selectAppIcon('${ic.id}')" class="group flex flex-col items-center gap-1">
+                    <div class="w-14 h-14 rounded-2xl ${ic.bg} ${ic.id === selectedIconId ? 'die-cut-sticker -translate-y-1' : 'brutal-box-sm opacity-90 hover:opacity-100'} flex items-center justify-center transition">
+                        ${ic.svg}
+                    </div>
+                    <span class="text-[10px] font-black ${ic.id === selectedIconId ? 'bg-ink text-butter px-1.5 rounded' : 'text-neutral-600'}">V${idx + 1}</span>
+                </button>
+            `).join('');
+
+            // 渲染图标专页大图网格
+            const fullGrid = document.getElementById('full-icons-grid');
+            fullGrid.innerHTML = STICKER_ICONS.map((ic) => {
+                const isSelected = ic.id === selectedIconId;
+                return `
+                    <div onclick="selectAppIcon('${ic.id}')" class="bg-white brutal-box rounded-3xl p-5 flex flex-col items-center text-center cursor-pointer hover:-translate-y-1 transition relative ${isSelected ? 'ring-4 ring-popRed' : ''}">
+                        ${isSelected ? `<span class="absolute top-3 right-3 px-2 py-0.5 bg-ink text-butter font-mono text-[10px] font-black rounded-full">当前使用中</span>` : ''}
+                        <div class="w-28 h-28 rounded-[28px] ${ic.bg} die-cut-sticker flex items-center justify-center mb-4 -rotate-2 hover:rotate-2 transition">
+                            ${ic.svg}
+                        </div>
+                        <h4 class="text-sm font-black text-ink">${ic.name}</h4>
+                        <p class="text-xs font-bold text-neutral-600 mt-1 leading-relaxed">${ic.desc}</p>
+                        <span class="mt-3 px-3 py-1 rounded-xl ${isSelected ? 'bg-butter' : 'bg-paper'} border-2 border-ink text-xs font-black">
+                            ${isSelected ? '✓ 已应用到原型' : '点击试用此图标'}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectAppIcon(id) {
+            selectedIconId = id;
+            renderStickerIcons();
+            const found = STICKER_ICONS.find(i => i.id === id);
+            if (found) showBrutalToast(`🎨 已更换图标为：${found.name}`);
+        }
+
+        // ==================== 8. 视图切换与交互控制 ====================
+        function setFilter(type) {
+            activeFilter = type;
+            const styles = {
+                all: 'bg-butter text-ink',
+                god: 'bg-butter text-ink',
+                edited: 'bg-mint text-ink',
+                bomb: 'bg-popRed text-white'
+            };
+            ['all', 'god', 'edited', 'bomb'].forEach(t => {
+                const btn = document.getElementById('chip-' + t);
+                if (t === type) {
+                    btn.className = 'brutal-btn px-2.5 py-1 rounded-full text-[11px] font-black bg-ink text-butter shrink-0';
+                } else {
+                    btn.className = `brutal-btn px-2.5 py-1 rounded-full text-[11px] font-black ${styles[t]} shrink-0`;
+                }
+            });
+            renderHomeList();
+        }
+
+        function switchScreen(screen) {
+            ['home', 'detail', 'editor'].forEach(s => {
+                document.getElementById('screen-' + s).classList.add('hidden');
+            });
+            document.getElementById('screen-' + screen).classList.remove('hidden');
+        }
+
+        function switchViewMode(mode) {
+            ['prototype', 'allscreens', 'icons'].forEach(m => {
+                document.getElementById('view-' + m).classList.add('hidden');
+            });
+            document.getElementById('view-' + mode).classList.remove('hidden');
+
+            const btnMap = {
+                prototype: 'bg-butter text-ink',
+                allscreens: 'bg-butter text-ink',
+                icons: 'bg-butter text-ink'
+            };
+            ['prototype', 'allscreens', 'icons'].forEach(m => {
+                const b = document.getElementById('modeBtn-' + m);
+                if (m === mode) {
+                    b.className = 'brutal-btn px-3.5 py-2 rounded-xl text-xs font-black bg-ink text-butter flex items-center gap-1.5';
+                } else {
+                    b.className = 'brutal-btn px-3.5 py-2 rounded-xl text-xs font-black bg-white text-ink flex items-center gap-1.5';
+                }
+            });
+        }
+
+        function resetAllRecords() {
+            records = JSON.parse(JSON.stringify(INITIAL_RECORDS));
+            setFilter('all');
+            switchScreen('home');
+            showBrutalToast('🔄 已恢复初始探店手账数据！');
+        }
+
+        let toastTimeout = null;
+        function showBrutalToast(msg) {
+            const el = document.getElementById('brutal-toast');
+            el.textContent = msg;
+            el.classList.remove('opacity-0');
+            el.classList.add('opacity-100');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                el.classList.remove('opacity-100');
+                el.classList.add('opacity-0');
+            }, 2400);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        window.onload = () => {
+            renderStickerIcons();
+            renderHomeList();
+        };
+    </script>
+</body>
+</html>
