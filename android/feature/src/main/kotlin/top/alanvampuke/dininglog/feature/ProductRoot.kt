@@ -209,7 +209,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 val TabIconFilled = SemanticsPropertyKey<Boolean>("TabIconFilled")
 @Composable fun BottomTabs(selectedRoute: String?, onAdd: (() -> Unit)? = null, onSelect: (String) -> Unit) {
     val c = LocalQuietGridColors.current
-    NavigationBar(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).border(2.5.dp, c.border, RoundedCornerShape(16.dp)).heightIn(min = if (LocalDensity.current.fontScale > 1.3f) 112.dp else 64.dp),
+    NavigationBar(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp).border(2.5.dp, c.border, RoundedCornerShape(16.dp)).height((if (LocalDensity.current.fontScale > 1.3f) 112.dp else 64.dp) + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()),
         containerColor = c.surface, tonalElevation = 0.dp, windowInsets = WindowInsets.navigationBars) {
         listOf("restaurants" to "餐厅", "visits" to "到店", "settings" to "我的").forEach { (id, title) ->
             if (id == "visits" && onAdd != null) Box(Modifier.width(56.dp).heightIn(min = 64.dp), contentAlignment = Alignment.Center) {

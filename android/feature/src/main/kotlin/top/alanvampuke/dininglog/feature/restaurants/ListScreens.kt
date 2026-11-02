@@ -44,7 +44,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     var menu by remember { mutableStateOf(false) }
     ScreenFrame(tag, bottomBar) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("record-list"), state = listState,
-            contentPadding = PaddingValues(horizontal = QuietGridDimensions.edge, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            contentPadding = PaddingValues(horizontal = QuietGridDimensions.edge, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             item {
                 if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && state.query.deleted != DeletedFilter.ONLY) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -66,8 +66,8 @@ import top.alanvampuke.dininglog.feature.theme.*
             }
             if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && !isSearch && state.query.deleted != DeletedFilter.ONLY) item { LoadedStats(state.items) }
             item {
-                BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
-                    RecordKind.RESTAURANT -> "搜索餐厅、菜品、评价、备注"
+                BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().then(if (LocalDensity.current.fontScale <= 1.3f) Modifier.height(56.dp) else Modifier).testTag("search"), label = { GridText(when (kind) {
+                    RecordKind.RESTAURANT -> "搜索店名、菜品或评价"
                     RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
                 }) }, textStyle = QuietGridText.input, singleLine = true,
                     leadingIcon = { Icon(QuietGridIcons.search, "搜索", tint = LocalQuietGridColors.current.ink) })
@@ -139,7 +139,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     val stats = listOf("已加载" to "${records.size} 家", "已加载均分" to
         (if (rated.isEmpty()) "未评分" else String.format(java.util.Locale.ROOT, "%.1f", rated.average() / 10)),
         "已加载菜品" to (if (counts.any { it == null }) "未提供" else "${counts.filterNotNull().sum()} 道"))
-    Row(Modifier.fillMaxWidth().brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         stats.forEachIndexed { index, (label, value) ->
             if (index > 0) Box(Modifier.width(2.dp).height(28.dp).background(c.border))
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -155,7 +155,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     val history = record.ref.kind == RecordKind.REVISION
     val outside = if (history) Modifier.revisionRail(c.border).padding(start = 16.dp) else Modifier
     Column(Modifier.fillMaxWidth().then(outside).rotate(tilt).brutalBox(c.surface, c.border, c.shadow)
-        .heightIn(min = 48.dp).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(10.dp),
+        .heightIn(min = 48.dp).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (large) {
             if (number != null) Sticker("%02d".format(number), c.butter)
