@@ -28,6 +28,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -55,6 +56,7 @@ class P8VisualTest {
     private val rows = (1..20).map { RecordSummary(ref.copy(id = "p8-$it"), "餐厅 $it", 1, record.updatedAt) }
     private val release = AppRelease(BuildConfig.VERSION_CODE + 1, "下一版本", "https://github.com/vampuke/dining-log/releases/download/v8/app-release.apk",
         "0".repeat(64), "新的交互与视觉修正", 1793620800)
+    private val fieldError = "请填写名称，保存前检查输入内容"
 
     @Test fun eightEvidenceScreensAndEveryListTailStayAboveTheFloatingCapsuleInBothThemes() {
         var dark by mutableStateOf(false)
@@ -223,23 +225,32 @@ class P8VisualTest {
             compose.runOnIdle { compose.activity.requestedOrientation = original; ViewCompat.requestApplyInsets(requireNotNull(composeView)) }
         }
     }
-    @Test fun emptyFocusedDisabledErrorAndMultilineFieldsUseLegibleRolesInBothThemes() {
+    @Test fun emptyFocusedDisabledErrorAndMultilineFieldsFitAt100And200PercentInBothThemes() {
         var dark by mutableStateOf(false)
+        var scale by mutableStateOf(1f)
         var enabled by mutableStateOf(true)
         var error by mutableStateOf(false)
         var lines by mutableStateOf(1)
         var value by mutableStateOf("")
         val idleFocus = FocusRequester()
-        compose.setContent { QuietGridTheme(dark) {
-            Column {
-                // Android 8 can refocus the sole focusable field after clearFocus.
-                Box(Modifier.size(1.dp).focusRequester(idleFocus).focusable())
-                FormField("name", value, { value = it }, enabled, if (error) "请填写名称" else null,
-                    label = "字段名称", minLines = lines)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, scale)) {
+                QuietGridTheme(dark) {
+                    Column(Modifier.requiredSize(360.dp, 640.dp).clipToBounds()
+                        .background(LocalQuietGridColors.current.bg).testTag("p8-viewport").padding(16.dp)) {
+                        // Android 8 can refocus the sole focusable field after clearFocus.
+                        Box(Modifier.size(1.dp).focusRequester(idleFocus).focusable())
+                        Box(Modifier.fillMaxWidth().testTag("field-container")) {
+                            FormField("name", value, { value = it }, enabled, if (error) fieldError else null,
+                                label = "字段名称", minLines = lines)
+                        }
+                    }
+                }
             }
-        } }
-        for (night in listOf(false, true)) for (active in listOf(true, false)) for (invalid in listOf(false, true)) for (minLines in listOf(1, 3)) {
-            compose.runOnIdle { dark = night; enabled = active; error = invalid; lines = minLines; value = "" }
+        }
+        for (night in listOf(false, true)) for (font in listOf(1f, 2f)) for (active in listOf(true, false))
+            for (invalid in listOf(false, true)) for (minLines in listOf(1, 3, 4)) {
+            compose.runOnIdle { dark = night; scale = font; enabled = active; error = invalid; lines = minLines; value = "" }
             // Apply the new field configuration before clearing any restored focus.
             compose.runOnIdle { idleFocus.requestFocus() }
             compose.onNodeWithTag("field:name").assert(SemanticsMatcher("field has no active focus") {
@@ -249,14 +260,60 @@ class P8VisualTest {
             assertFieldName("字段名称")
             compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.tertiary.toArgb()))
             compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.secondary.toArgb()))
+            assertFieldLayout(empty = true, invalid = invalid)
+            if (font == 2f && minLines == 4) {
+                save("p9-${if (night) "dark" else "light"}-field-font200-${if (active) "enabled" else "disabled"}-${if (invalid) "error" else "normal"}-multiline", false)
+            }
             if (active) {
                 compose.onNodeWithTag("field:name").performTextReplacement("兰巴赫")
                 compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assertDoesNotExist()
                 compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.ink.toArgb()))
             } else compose.onNodeWithTag("field:name").assertIsNotEnabled()
-            compose.runOnIdle { value = "已填内容" }
+            compose.runOnIdle { value = "已填内容"; idleFocus.requestFocus() }
             assertFieldName("字段名称")
+            assertFieldLayout(empty = false, invalid = invalid)
         }
+    }
+    private fun assertFieldLayout(empty: Boolean, invalid: Boolean) {
+        val field = compose.onNodeWithTag("field:name")
+        val fieldBounds = field.getUnclippedBoundsInRoot()
+        val parent = compose.onNodeWithTag("field-container").getUnclippedBoundsInRoot()
+        val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
+        assertContained("field", fieldBounds, parent)
+        assertContained("field container", parent, viewport)
+        assertTextFits(field, "editable text")
+        val label = compose.onNodeWithText("字段名称", useUnmergedTree = true)
+        val labelBounds = label.getUnclippedBoundsInRoot()
+        assertTextFits(label, "label")
+        assertContained("label", labelBounds, parent)
+        assertTrue("label must end above the input box", labelBounds.bottom <= fieldBounds.top)
+        val placeholder = compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true)
+        val placeholderBounds = if (empty) {
+            assertTextFits(placeholder, "placeholder")
+            placeholder.getUnclippedBoundsInRoot().also { assertContained("placeholder", it, fieldBounds) }
+        } else {
+            placeholder.assertDoesNotExist()
+            null
+        }
+        val error = compose.onNodeWithText(fieldError, useUnmergedTree = true)
+        if (invalid) {
+            assertTextFits(error, "supporting error")
+            val errorBounds = error.getUnclippedBoundsInRoot()
+            assertContained("supporting error", errorBounds, fieldBounds)
+            if (placeholderBounds != null) assertTrue("placeholder must not overlap supporting error", placeholderBounds.bottom <= errorBounds.top)
+        } else error.assertDoesNotExist()
+    }
+    private fun assertTextFits(node: SemanticsNodeInteraction, description: String) {
+        node.assertIsDisplayed()
+        val layouts = mutableListOf<TextLayoutResult>()
+        node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertTrue("$description must expose its rendered text layout", layouts.isNotEmpty())
+        layouts.forEach { assertFalse("$description must not overflow: ${it.layoutInput.text}", it.hasVisualOverflow) }
+    }
+    private fun assertContained(description: String, bounds: DpRect, parent: DpRect) {
+        assertTrue("$description must not be clipped by its parent: $bounds inside $parent",
+            bounds.left >= parent.left - 1.dp && bounds.top >= parent.top - 1.dp &&
+                bounds.right <= parent.right + 1.dp && bounds.bottom <= parent.bottom + 1.dp)
     }
     private fun assertFieldName(label: String) {
         val name = SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(label))
