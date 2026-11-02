@@ -160,10 +160,10 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
     val focused by source.collectIsFocusedAsState()
     val labelColor = when { isError -> c.danger; !enabled -> c.secondary; focused -> c.ink; else -> c.secondary }
     // Always keep the label above the box. Material's collapsed empty label hides placeholders.
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null) CompositionLocalProvider(LocalContentColor provides labelColor, LocalFieldForeground provides labelColor) { label() }
         OutlinedTextField(value, onValueChange,
-            Modifier.fillMaxWidth().border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
+            modifier.fillMaxWidth().border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
             enabled = enabled, interactionSource = source, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
             placeholder = {
                 CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {

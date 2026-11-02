@@ -203,4 +203,13 @@ class ProductViewModelTest {
         assertEquals(listOf("rating_tenths"), repo.submitted.last().applyFields)
         assertEquals("43", repo.submitted.last().localFields["rating_tenths"])
     } }
+    @Test fun legacyVisitTabFallsBackToRestaurantsAndSelectionStoresOnlySupportedTabs() = runTest { fixture { _, repo, account, security ->
+        val saved = androidx.lifecycle.SavedStateHandle(mapOf("tab" to "visits"))
+        val restored = ProductViewModel("A", repo, security, account, saved)
+        assertEquals("restaurants", restored.restoredTab)
+        restored.selectTab("visits"); assertEquals("restaurants", saved.get<String>("tab"))
+        restored.selectTab("settings"); assertEquals("settings", saved.get<String>("tab"))
+        assertNull(restored.editor.value.input)
+    } }
+
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -16,6 +17,7 @@ import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.*
 import top.alanvampuke.dininglog.feature.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun RecordDetailScreen(state: DetailUiState, onBack: () -> Unit, onRefresh: () -> Unit,
     onEdit: (RecordSnapshot) -> Unit, onDelete: (RecordSnapshot) -> Unit, onRestore: (RecordSnapshot) -> Unit,
     onHistory: (RecordSnapshot) -> Unit, dishes: CachedPage = CachedPage(), visits: CachedPage = CachedPage(),
@@ -26,7 +28,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmRestore by remember { mutableStateOf(false) }
     ScreenFrame("screen:detail", bottomBar, floatingBottomBar = true) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("detail-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize().padding(listViewportPadding(padding))) {
+        LazyColumn(Modifier.fillMaxSize().testTag("detail-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { PageHeader("探店小票", onBack) }
             item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
@@ -117,6 +120,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 }
             }
         }
+    }
     }
     if (record != null && confirmDelete) ConfirmAction("删除这条记录？", if (record.ref.kind == RecordKind.RESTAURANT) "餐厅删除后，菜品与到店将暂时不可用。可在回收站恢复餐厅。" else "记录将进入回收站，可在保留窗口内恢复。", "确认删除", { confirmDelete = false; onDelete(record) }, { confirmDelete = false })
     if (record != null && confirmRestore) ConfirmAction("恢复这条记录？", "将使用当前版本恢复；父餐厅需要处于可用状态。", "确认恢复", { confirmRestore = false; onRestore(record) }, { confirmRestore = false })

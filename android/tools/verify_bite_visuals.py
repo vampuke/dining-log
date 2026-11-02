@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure actual P7 tokens, validate vectors and preserve every existing UI tag."""
+"""Measure BITE tokens, validate vectors and verify P8 UI tag transitions."""
 from pathlib import Path
 import json
 import re
@@ -28,9 +28,8 @@ source = (FEATURE / 'kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt').
 navigation = (FEATURE / 'kotlin/top/alanvampuke/dininglog/feature/ProductRoot.kt').read_text()
 # Keep the original P6 bindings checked as well as their token contrast. A
 # passing palette must not hide a navigation control using a different role.
-for binding in ('selectedIconColor = c.accentInk', 'selectedTextColor = c.accentInk',
-                'indicatorColor = c.accentSoft', 'unselectedIconColor = c.secondary',
-                'unselectedTextColor = c.secondary'):
+for binding in ('val foreground = if (selected) c.accentInk else c.secondary',
+                'color = if (selected) c.accentSoft else c.surface', 'tint = foreground', 'color = foreground'):
     assert binding in navigation, binding
 measurements = {}
 for theme in ('Light', 'Dark'):
@@ -93,13 +92,18 @@ for res in (RES, FEATURE / 'res'):
 baseline = json.loads((ROOT / 'android/tools/p7_baseline.json').read_text())
 for relative, tags in baseline['testTags'].items():
     new_tags = set(re.findall(r'testTag\(("(?:[^"\\]|\\.)*"|tag)\)', (ROOT / relative).read_text()))
-    assert set(tags) <= new_tags, (relative, set(tags) - new_tags)
-for relative, expected in baseline['protectedHashes'].items():
+    removed = set(tags) - new_tags
+    allowed = {'"draft:${draft.id}"'} if relative.endswith('SettingsScreen.kt') else ({'"confirm-new-save"'} if relative.endswith('HistoryScreens.kt') else set())
+    assert removed <= allowed, (relative, removed)
+    if relative.endswith('SettingsScreen.kt'):
+        assert '未提交草稿' not in (ROOT / relative).read_text()
+
+protected_baseline = json.loads((ROOT / 'android/tools/p8_protected_hashes.json').read_text())
+for relative, expected in protected_baseline.items():
     assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
-protected = set(subprocess.check_output(['git', 'ls-files', 'backend', 'contracts', 'android/core', 'android/data',
-    'android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt'], cwd=ROOT, text=True).splitlines())
-assert protected == set(baseline['protectedHashes']), ('Protected files added or removed', protected ^ set(baseline['protectedHashes']))
-print('PASS contrast failures=0, native night colors, visible dark strokes/shadows, launcher bindings, vectors, tags, backend/contracts/core/data unchanged')
+protected = set(subprocess.check_output(['git', 'ls-files', 'backend', 'contracts'], cwd=ROOT, text=True).splitlines())
+assert protected == set(protected_baseline), ('Protected files added or removed', protected ^ set(protected_baseline))
+print('PASS contrast failures=0, native night colors, visible dark strokes/shadows, launcher bindings, vectors, tags, backend/contracts unchanged')
 if '--json' in __import__('sys').argv:
     dest = Path(__import__('sys').argv[-1]); dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(measurements, indent=2) + '\n')

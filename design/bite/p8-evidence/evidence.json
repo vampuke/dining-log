@@ -1,0 +1,85 @@
+{
+  "phase": "P8",
+  "base": "007a9c3",
+  "screenshots": {
+    "status": "pending CI instrumentation; no local emulator available",
+    "expected": [
+      "light-home.png",
+      "light-edit.png",
+      "light-detail.png",
+      "light-update.png",
+      "dark-home.png",
+      "dark-edit.png",
+      "dark-detail.png",
+      "dark-update.png"
+    ]
+  },
+  "sections": {
+    "A": {
+      "locations": [
+        "core/Writes.kt",
+        "data/local/ProductDatabase.kt",
+        "feature/ProductViewModel.kt",
+        "feature/restaurants/DetailEditScreens.kt",
+        "feature/revisions/HistoryScreens.kt",
+        "feature/settings/SettingsScreen.kt"
+      ],
+      "behavior": "Only memory holds unsubmitted input. Failure stays in the editor. Detail supports pull-to-refresh. Explicit migration removes obsolete table."
+    },
+    "B": {
+      "locations": [
+        "feature/components/BiteComponents.kt",
+        "feature/components/QuietGridComponents.kt"
+      ],
+      "behavior": "Label always above field; tertiary placeholder inside. Secondary/focus/error roles explicit, including disabled and multiline."
+    },
+    "C": {
+      "locations": [
+        "app/InAppUpdates.kt",
+        "app/UpdateDownloadService.kt",
+        "app/AndroidManifest.xml",
+        "app/res/xml/file_paths.xml",
+        "feature/settings/UpdateDialog.kt"
+      ],
+      "behavior": "Foreground service, cancel/progress/retry, HTTPS entry and redirect allowlist, re-fetch API metadata, SHA-256 before installation, permission return, system installer, download-page fallback."
+    },
+    "D": {
+      "locations": [
+        "feature/ProductRoot.kt",
+        "feature/components/QuietGridComponents.kt"
+      ],
+      "behavior": "Measured floating capsule, 20dp side margins, system navigation inset +16dp bottom, hard shadow. Equivalent scroll content padding. Hidden during IME to expose inputs."
+    },
+    "E": {
+      "locations": [
+        "feature/ProductRoot.kt",
+        "feature/ProductViewModel.kt",
+        "feature/restaurants/DetailEditScreens.kt"
+      ],
+      "behavior": "Restaurant/account tabs, centered nav-add creates restaurant from either tab. Legacy tab falls back. add-visit and visit-history remain reachable."
+    }
+  },
+  "checks": {
+    "backendMigrationHashes": {
+      "0001_initial.sql": "191d1a80a7411ba828effc9041fbd144fa4d10abb372f61c793a8f6dc1a5b80b",
+      "0002_address_optional.sql": "5cfdaf6ae11a0eb98f87c4a143cadb237f9baa4222ad0225aeffe250b21bc686"
+    },
+    "protectedPathsUnchanged": true,
+    "versionsUnchanged": true,
+    "noBitmapResourcesAdded": true,
+    "roomMigrationSql": "passed using populated exported v1 schema in sqlite3",
+    "runtimeAndManualScreenshotReview": "pending CI",
+    "searchExceptions": [
+      "obsolete table name in the required DROP migration, migration test and immutable Room v1 schema",
+      "historical design/task documents and P7 baseline contain descriptions of removed functionality"
+    ],
+    "tagChanges": {
+      "removedPersistenceEntries": "assert absence",
+      "base_snapshot": "assert absence; server_current retained and local_input replaces old local column",
+      "confirm-new-save": "removed with expired persistence retry dialog",
+      "tab:visits": "assert absence; visit-history replaces navigation entry",
+      "nav-add": "retained and centered; add retained in list header",
+      "add-visit": "retained"
+    }
+  }
+}
