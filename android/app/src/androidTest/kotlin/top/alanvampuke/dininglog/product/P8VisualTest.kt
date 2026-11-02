@@ -198,7 +198,8 @@ class P8VisualTest {
                 compose.waitUntil(10_000) {
                     val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
                     compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE &&
-                        composeView?.display?.rotation == rotation && viewport.width > viewport.height
+                        composeView?.display?.rotation == rotation &&
+                        viewport.right - viewport.left > viewport.bottom - viewport.top
                 }
                 for (night in listOf(false, true)) {
                     compose.runOnIdle { dark = night }
