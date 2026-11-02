@@ -167,7 +167,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
                 disabledLabelColor = LocalQuietGridColors.current.secondary, disabledSelectedContainerColor = LocalQuietGridColors.current.paper)) }
     }
 }
-@Composable fun SaveBar(enabled: Boolean, saving: Boolean, unknown: Boolean, onSave: () -> Unit, message: String? = null) {
+@Composable fun SaveBar(enabled: Boolean, saving: Boolean, onSave: () -> Unit, message: String? = null) {
     Surface(color = LocalQuietGridColors.current.surface, tonalElevation = 0.dp) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (message != null) Column(Modifier.heightIn(max = 112.dp).verticalScroll(rememberScrollState())) {
@@ -175,7 +175,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
             }
             BiteButton(onClick = onSave, enabled = enabled && !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("save"),
                 colors = ButtonDefaults.buttonColors(containerColor = LocalQuietGridColors.current.cta, contentColor = LocalQuietGridColors.current.onAccent)) {
-                Text(if (saving) "正在保存…" else if (unknown) "重试原请求，确认结果" else "保存")
+                Text(if (saving) "正在保存…" else "保存")
             }
         }
     }

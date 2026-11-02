@@ -47,7 +47,7 @@ class ProductVisualTest {
     private val ref = RecordRef(RecordKind.RESTAURANT, "visual-restaurant")
     private val snapshot = RecordSnapshot(ref, 1, mapOf("name" to "兰记川味小馆", "category" to "restaurant", "cuisine" to "川菜", "address" to "上海愚园路 123 号", "rating_tenths" to "43", "review" to "花椒香，鸡块酥脆。", "note" to "和朋友一起到店。"), "2026-11-01T08:00:00.000Z")
     private val summary = RecordSummary(ref, snapshot.title, 1, snapshot.updatedAt, snapshot.fields + ("address_excerpt" to "上海愚园路 123 号"), matches = listOf(MatchType.DISH, MatchType.REVIEW))
-    private val draft = SavedDraft("visual-account", "visual-draft", ref, WriteAction.UPDATE, snapshot, snapshot.editable + ("rating_tenths" to "46"))
+    private val input = SaveInput("visual-account", ref, WriteAction.UPDATE, snapshot, snapshot.editable + ("rating_tenths" to "46"))
     private val revision = RecordSnapshot(RecordRef(RecordKind.REVISION, "visual-revision", ref.id), 1,
         mapOf("entity_label" to snapshot.title, "entity_type" to "restaurant", "entity_id" to ref.id, "entity_version_before" to "1", "entity_version_after" to "2", "created_at" to snapshot.updatedAt, "note" to "再次到店后改分"), snapshot.updatedAt,
         diff = listOf(Change("rating_tenths", "40", "43"), Change("review", "原来的评价", "新评价，花椒香")))
@@ -62,15 +62,15 @@ class ProductVisualTest {
             when (screen) {
                 "list" -> listScreen(ListUiState(items = listOf(summary), localScope = false))
                 "detail" -> RecordDetailScreen(DetailUiState(CachedDetail(snapshot)), {}, {}, {}, {}, {}, {})
-                "edit" -> EditScreen(EditorUiState(draft), { _, _ -> }, {}, {}, {}, {})
+                "edit" -> EditScreen(EditorUiState(input), { _, _ -> }, {}, {}, {})
                 "search" -> listScreen(ListUiState(items = listOf(summary), query = ListQuery(query = "辣子鸡"), localScope = false))
                 "history" -> RevisionDetailScreen(DetailUiState(CachedDetail(revision)), {}, {}, {}, {}, {}, {})
                 "history-list" -> listScreen(ListUiState(items = listOf(RecordSummary(revision.ref, snapshot.title, 1, revision.updatedAt,
                     revision.fields, changedFields = listOf("rating_tenths"), cachedDiff = revision.diff)), query = ListQuery(RecordKind.REVISION, ref.id), localScope = false))
                 "visits" -> listScreen(ListUiState(items = listOf(RecordSummary(RecordRef(RecordKind.VISIT, "visual-visit", ref.id), "2026-11-01", 1, snapshot.updatedAt,
                     mapOf("restaurant_name" to snapshot.title, "dining_date" to "2026-11-01", "meal" to "dinner", "note_excerpt" to "同日第二次到店"))), query = ListQuery(RecordKind.VISIT), localScope = false))
-                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.DARK, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, {}, {})
-                "conflict" -> ConflictDialog(compareConflict(draft, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, {}, {})
+                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", ThemeChoice.DARK, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, {})
+                "conflict" -> ConflictDialog(compareConflict(input, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, {}, {})
             }
         } }
         for (night in listOf(false, true)) for (page in listOf("list", "detail", "edit", "search", "history", "history-list", "visits", "settings", "conflict")) {
@@ -130,7 +130,7 @@ class ProductVisualTest {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 QuietGridTheme(dark) {
                     SideEffect { applySystemBarTheme(compose.activity.window, dark) }
-                    EditScreen(EditorUiState(draft, message = message), { _, _ -> }, {}, { saveTaps++ }, {}, {})
+                    EditScreen(EditorUiState(input, message = message), { _, _ -> }, {}, { saveTaps++ }, {})
                 }
             }
         }
@@ -154,7 +154,7 @@ class ProductVisualTest {
     @Test fun lightKeyboardLeavesSaveAboveActualIme() { largeForm(false); assertKeyboard("light") }
     @Test fun darkKeyboardAt200PercentLeavesSaveAboveActualIme() { largeForm(true); assertKeyboard("dark") }
     @Test fun darkKeyboardAt200PercentWithLongSaveMessageKeepsButtonReachable() {
-        largeForm(true, "保存结果未知；草稿已保留，请用原请求重试确认结果。".repeat(4))
+        largeForm(true, "保存失败，请检查网络后重试。".repeat(4))
         assertKeyboard("dark")
     }
     @Test fun allThreeTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes() {
@@ -168,7 +168,7 @@ class ProductVisualTest {
                         "list" -> RecordListScreen(ListUiState(items = listOf(summary), localScope = false), "", ListFilters(), {}, {}, {}, {}, {}, bottomBar = tabs)
                         "detail" -> RecordDetailScreen(DetailUiState(CachedDetail(snapshot)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
                         "history" -> RevisionDetailScreen(DetailUiState(CachedDetail(revision)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
-                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", emptyList(), ThemeChoice.SYSTEM, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, {}, tabs)
+                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", ThemeChoice.SYSTEM, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, tabs)
                     }
                 }
             }
@@ -266,10 +266,10 @@ class ProductVisualTest {
     }
     @Test fun sameFieldConflictSaveIsDisabledUntilExplicitChoice() {
         var confirmations = 0
-        compose.setContent { QuietGridTheme(true) { ConflictDialog(compareConflict(draft, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, { confirmations++ }, {}) } }
-        compose.onNodeWithTag("base_snapshot").assertExists(); compose.onNodeWithTag("server_current").assertExists(); compose.onNodeWithTag("local_draft").assertExists()
+        compose.setContent { QuietGridTheme(true) { ConflictDialog(compareConflict(input, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, { confirmations++ }, {}) } }
+        compose.onNodeWithTag("base_snapshot").assertDoesNotExist(); compose.onNodeWithTag("server_current").assertExists(); compose.onNodeWithTag("local_input").assertExists()
         compose.onNodeWithTag("confirm-merge").assertIsNotEnabled()
-        compose.onNodeWithText("使用草稿").performScrollTo().performClick()
+        compose.onNodeWithText("使用未提交值").performScrollTo().performClick()
         compose.onNodeWithTag("confirm-merge").assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, confirmations) }
     }

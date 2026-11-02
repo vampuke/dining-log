@@ -116,10 +116,10 @@ class P6UiTest {
         val ref = RecordRef(RecordKind.RESTAURANT, "p6-minimal")
         val fields = mapOf("name" to "只填名称的小馆", "category" to "restaurant", "address" to null, "cuisine" to null, "review" to null, "note" to null)
         val record = RecordSnapshot(ref, 1, fields, "2026-11-01T08:00:00.000Z")
-        val draft = SavedDraft("p6-owner", "p6-minimal-draft", ref, WriteAction.CREATE, null, fields)
-        assertTrue(validateDraft(draft).isEmpty())
+        val input = SaveInput("p6-owner", ref, WriteAction.CREATE, null, fields)
+        assertTrue(validateInput(input).isEmpty())
         compose.setContent { QuietGridTheme(true) {
-            if (editing) EditScreen(EditorUiState(draft), { _, _ -> }, {}, { saved++ }, {}, {})
+            if (editing) EditScreen(EditorUiState(input), { _, _ -> }, {}, { saved++ }, {})
             else RecordDetailScreen(DetailUiState(CachedDetail(record)), {}, {}, {}, {}, {}, {})
         } }
         for (field in listOf("address", "cuisine", "review", "note")) compose.onNodeWithTag("detail:$field").assertDoesNotExist()
@@ -128,6 +128,7 @@ class P6UiTest {
         compose.runOnIdle { editing = true }
         compose.onNodeWithTag("edit-scroll", useUnmergedTree = true).performScrollToNode(hasTestTag("field:address"))
         compose.onNodeWithText("地址 · 选填", useUnmergedTree = true).assertExists()
+        compose.onNodeWithText("放弃本机草稿").assertDoesNotExist()
         compose.onNodeWithTag("save").assertIsEnabled().performClick()
         compose.runOnIdle { assertEquals(1, saved) }
     }
@@ -269,12 +270,7 @@ class P6UiTest {
         override suspend fun refreshList(accountId: String, query: ListQuery, loadMore: Boolean) { refreshes.incrementAndGet() }
         override fun observeDetail(accountId: String, ref: RecordRef) = flowOf(CachedDetail(RecordSnapshot(ref, 1, mapOf("name" to "餐厅", "category" to "restaurant"), "2026-11-01T08:00:00.000Z")))
         override suspend fun refreshDetail(accountId: String, ref: RecordRef) = RecordSnapshot(ref, 1, mapOf("name" to "餐厅", "category" to "restaurant"), "2026-11-01T08:00:00.000Z")
-        override fun observeDrafts(accountId: String) = flowOf(emptyList<SavedDraft>())
-        override suspend fun findDraft(accountId: String, draftId: String): SavedDraft? = null
-        override suspend fun storeDraft(draft: SavedDraft) { }
-        override suspend fun discardDraft(accountId: String, draftId: String) { }
-        override suspend fun submit(draft: SavedDraft): SaveOutcome = error("Unexpected UI fixture write")
-        override suspend fun confirmExpired(draft: SavedDraft, current: RecordSnapshot?): SaveOutcome = error("Unexpected UI fixture write")
+        override suspend fun submit(input: SaveInput): SaveOutcome = error("Unexpected UI fixture write")
     }
     private class Security : AccountSecurity {
         val profiles = AtomicInteger()

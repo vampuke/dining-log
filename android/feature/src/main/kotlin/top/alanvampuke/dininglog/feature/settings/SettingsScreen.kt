@@ -25,9 +25,9 @@ import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.*
 import top.alanvampuke.dininglog.feature.theme.*
 
-@Composable fun SettingsScreen(state: SettingsUiState, username: String, drafts: List<SavedDraft>, theme: ThemeChoice,
+@Composable fun SettingsScreen(state: SettingsUiState, username: String, theme: ThemeChoice,
     version: String, onRefresh: () -> Unit, onRevoke: (String) -> Unit, onPassword: (String, String) -> Unit,
-    onLogout: () -> Unit, onDraft: (SavedDraft) -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit,
+    onLogout: () -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit,
     onPasswordInput: (String, String) -> Unit = { _, _ -> }, listState: LazyListState = rememberLazyListState(),
     updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {}) {
     var revoke by remember { mutableStateOf<DeviceSession?>(null) }
@@ -63,15 +63,6 @@ import top.alanvampuke.dininglog.feature.theme.*
                 BiteButton(onClick = { password = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("change-password")) { Text("修改密码") }
             }
             item {
-                GridText("未提交草稿 · ${drafts.size}", style = MaterialTheme.typography.headlineSmall)
-                GridText("仅保存在本机。结果未知的请求请先重试确认，联网后不会自动上传。", color = LocalQuietGridColors.current.secondary)
-            }
-            items(drafts, key = { it.id }) { draft ->
-                BiteTextButton(onClick = { onDraft(draft) }, modifier = Modifier.fillMaxWidth().testTag("draft:${draft.id}")) {
-                    Text("${draft.localFields["name"] ?: draft.localFields["dining_date"] ?: "草稿"} · ${when (draft.status) { DraftStatus.RESULT_UNKNOWN, DraftStatus.SAVING -> "结果未知"; DraftStatus.EXPIRED_REVIEW -> "等待比较"; else -> "未提交" }}")
-                }
-            }
-            item {
                 GridText("显示主题", style = MaterialTheme.typography.titleMedium)
                 ChoiceChips(listOf("SYSTEM" to "跟随系统", "LIGHT" to "浅色", "DARK" to "深色"), theme.name, { if (it != null) onTheme(ThemeChoice.valueOf(it)) })
             }
@@ -88,8 +79,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
     }
     val revoking = revoke
-    if (revoking != null) ConfirmAction("撤销此会话？", if (revoking.current) "这是当前设备。撤销后会退出，并清理本机缓存与未提交草稿。" else "该设备的旧 access 与 refresh 将不可用。", "确认撤销", { revoke = null; onRevoke(revoking.id) }, { revoke = null })
-    if (logout) ConfirmAction("退出登录？", "将清理此账号的本机缓存和 ${drafts.size} 个未提交草稿；结果未知的请求可能已保存，建议先确认。服务器已保存记录仍属于账号。", "确认退出", { logout = false; onLogout() }, { logout = false })
+    if (revoking != null) ConfirmAction("撤销此会话？", if (revoking.current) "这是当前设备。撤销后会退出，并清理本机缓存。" else "该设备的旧 access 与 refresh 将不可用。", "确认撤销", { revoke = null; onRevoke(revoking.id) }, { revoke = null })
+    if (logout) ConfirmAction("退出登录？", "将清理此账号的本机缓存。服务器已保存记录仍属于账号。", "确认退出", { logout = false; onLogout() }, { logout = false })
     if (password) PasswordDialog(state, onPassword, onPasswordInput) { if (!state.busy) password = false }
 }
 @Composable private fun PasswordDialog(state: SettingsUiState, onPassword: (String, String) -> Unit,

@@ -39,10 +39,9 @@ fun secureTokenStore(context: Context) = SecureTokenStore(
 class AndroidAccountLocalData(private val context: Context, private val memory: AccountMemory) : AccountLocalData {
     override suspend fun clear() {
         memory.clear()
-        // P2 has no Room/list CRUD yet. Delete the reserved cache and draft locations,
+        // P2 has no Room/list CRUD yet. Delete the reserved cache and input locations,
         // including database sidecars, so the same account lifecycle is ready for P3.
         context.cacheDir.deleteRecursively()
-        File(context.filesDir, "drafts").deleteRecursively()
         for (name in context.databaseList()) check(context.deleteDatabase(name))
     }
 }

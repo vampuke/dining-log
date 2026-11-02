@@ -32,37 +32,37 @@ class RemoteContractTest {
             }
         } finally { server.shutdown() }
     }
-    private fun draft(kind: RecordKind = RecordKind.RESTAURANT, action: WriteAction = WriteAction.CREATE): SavedDraft {
+    private fun input(kind: RecordKind = RecordKind.RESTAURANT, action: WriteAction = WriteAction.CREATE): SaveInput {
         val ref = RecordRef(kind, "10000000-0000-4000-8000-000000000001", if (kind != RecordKind.RESTAURANT) "20000000-0000-4000-8000-000000000001" else null)
         val fields = mapOf("name" to "兰记", "category" to "restaurant", "address" to "愚园路", "rating_tenths" to "43", "review" to "花椒香", "note" to null)
         val base = RecordSnapshot(ref, 2, fields + ("rating_tenths" to "40"), "2026-11-01T00:00:00Z")
-        return SavedDraft("A", "draft", ref, action, if (action == WriteAction.CREATE) null else base, fields)
+        return SaveInput("A", ref, action, if (action == WriteAction.CREATE) null else base, fields)
     }
     @Test fun restaurantAndFirstVisitAreOneRequestAndDishNeverHasVisitId() {
-        val restaurant = requestFor(draft().copy(firstVisit = FirstVisitInput("30000000-0000-4000-8000-000000000001", "2026-11-01")), 0)
-        val body = Json.parseToJsonElement(restaurant.original!!.payload).jsonObject
+        val restaurant = requestFor(input().copy(firstVisit = FirstVisitInput("30000000-0000-4000-8000-000000000001", "2026-11-01")), 0)
+        val body = Json.parseToJsonElement(restaurant.payload).jsonObject
         assertEquals("4.3", body["rating"]!!.jsonPrimitive.content)
         assertEquals("2026-11-01", body["first_visit"]!!.jsonObject["dining_date"]!!.jsonPrimitive.content)
-        val dish = requestFor(draft(RecordKind.DISH), 0)
-        val dishBody = Json.parseToJsonElement(dish.original!!.payload).jsonObject
+        val dish = requestFor(input(RecordKind.DISH), 0)
+        val dishBody = Json.parseToJsonElement(dish.payload).jsonObject
         assertEquals(setOf("id", "name", "rating", "review"), dishBody.keys)
         assertFalse(dishBody.containsKey("visit_id")); assertFalse(dishBody.containsKey("restaurant_id"))
     }
-    @Test fun patchSendsOnlyChangedFieldsAndUnknownKeepsExactWirePayloadAndKey() {
-        val prepared = requestFor(draft(action = WriteAction.UPDATE), 0)
-        val body = Json.parseToJsonElement(prepared.original!!.payload).jsonObject
+    @Test fun patchSendsOnlyChangedFieldsAndEachSubmissionHasANewKey() {
+        val prepared = requestFor(input(action = WriteAction.UPDATE), 0)
+        val body = Json.parseToJsonElement(prepared.payload).jsonObject
         assertEquals(setOf("expected_version", "rating"), body.keys)
         assertEquals("2", body["expected_version"]!!.jsonPrimitive.content)
-        assertEquals(prepared.original, requestFor(prepared.copy(status = DraftStatus.RESULT_UNKNOWN), 100).original)
+        assertNotEquals(prepared.key, requestFor(input(action = WriteAction.UPDATE), 100).key)
     }
     @Test fun metadataAndHistoryApplyUseTheirOwnCasAndSelectedFieldsOnly() {
-        val base = draft(RecordKind.REVISION, WriteAction.METADATA)
+        val base = input(RecordKind.REVISION, WriteAction.METADATA)
         val metadata = requestFor(base.copy(localFields = base.localFields + ("note" to "说明")), 0)
-        val metaBody = Json.parseToJsonElement(metadata.original!!.payload).jsonObject
+        val metaBody = Json.parseToJsonElement(metadata.payload).jsonObject
         assertEquals(setOf("expected_metadata_version", "note"), metaBody.keys)
-        val apply = requestFor(draft(action = WriteAction.APPLY).copy(sourceRevisionId = "source", applyFields = listOf("rating_tenths")), 0)
-        val applyBody = Json.parseToJsonElement(apply.original!!.payload).jsonObject
-        assertEquals("revisions", apply.original!!.path); assertEquals("2", applyBody["expected_version"]!!.jsonPrimitive.content)
+        val apply = requestFor(input(action = WriteAction.APPLY).copy(sourceRevisionId = "source", applyFields = listOf("rating_tenths")), 0)
+        val applyBody = Json.parseToJsonElement(apply.payload).jsonObject
+        assertEquals("revisions", apply.path); assertEquals("2", applyBody["expected_version"]!!.jsonPrimitive.content)
         assertEquals(listOf("rating_tenths"), applyBody["fields"]!!.jsonArray.map { it.jsonPrimitive.content })
         val scopedHistory = ListQuery(RecordKind.REVISION, "parent", historyEntityKind = RecordKind.DISH, historyEntityId = "dish")
         assertEquals("dish", queryParameters(scopedHistory)["entity_type"])

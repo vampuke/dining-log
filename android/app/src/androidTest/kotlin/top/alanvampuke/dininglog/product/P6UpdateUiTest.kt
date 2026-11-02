@@ -30,8 +30,8 @@ class P6UpdateUiTest {
         var opened: AppRelease? = null
         var toggled: Boolean? = null
         compose.setContent { QuietGridTheme(true) {
-            SettingsScreen(SettingsUiState(), "p6_owner", emptyList(), ThemeChoice.DARK, BuildConfig.VERSION_NAME,
-                {}, {}, { _, _ -> }, {}, {}, {}, { BottomTabs("settings") {} },
+            SettingsScreen(SettingsUiState(), "p6_owner", ThemeChoice.DARK, BuildConfig.VERSION_NAME,
+                {}, {}, { _, _ -> }, {}, {}, { BottomTabs("settings") {} },
                 updateState = state, onUpdateToggle = { enabled -> toggled = enabled; state = AppUpdateState(enabled) }, onOpenUpdate = { opened = it })
         } }
         compose.onAllNodes(isDialog()).assertCountEquals(0)

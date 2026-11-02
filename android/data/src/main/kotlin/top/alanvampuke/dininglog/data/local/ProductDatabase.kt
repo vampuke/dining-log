@@ -26,15 +26,6 @@ data class PageMember(@ColumnInfo(name = "account_id") val accountId: String, va
     @ColumnInfo(name = "matches_payload") val matchesPayload: String = "[]")
 data class PageEntry(@Embedded val summary: SummaryRow,
     @ColumnInfo(name = "matches_payload") val matchesPayload: String)
-@Entity(tableName = "saved_drafts", primaryKeys = ["account_id", "draft_id"])
-data class DraftRow(@ColumnInfo(name = "account_id") val accountId: String,
-    @ColumnInfo(name = "draft_id") val draftId: String, val kind: String,
-    @ColumnInfo(name = "entity_id") val entityId: String, @ColumnInfo(name = "base_version") val baseVersion: Int?,
-    @ColumnInfo(name = "base_snapshot") val baseSnapshot: String?,
-    @ColumnInfo(name = "editable_payload") val editablePayload: String,
-    @ColumnInfo(name = "idempotency_key") val idempotencyKey: String?,
-    val status: String, @ColumnInfo(name = "updated_at") val updatedAt: Long, val payload: String)
-
 @Dao abstract class ProductDao {
     @Query("SELECT * FROM cached_summaries WHERE account_id=:accountId")
     abstract fun observeSummaries(accountId: String): Flow<List<SummaryRow>>
@@ -66,20 +57,12 @@ data class DraftRow(@ColumnInfo(name = "account_id") val accountId: String,
     abstract suspend fun invalidateQueries(accountId: String)
     @Query("DELETE FROM page_members WHERE account_id=:accountId")
     abstract suspend fun invalidateMembers(accountId: String)
-    @Query("SELECT * FROM saved_drafts WHERE account_id=:accountId ORDER BY updated_at DESC")
-    abstract fun observeDrafts(accountId: String): Flow<List<DraftRow>>
-    @Query("SELECT * FROM saved_drafts WHERE account_id=:accountId AND draft_id=:id")
-    abstract suspend fun draft(accountId: String, id: String): DraftRow?
-    @Upsert abstract suspend fun putDraft(row: DraftRow)
-    @Query("DELETE FROM saved_drafts WHERE account_id=:accountId AND draft_id=:id")
-    abstract suspend fun deleteDraft(accountId: String, id: String)
     @Query("DELETE FROM cached_summaries") abstract suspend fun clearSummaries()
     @Query("DELETE FROM cached_details") abstract suspend fun clearDetails()
     @Query("DELETE FROM cached_queries") abstract suspend fun clearQueries()
     @Query("DELETE FROM page_members") abstract suspend fun clearMembers()
-    @Query("DELETE FROM saved_drafts") abstract suspend fun clearDrafts()
     @Transaction open suspend fun clearAccountData() {
-        clearDrafts(); clearMembers(); clearQueries(); clearDetails(); clearSummaries()
+        clearMembers(); clearQueries(); clearDetails(); clearSummaries()
     }
     @Transaction open suspend fun cacheSummary(row: SummaryRow) {
         val previous = summary(row.accountId, row.kind, row.entityId)
@@ -94,8 +77,17 @@ data class DraftRow(@ColumnInfo(name = "account_id") val accountId: String,
         }
     }
 }
-@Database(entities = [SummaryRow::class, DetailRow::class, QueryRow::class, PageMember::class, DraftRow::class], version = 1, exportSchema = true)
-abstract class ProductDatabase : RoomDatabase() { abstract fun products(): ProductDao }
+@Database(entities = [SummaryRow::class, DetailRow::class, QueryRow::class, PageMember::class], version = 2, exportSchema = true)
+abstract class ProductDatabase : RoomDatabase() {
+    abstract fun products(): ProductDao
+    companion object {
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS saved_drafts")
+            }
+        }
+    }
+}
 
 // Shared between account cleanup and cache writes. Generation is checked under
 // the same lock, so a late A response cannot repopulate Room after A logs out.

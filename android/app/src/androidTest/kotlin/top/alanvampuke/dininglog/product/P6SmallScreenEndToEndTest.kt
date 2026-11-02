@@ -84,9 +84,9 @@ class P6SmallScreenEndToEndTest {
             val createdIds = runBlocking {
                 (1..5).map { index ->
                     val ref = RecordRef(RecordKind.RESTAURANT, UUID.randomUUID().toString())
-                    val draft = SavedDraft(session.userId, "p6-seed-$index", ref, WriteAction.CREATE, null,
+                    val input = SaveInput(session.userId, ref, WriteAction.CREATE, null,
                         mapOf("name" to "小屏验收餐厅 $index", "category" to "restaurant"))
-                    val outcome = repository.submit(draft)
+                    val outcome = repository.submit(input)
                     assertTrue("Name and category alone must save through the real API", outcome is SaveOutcome.Saved)
                     val saved = remote.detail(ref)
                     assertEquals(ref.id, saved.ref.id)
@@ -132,8 +132,8 @@ class P6SmallScreenEndToEndTest {
                 compose.runOnIdle { dark = night }
                 // Exercise the actual editor, ViewModel, Room and remote write with no optional input.
                 compose.onNodeWithTag("add").performClick()
-                compose.waitUntil(10_000) { vm.editor.value.draft != null && !vm.editor.value.loading }
-                val ref = vm.editor.value.draft!!.ref
+                compose.waitUntil(10_000) { vm.editor.value.input != null && !vm.editor.value.loading }
+                val ref = vm.editor.value.input!!.ref
                 compose.onNodeWithTag("field:name").performTextReplacement("只填名称的${if (night) "深色" else "浅色"}小馆")
                 compose.onNodeWithTag("save").assertIsEnabled().performClick()
                 compose.waitUntil(45_000) { vm.detail.value.cached.snapshot?.ref == ref && !vm.detail.value.refreshing &&

@@ -123,38 +123,35 @@ import top.alanvampuke.dininglog.feature.theme.*
 }
 
 @Composable fun EditScreen(state: EditorUiState, onField: (String, String?) -> Unit, onFirstVisit: (FirstVisitInput?) -> Unit,
-    onSave: () -> Unit, onBack: () -> Unit, onDiscard: () -> Unit, dishes: List<RecordSummary> = emptyList(),
+    onSave: () -> Unit, onBack: () -> Unit, dishes: List<RecordSummary> = emptyList(),
     onDish: (RecordSummary) -> Unit = {}, onAddDish: (() -> Unit)? = null, onManageDishes: (() -> Unit)? = null) {
-    val draft = state.draft
-    val kind = draft?.ref?.kind ?: RecordKind.RESTAURANT
-    val enabled = draft != null && !draft.locked && !state.saving && draft.action in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)
-    var confirmDiscard by remember { mutableStateOf(false) }
-    val dirty = draft?.let { it.action in setOf(WriteAction.CREATE, WriteAction.DELETE, WriteAction.RESTORE, WriteAction.APPLY) || it.changedFields.isNotEmpty() } == true
-    ScreenFrame("screen:edit", bottomBar = { SaveBar(draft != null && (dirty || draft.locked), state.saving,
-        draft?.status == DraftStatus.RESULT_UNKNOWN, onSave, state.message) }) { padding ->
+    val input = state.input
+    val kind = input?.ref?.kind ?: RecordKind.RESTAURANT
+    val enabled = input != null && !state.saving && input.action in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)
+    val dirty = input?.let { it.action in setOf(WriteAction.CREATE, WriteAction.DELETE, WriteAction.RESTORE, WriteAction.APPLY) || it.changedFields.isNotEmpty() } == true
+    ScreenFrame("screen:edit", bottomBar = { SaveBar(input != null && dirty, state.saving,
+        onSave, state.message) }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("edit-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            item { PageHeader(if (draft?.action == WriteAction.CREATE) when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" }
+            item { PageHeader(if (input?.action == WriteAction.CREATE) when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" }
                 else if (kind == RecordKind.REVISION) "修改历史说明" else "编辑${when (kind) { RecordKind.RESTAURANT -> "餐厅"; RecordKind.DISH -> "菜品"; RecordKind.VISIT -> "到店"; else -> "记录" }}", onBack) }
             item {
-                GridText("输入会自动保留为本机草稿；点击保存后才会提交", style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary)
-                if (state.loading) GridText("正在打开草稿…")
-                if (draft?.status == DraftStatus.RESULT_UNKNOWN) ErrorMessage("保存结果未知。请先重试原请求确认结果，再修改内容。", "result-unknown")
-                if (draft?.status == DraftStatus.EXPIRED_REVIEW) ErrorMessage("原请求超过 7 天，需先读取服务器当前值并确认新保存。", "expired-draft")
+                GridText("点击保存后才会提交", style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary)
+                if (state.loading) GridText("正在打开编辑页…")
             }
-            if (draft != null) {
+            if (input != null) {
                 editableFields(kind).forEach { field -> item(key = field) {
                     BitePanel {
                     when (field) {
-                        "rating_tenths" -> RatingEditor(draft.localFields[field], { onField(field, it) }, enabled)
+                        "rating_tenths" -> RatingEditor(input.localFields[field], { onField(field, it) }, enabled)
                         "category" -> {
                             GridText("类型", style = MaterialTheme.typography.titleMedium)
-                            ChoiceChips(Category.entries.map { it.code to categoryLabel(it.code) }, draft.localFields[field], { onField(field, it) }, enabled)
+                            ChoiceChips(Category.entries.map { it.code to categoryLabel(it.code) }, input.localFields[field], { onField(field, it) }, enabled)
                         }
                         "meal" -> {
                             GridText("餐次 · 选填", style = MaterialTheme.typography.titleMedium)
-                            ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, draft.localFields[field], { onField(field, it) }, enabled)
+                            ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, input.localFields[field], { onField(field, it) }, enabled)
                         }
-                        else -> FormField(field, draft.localFields[field], { onField(field, it) }, enabled, state.errors[field],
+                        else -> FormField(field, input.localFields[field], { onField(field, it) }, enabled, state.errors[field],
                             label = (if (field == "review" && kind == RecordKind.DISH) "短评" else if (field == "note" && kind == RecordKind.REVISION) "历史说明" else fieldLabel(field)) +
                                 if (field in setOf("cuisine", "address", "review", "note")) " · 选填" else "",
                             minLines = if (field in setOf("review", "note")) 4 else if (field == "address") 2 else 1,
@@ -162,11 +159,11 @@ import top.alanvampuke.dininglog.feature.theme.*
                     }
                     }
                 } }
-                if (kind == RecordKind.RESTAURANT && draft.action == WriteAction.CREATE) item {
+                if (kind == RecordKind.RESTAURANT && input.action == WriteAction.CREATE) item {
                     BitePanel {
-                        Row { Checkbox(draft.firstVisit != null, { onFirstVisit(if (it) FirstVisitInput(UUID.randomUUID().toString(), LocalDate.now().toString()) else null) }, enabled = enabled)
+                        Row { Checkbox(input.firstVisit != null, { onFirstVisit(if (it) FirstVisitInput(UUID.randomUUID().toString(), LocalDate.now().toString()) else null) }, enabled = enabled)
                             GridText("同时新增首访", Modifier.padding(top = 12.dp)) }
-                        val visit = draft.firstVisit
+                        val visit = input.firstVisit
                         if (visit != null) {
                             FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, state.errors["first_visit"], label = "首访日期", supporting = "YYYY-MM-DD")
                             ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, visit.meal, { onFirstVisit(visit.copy(meal = it)) }, enabled)
@@ -177,7 +174,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 if (kind == RecordKind.RESTAURANT) {
                     item {
                         GridText("店内菜品", style = MaterialTheme.typography.headlineSmall)
-                        if (draft.baseSnapshot == null) GridText("保存餐厅后即可在这里新增、编辑、删除菜品", color = LocalQuietGridColors.current.secondary)
+                        if (input.baseSnapshot == null) GridText("保存餐厅后即可在这里新增、编辑、删除菜品", color = LocalQuietGridColors.current.secondary)
                         else {
                             if (onAddDish != null) BiteButton(onClick = onAddDish, enabled = !state.saving, modifier = Modifier.fillMaxWidth().testTag("edit-add-dish")) { Text("新增菜品") }
                             if (onManageDishes != null) BiteTextButton(onClick = onManageDishes, enabled = !state.saving, modifier = Modifier.testTag("edit-manage-dishes")) { Text("菜品列表与回收站") }
@@ -185,9 +182,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                     }
                     items(dishes, key = { "edit-dish:${it.ref.id}" }) { RecordRow(it, onDish) }
                 }
-                item { BiteTextButton(onClick = { confirmDiscard = true }, enabled = !state.saving) { Text("放弃本机草稿", color = LocalQuietGridColors.current.danger) } }
             }
         }
     }
-    if (confirmDiscard) ConfirmAction("放弃本机草稿？", if (draft?.status == DraftStatus.RESULT_UNKNOWN) "保存结果尚未确认。删除草稿不会撤销可能已经完成的服务端保存。" else "此草稿将从本机移除，服务器已保存记录不受影响。", "放弃草稿", { confirmDiscard = false; onDiscard() }, { confirmDiscard = false })
 }

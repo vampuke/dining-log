@@ -43,7 +43,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Serializable data object VisitsRoute
 @Serializable data object SettingsRoute
 @Serializable data class DetailRoute(val kind: String, val id: String, val restaurantId: String? = null)
-@Serializable data class EditRoute(val kind: String, val id: String, val restaurantId: String? = null, val create: Boolean = false, val draftId: String? = null)
+@Serializable data class EditRoute(val kind: String, val id: String, val restaurantId: String? = null, val create: Boolean = false)
 @Serializable data class NestedListRoute(val kind: String, val restaurantId: String? = null, val deleted: Boolean = false,
     val historyEntityKind: String? = null, val historyEntityId: String? = null)
 @Serializable data class ChooseRestaurantRoute(val purpose: String)
@@ -65,7 +65,6 @@ import top.alanvampuke.dininglog.feature.theme.*
     val detail by vm.detail.collectAsStateWithLifecycle()
     val editor by vm.editor.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
-    val drafts by vm.drafts.collectAsStateWithLifecycle()
     val editorDishes by vm.editorDishes.collectAsStateWithLifecycle()
     val dishes by vm.relatedDishes.collectAsStateWithLifecycle()
     val visits by vm.relatedVisits.collectAsStateWithLifecycle()
@@ -143,8 +142,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
         composable<SettingsRoute> {
             LaunchedEffect(Unit) { vm.loadSettings() }
-            SettingsScreen(settings, username, drafts, theme, version, vm::loadSettings, vm::revokeSession, vm::changePassword,
-                onLogout, onDraft = { draft -> nav.navigate(EditRoute(draft.ref.kind.name, draft.ref.id, draft.ref.restaurantId, draft.action == WriteAction.CREATE, draft.id)) }, onTheme, tabs,
+            SettingsScreen(settings, username, theme, version, vm::loadSettings, vm::revokeSession, vm::changePassword,
+                onLogout, onTheme, tabs,
                 onPasswordInput = vm::editPassword, listState = settingsScroll,
                 updateState = updateState, onUpdateToggle = onUpdateToggle, onOpenUpdate = onOpenUpdate)
         }
@@ -172,11 +171,11 @@ import top.alanvampuke.dininglog.feature.theme.*
             val route = destination.toRoute<EditRoute>()
             val kind = RecordKind.valueOf(route.kind)
             val ref = RecordRef(kind, route.id, route.restaurantId)
-            LaunchedEffect(route) { vm.openEditor(ref, route.create, route.draftId) }
+            LaunchedEffect(route) { vm.openEditor(ref, route.create) }
             fun leave(next: () -> Unit) { vm.leaveEditor(next) }
             BackHandler { if (!editor.saving) leave(::back) }
             EditScreen(editor, vm::editField, vm::editFirstVisit, vm::saveEditor, onBack = { if (!editor.saving) leave(::back) },
-                onDiscard = { vm.discardEditor(::back) }, dishes = editorDishes,
+                dishes = editorDishes,
                 onDish = { child -> leave { openRecord(child) } },
                 onAddDish = { leave { create(RecordKind.DISH, route.id) } },
                 onManageDishes = { leave { nav.navigate(NestedListRoute(RecordKind.DISH.name, route.id)) } })
@@ -201,10 +200,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     }
     val conflict = editor.conflict
     if (conflict != null) ConflictDialog(conflict, editor.saving, vm::confirmConflict, vm::dismissComparison)
-    val expired = editor.expired
-    if (expired != null) ExpiredRequestDialog(expired, editor.saving, vm::confirmExpired, vm::acceptServer, vm::dismissComparison)
     if (apply != null) ApplyFieldsDialog(apply!!, vm::applySide, vm::selectApply, vm::submitApply, vm::dismissApply)
-    if (operationVisible && conflict == null && expired == null) OperationDialog(editor, vm::saveEditor, vm::dismissOperation)
+    if (operationVisible && conflict == null) OperationDialog(editor, vm::saveEditor, vm::dismissOperation)
 }
 val TabIconFilled = SemanticsPropertyKey<Boolean>("TabIconFilled")
 @Composable fun BottomTabs(selectedRoute: String?, onAdd: (() -> Unit)? = null, onSelect: (String) -> Unit) {

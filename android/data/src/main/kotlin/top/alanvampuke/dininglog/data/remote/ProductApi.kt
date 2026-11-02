@@ -50,10 +50,9 @@ class ProductRemote(private val api: ProductApi, private val refresh: RefreshCoo
         val result = authenticated(ref.kind) { token -> api.detail("${ref.kind.path}/${ref.id}", "Bearer $token", mapOf("deleted" to "include")) }
         snapshot(ref.kind, result.data, ref.restaurantId)
     }
-    suspend fun write(draft: SavedDraft): JsonObject {
-        val original = requireNotNull(draft.original)
+    suspend fun write(kind: RecordKind, original: OriginalRequest): JsonObject {
         val body = original.payload.toRequestBody("application/json".toMediaType())
-        return authenticated(draft.ref.kind) { token -> when (original.method) {
+        return authenticated(kind) { token -> when (original.method) {
             "POST" -> api.post(original.path, "Bearer $token", original.key, body)
             "PATCH" -> api.patch(original.path, "Bearer $token", original.key, body)
             "DELETE" -> api.delete(original.path, "Bearer $token", original.key, body)
@@ -141,35 +140,34 @@ fun queryParameters(query: ListQuery): Map<String, String> = buildMap {
         if (f.from.isNotBlank()) put("from", f.from); if (f.to.isNotBlank()) put("to", f.to)
     }
 }
-fun requestFor(draft: SavedDraft, now: Long): SavedDraft {
-    draft.original?.let { return DraftRules.prepare(draft, it.method, it.path, it.payload, now) }
-    val ref = draft.ref
-    val method = when (draft.action) { WriteAction.CREATE, WriteAction.RESTORE, WriteAction.APPLY -> "POST"; WriteAction.DELETE -> "DELETE"; else -> "PATCH" }
-    val path = when (draft.action) {
+fun requestFor(input: SaveInput, now: Long): OriginalRequest {
+    val ref = input.ref
+    val method = when (input.action) { WriteAction.CREATE, WriteAction.RESTORE, WriteAction.APPLY -> "POST"; WriteAction.DELETE -> "DELETE"; else -> "PATCH" }
+    val path = when (input.action) {
         WriteAction.APPLY -> "revisions"
         WriteAction.CREATE -> if (ref.kind == RecordKind.RESTAURANT) "restaurants" else "restaurants/${requireNotNull(ref.restaurantId)}/${ref.kind.path}"
         WriteAction.RESTORE -> "${ref.kind.path}/${ref.id}/restore"
         else -> "${ref.kind.path}/${ref.id}"
     }
     val payload = buildJsonObject {
-        if (draft.action == WriteAction.APPLY) {
-            put("source_revision_id", requireNotNull(draft.sourceRevisionId)); put("side", draft.applySide)
-            put("fields", JsonArray(draft.applyFields.map(::JsonPrimitive))); put("expected_version", requireNotNull(draft.baseVersion))
+        if (input.action == WriteAction.APPLY) {
+            put("source_revision_id", requireNotNull(input.sourceRevisionId)); put("side", input.applySide)
+            put("fields", JsonArray(input.applyFields.map(::JsonPrimitive))); put("expected_version", requireNotNull(input.baseVersion))
         } else {
-            if (draft.action == WriteAction.CREATE) put("id", ref.id)
-            else put(if (ref.kind == RecordKind.REVISION) "expected_metadata_version" else "expected_version", requireNotNull(draft.baseVersion))
-            if (draft.action in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)) {
-                val fields = if (draft.action == WriteAction.CREATE) draft.localFields else draft.localFields.filterKeys { it in draft.changedFields }
+            if (input.action == WriteAction.CREATE) put("id", ref.id)
+            else put(if (ref.kind == RecordKind.REVISION) "expected_metadata_version" else "expected_version", requireNotNull(input.baseVersion))
+            if (input.action in setOf(WriteAction.CREATE, WriteAction.UPDATE, WriteAction.METADATA)) {
+                val fields = if (input.action == WriteAction.CREATE) input.localFields else input.localFields.filterKeys { it in input.changedFields }
                 fields.filterKeys { it in editableFields(ref.kind) }.forEach { (key, value) ->
                     if (key == "rating_tenths") put("rating", value?.toInt()?.let { JsonPrimitive(it / 10.0) } ?: JsonNull)
                     else put(key, value?.let(::JsonPrimitive) ?: JsonNull)
                 }
             }
-            if (draft.action == WriteAction.CREATE && ref.kind == RecordKind.RESTAURANT) draft.firstVisit?.let { visit ->
+            if (input.action == WriteAction.CREATE && ref.kind == RecordKind.RESTAURANT) input.firstVisit?.let { visit ->
                 put("first_visit", buildJsonObject { put("id", visit.id); put("dining_date", visit.date)
                     put("meal", visit.meal?.let(::JsonPrimitive) ?: JsonNull); put("note", visit.note?.let(::JsonPrimitive) ?: JsonNull) })
             }
         }
     }.toString()
-    return DraftRules.prepare(draft, method, path, payload, now)
+    return OriginalRequest(method, path, payload, java.util.UUID.randomUUID().toString(), now)
 }

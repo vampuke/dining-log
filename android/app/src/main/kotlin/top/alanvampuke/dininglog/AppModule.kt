@@ -20,7 +20,7 @@ import top.alanvampuke.dininglog.data.remote.*
 
 @Module @InstallIn(SingletonComponent::class)
 object AppModule {
-    @Provides @Singleton fun database(@ApplicationContext context: Context): ProductDatabase = Room.databaseBuilder(context, ProductDatabase::class.java, "dining-cache.db").build()
+    @Provides @Singleton fun database(@ApplicationContext context: Context): ProductDatabase = Room.databaseBuilder(context, ProductDatabase::class.java, "dining-cache.db").addMigrations(ProductDatabase.MIGRATION_1_2).build()
     @Provides @Singleton fun owner(database: ProductDatabase) = OwnerCache(database)
     @Provides @Singleton fun tokens(@ApplicationContext context: Context) = secureTokenStore(context)
     @Provides @Singleton fun account(store: SecureTokenStore, owner: OwnerCache) = AccountSession(store, owner)

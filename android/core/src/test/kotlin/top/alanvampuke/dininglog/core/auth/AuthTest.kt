@@ -70,12 +70,12 @@ class AuthTest {
         assertNull(f.store.read()); assertNull(f.file.bytes)
         assertFails { f.store.write(StoredSession("b", "t", "plain-secret")) }; assertNull(f.file.bytes)
     }
-    @Test fun switchingAccountsClearsListsDraftsNavigationAndOwnerJobs() = runBlocking {
+    @Test fun switchingAccountsClearsListsNavigationAndOwnerJobs() = runBlocking {
         val f = Fixture(); f.account.install(f.old)
-        f.memory.lists += "A record"; f.memory.drafts["A"] = "private draft"; f.memory.navigation += "A/detail"
+        f.memory.lists += "A record"; f.memory.navigation += "A/detail"
         val oldJob = f.account.ownerScope.launch { delay(Long.MAX_VALUE) }
         f.account.clear(); f.account.install(AuthSession("b", "bob", "t", "B-access", "B-refresh"))
-        assertTrue(oldJob.isCancelled); assertTrue(f.memory.lists.isEmpty()); assertTrue(f.memory.drafts.isEmpty()); assertTrue(f.memory.navigation.isEmpty())
+        assertTrue(oldJob.isCancelled); assertTrue(f.memory.lists.isEmpty()); assertTrue(f.memory.navigation.isEmpty())
         assertEquals("b", f.store.read()!!.userId); assertFalse(String(f.file.bytes!!).contains("old-refresh"))
     }
     @Test fun concurrent401OperationsRefreshOnceAndReplayEachRequestOnce() = runBlocking {
@@ -108,9 +108,9 @@ class AuthTest {
         assertNull(f.file.bytes); assertEquals(0, f.gateway.refreshCalls)
     }
     @Test fun revokedRefreshClearsLocalStateAndDoesNotLoop() = runBlocking {
-        val f = Fixture(); f.account.install(f.old); f.memory.drafts["A"] = "draft"; f.gateway.failure = "REFRESH_REUSED"
+        val f = Fixture(); f.account.install(f.old); f.gateway.failure = "REFRESH_REUSED"
         assertFailsWith<AuthFailure> { f.coordinator.refreshAfter401("old-access") }
-        assertNull(f.account.session.value); assertNull(f.file.bytes); assertTrue(f.memory.drafts.isEmpty())
+        assertNull(f.account.session.value); assertNull(f.file.bytes); assertTrue(f.memory.lists.isEmpty())
         assertFailsWith<AuthFailure> { f.coordinator.refreshAfter401(null) }; assertEquals(1, f.gateway.refreshCalls)
     }
     @Test fun diskFailureDoesNotPublishNewAccessOrLeaveSession() = runBlocking {
