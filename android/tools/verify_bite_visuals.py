@@ -41,7 +41,10 @@ for theme in ('Light', 'Dark'):
     pairs = [(fg, bg) for fg in ('ink', 'secondary', 'tertiary', 'danger', 'accentInk') for bg in ('bg', 'surface', 'paper', 'dots')]
     pairs += [('onAccent', 'cta'), ('accentInk', 'accentSoft')]
     pairs += [('stickerInk', bg) for bg in ('butter', 'popRed', 'mint', 'klein', 'peach', 'bubble')]
-    # lilac is icon-only, never used as a body-text background.
+    # lilac (#8338EC) yields only 3.36:1 against stickerInk, so it is icon-only and
+    # must never carry body text. This guard fails loudly if that invariant is broken.
+    assert contrast('#111111', colors['lilac']) < 4.5, 'lilac contrast changed; re-measure before use'
+    assert 'lilac' not in {'paper', 'surface', 'bg'}, 'lilac must not become a surface token'
     rows = []
     for fg, bg in pairs:
         ratio = contrast(colors[fg], colors[bg])
