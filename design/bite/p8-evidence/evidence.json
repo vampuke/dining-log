@@ -8,7 +8,7 @@
     "sourceArtifact": 13114055548,
     "api": 35,
     "normalization": "Full frame resized with Lanczos to 360x640; no crop or content edits. Update dialogs include system bars; other images capture the 360dp x 640dp Compose viewport.",
-    "runtimeCodeUnchangedSinceSource": true,
+    "runtimeCodeUnchangedSinceSource": false,
     "images": [
       {
         "file": "light-home.png",
@@ -234,7 +234,8 @@
         "sha256": "5e00146218e06f52c96ba0bc1330215fcd296291a856104ac139422bf8d44941",
         "review": "Readable labels, placeholders and controls; final items fully above capsule where applicable."
       }
-    ]
+    ],
+    "scope": "Historical P8 captures retained. Runtime code changed for P9; the p9 section records new verification and screenshots."
   },
   "sections": {
     "A": {
@@ -329,5 +330,624 @@
     "No local Gradle or emulator execution, as instructed.",
     "Signed release APK download and physical-device system installation, OEM installers, unknown-app settings return and service cancellation across process death were not exercised on a physical device.",
     "Screenshots use deterministic UI fixtures; network and repository behavior is covered separately by JVM and CI end-to-end tests."
-  ]
+  ],
+  "p9": {
+    "phase": "P9",
+    "branch": "p8-ux-fixes",
+    "reviewedCommit": "c879a217b2f75741d8661478d803021d67aaa816",
+    "briefSource": {
+      "file": "design/P9_FIX_TASK.md",
+      "commit": "2495d2c0dd0e8e75e89d9f3343c02abdacf2d222"
+    },
+    "reviewSource": {
+      "file": "design/p8-review/REVIEW.md",
+      "commit": "9dbf3376789e3cf20de23db6327b3e1c8833aafa"
+    },
+    "implementationCommit": "2ac6d697737780eafc118c976fc86daecb78bcff",
+    "findings": {
+      "R1": {
+        "locations": [
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/UpdateDialog.kt:29",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/UpdateDialog.kt:26"
+        ],
+        "behavior": "Content-sized surface capped at 85% of the available dialog window; internal scrolling and host density/font scale retained. Rendered 1x/2x scales are asserted.",
+        "tests": [
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:137"
+        ],
+        "commits": [
+          {
+            "sha": "ac52a100c67b0f3aa14e3e3cdc9182cba0be6436",
+            "subject": "fix(p9-r1): size update dialog to bounded scrolling content"
+          },
+          {
+            "sha": "2ca669e4c519894aee58bd8969a5bea226cf4ab2",
+            "subject": "fix(p9-r1): retain dialog font scale and assert 200 percent rendering"
+          },
+          {
+            "sha": "2ac6d697737780eafc118c976fc86daecb78bcff",
+            "subject": "test(p9-r1): verify bottom padding after scrolling long notes to the end"
+          }
+        ]
+      },
+      "R2": {
+        "locations": [
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt:172",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt:219",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt:238"
+        ],
+        "behavior": "The active (kind, id, restaurantId, create) key is idempotent. Input, validation, saving, failure and conflict state stay in memory; leaving or successful completion clears the key.",
+        "tests": [
+          "android/feature/src/test/kotlin/top/alanvampuke/dininglog/feature/ProductViewModelTest.kt:197",
+          "android/feature/src/test/kotlin/top/alanvampuke/dininglog/feature/ProductViewModelTest.kt:220",
+          "android/feature/src/test/kotlin/top/alanvampuke/dininglog/feature/ProductViewModelTest.kt:235",
+          "android/feature/src/test/kotlin/top/alanvampuke/dininglog/feature/ProductViewModelTest.kt:245"
+        ],
+        "commits": [
+          {
+            "sha": "6af8960a1dc7f3d6727a82924e02d91d886c2728",
+            "subject": "fix(p9-r2): retain active editor state across recreation"
+          }
+        ]
+      },
+      "R3": {
+        "locations": [
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt:169",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt:173",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt:185",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/auth/AuthScreens.kt:126",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt:108",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/ListScreens.kt:70"
+        ],
+        "behavior": "Editable nodes receive accessible names. Standalone labels have cleared semantics; FormField, authentication, password and search callers supply names.",
+        "tests": [
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:363",
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:243"
+        ],
+        "commits": [
+          {
+            "sha": "a4518b2ccd2846610e7fecf685434457856863cf",
+            "subject": "fix(p9-r3): name editable fields and suppress duplicate labels"
+          }
+        ]
+      },
+      "R4": {
+        "locations": [
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt:86"
+        ],
+        "behavior": "Horizontal safeDrawing insets precede the 20dp capsule margins. Measured capsule height and bottom/list clearance are retained.",
+        "tests": [
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:181"
+        ],
+        "commits": [
+          {
+            "sha": "c930fdfc1239897982c1052c1336d0e23e04eb0c",
+            "subject": "fix(p9-r4): protect floating capsule with horizontal safe insets"
+          },
+          {
+            "sha": "fbd0daec769e7ac46db0266d8141e79307ac9353",
+            "subject": "test(p9-r4): validate supported side insets and both physical rotations"
+          },
+          {
+            "sha": "e8bed497fd9308f1fb989187543c0330a75b47c1",
+            "subject": "test(p9-r4): compare landscape bounds using Compose edge coordinates"
+          }
+        ]
+      },
+      "R5": {
+        "locations": [
+          "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt:29",
+          "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt:36",
+          "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt:99",
+          "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt:117",
+          "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/UpdateInstall.kt:44",
+          "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/UpdateInstall.kt:50"
+        ],
+        "behavior": "Downloads stream into sibling .part files. SHA-256 verification precedes rename to the final APK; initialization and release changes sweep orphan partial/other-version APKs. Cancellation keeps retry disabled until cleanup finishes.",
+        "tests": [
+          "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/UpdatesTest.kt:92"
+        ],
+        "commits": [
+          {
+            "sha": "9e04aeaf5e00373afc257a20cb219a904b94acb0",
+            "subject": "fix(p9-r5): verify partial APKs before promotion and sweep orphans"
+          }
+        ]
+      },
+      "R6": {
+        "locations": [
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:243",
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:319",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt:164",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt:169"
+        ],
+        "behavior": "The matrix covers both themes, rendered 1x/2x fonts, enabled/disabled, normal/error, empty/filled and 1/3/4 lines. Existing focus, naming and color assertions remain; text overflow, containment and label/placeholder/error separation are added. Full-width text slots prevent clipped natural-width layouts found by the new assertions.",
+        "tests": [
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:348",
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:358"
+        ],
+        "commits": [
+          {
+            "sha": "03325f47d63ab4b98523e90c33519f4856a25518",
+            "subject": "test(p9-r6): cover large-font field states and rendered layout bounds"
+          },
+          {
+            "sha": "907605029b97481eae175ff4ea76e8edf7ff3176",
+            "subject": "test(p9-r6): assert the rendered scale of every field text role"
+          },
+          {
+            "sha": "b21f1eea4ea0b3860bdc2f01cc675185a58fc85c",
+            "subject": "fix(p9-r6): give field text slots full width to prevent clipping"
+          }
+        ]
+      },
+      "R7": {
+        "locations": [
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/ListScreens.kt:29",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/ListScreens.kt:93",
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt:388",
+          "android/tools/verify_bite_visuals.py:93",
+          "android/tools/verify_bite_visuals.py:107"
+        ],
+        "behavior": "Retired chooser callbacks/menu entries/helper branches are removed. Open menus assert both entries absent in both themes; actual refresh, trash, visit-history and add-visit paths/assertions remain.",
+        "tests": [
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt:292",
+          "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt:394"
+        ],
+        "commits": [
+          {
+            "sha": "a6a7ac580341b65b9a6b9c9a55d96fa1d39128e3",
+            "subject": "fix(p9-r7): remove retired chooser menus and assert their absence"
+          }
+        ]
+      },
+      "R8": {
+        "locations": [
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/revisions/HistoryScreens.kt:88",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/revisions/HistoryScreens.kt:113",
+          "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductRoot.kt:7",
+          "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt:7"
+        ],
+        "behavior": "Unused baseVersion parameter/argument and the border, rotate, ActivityNotFoundException and Toast imports are removed.",
+        "tests": [],
+        "commits": [
+          {
+            "sha": "7e8756dafa9f8488f89b1ffbc103d52df005ddc8",
+            "subject": "chore(p9-r8): remove unused comparison argument and imports"
+          }
+        ]
+      }
+    },
+    "verification": {
+      "local": {
+        "visualVerifiers": "verify_bite_visuals.py and verify_p6_visuals.py passed; all 56 contrast pairs pass in both themes.",
+        "backendContractsDiffAgainstMaster": "empty",
+        "migrationHashes": {
+          "0001_initial.sql": "191d1a80a7411ba828effc9041fbd144fa4d10abb372f61c793a8f6dc1a5b80b",
+          "0002_address_optional.sql": "5cfdaf6ae11a0eb98f87c4a143cadb237f9baa4222ad0225aeffe250b21bc686"
+        },
+        "versionCode": 7,
+        "versionName": "0.7.0",
+        "newBitmapAppResources": 0,
+        "gradleAndEmulator": "not run locally, as instructed",
+        "originalAssertionLinesPreserved": {
+          "P8VisualTest.kt": 24,
+          "ProductEndToEndTest.kt": 48,
+          "ProductViewModelTest.kt": 55,
+          "UpdatesTest.kt": 29
+        }
+      },
+      "ci": {
+        "status": "passed",
+        "run": 41397605471,
+        "url": "https://github.com/vampuke/dining-log/actions/runs/41397605471",
+        "sourceCommit": "2ac6d697737780eafc118c976fc86daecb78bcff",
+        "debugBuildJvmLint": "passed",
+        "androidBuildArtifact": 13119998299,
+        "unusedCompilerWarnings": 0,
+        "jvmRegressionClasses": [
+          {
+            "class": "top.alanvampuke.dininglog.core.UpdatesTest",
+            "tests": 9,
+            "failures": 0,
+            "errors": 0,
+            "newRegressionCases": [
+              "interruptedPackagesAreSweptAndOnlyVerifiedBytesReceiveTheFinalName"
+            ]
+          },
+          {
+            "class": "top.alanvampuke.dininglog.feature.ProductViewModelTest",
+            "tests": 15,
+            "failures": 0,
+            "errors": 0,
+            "newRegressionCases": [
+              "reopeningDuringBlockedSaveKeepsSavingFlagAndDoesNotSubmitTwice",
+              "reopeningDuringLoadDoesNotDuplicateItAndLeavingCancelsIt",
+              "reopeningAfterRecreationKeepsInputValidationFailureAndConflictInMemory",
+              "editorKeyIncludesKindIdParentAndCreateFlag"
+            ]
+          }
+        ],
+        "emulatorSuites": [
+          {
+            "api": 26,
+            "tests": 33,
+            "failures": 0,
+            "skipped": 0,
+            "artifact": 13119948838,
+            "p8VisualMethodsPassed": 5
+          },
+          {
+            "api": 35,
+            "tests": 33,
+            "failures": 0,
+            "skipped": 0,
+            "artifact": 13120596380,
+            "p8VisualMethodsPassed": 5
+          }
+        ]
+      }
+    },
+    "sourceTrees": {
+      "android/app/src": "e55bd8b0e04034bd0cd03f76681603e378f94e30",
+      "android/core/src": "fdf2de6a0ddbb5c36f46400b25536685bea8d50b",
+      "android/data/src": "5e38bcac93c21552ac4a06791d70dadcd481b747",
+      "android/feature/src": "419239dad3a4143a517235cffa364550a6748f79",
+      "android/tools/verify_bite_visuals.py": "c72cd80c19ebad22ee154e26ca36662f3a169c9d"
+    },
+    "screenshots": {
+      "status": "captured in CI and manually inspected",
+      "sourceRun": 41397605471,
+      "sourceArtifact": 13120596380,
+      "api": 35,
+      "normalization": "Full frame resized with Lanczos, preserving aspect ratio; no crop or content edits. Dialog captures include system bars, other captures use the Compose viewport.",
+      "images": [
+        {
+          "file": "p9-light-update-short-idle.png",
+          "sourceFile": "p9-light-update-short-idle-api35.png",
+          "sourceDimensions": [
+            1080,
+            1920
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "3c9fd82aebe66e975bf84d5644172de0e2bcc47a7293dfae7d98472f0d9f584a",
+          "sha256": "d815510af82b574322d3ccf6fee9335947d25b10e2b69cadb975acd7402f63b4",
+          "findings": [
+            "R1"
+          ],
+          "review": "Compact content-sized idle/download panel; last control retains 16dp bottom padding. Progress, buttons and text are readable."
+        },
+        {
+          "file": "p9-light-update-short-downloading.png",
+          "sourceFile": "p9-light-update-short-downloading-api35.png",
+          "sourceDimensions": [
+            1080,
+            1920
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "c2dfa8fa7f28839431df4b9f378c34b03e5013a31b0d8390c4f40c12280993cb",
+          "sha256": "2cd8efdf23d7a62778436394cc3e3ccf2a0d2f64ac89b9b0ce0c19064d8acd74",
+          "findings": [
+            "R1"
+          ],
+          "review": "Compact content-sized idle/download panel; last control retains 16dp bottom padding. Progress, buttons and text are readable."
+        },
+        {
+          "file": "p9-light-update-long-font200.png",
+          "sourceFile": "p9-light-update-long-font200-api35.png",
+          "sourceDimensions": [
+            1080,
+            1920
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "ea8a945fce24d169bdcfdb04ff99c6e41b3048ec69f407670bd45060175979b7",
+          "sha256": "cebd7e637d2cdae008fc436fe28243f46abd1583dba8397f9b0b2f0682ac88e3",
+          "findings": [
+            "R1"
+          ],
+          "review": "Rendered 200% notes scroll internally; all final controls and 16dp bottom padding are visible. The partial note line at the top is an expected scroll boundary."
+        },
+        {
+          "file": "p9-light-landscape-right-bar.png",
+          "sourceFile": "p9-light-landscape-right-bar-api35.png",
+          "sourceDimensions": [
+            1920,
+            1080
+          ],
+          "dimensions": [
+            640,
+            360
+          ],
+          "sourceSha256": "5cd8c72761cfd12b46e08b562bce0170e7354452b02cf6cc84fbc6d221bc8a37",
+          "sha256": "ace3b5a07fce8dbbd16a6df61c2ce4b68276ce7ea3c33e5efaca4d10353112c8",
+          "findings": [
+            "R4"
+          ],
+          "review": "Both physical landscape directions checked. Capsule and three controls clear the injected 48dp side bar/opposite 32dp cutout plus 20dp margins; labels and outlines remain readable."
+        },
+        {
+          "file": "p9-light-landscape-left-bar.png",
+          "sourceFile": "p9-light-landscape-left-bar-api35.png",
+          "sourceDimensions": [
+            1920,
+            1080
+          ],
+          "dimensions": [
+            640,
+            360
+          ],
+          "sourceSha256": "5705520d6eadf5cd81e6c44fe1efc59991589e57134da8556d4ffb2e798288af",
+          "sha256": "d77ba6fafe786775216b5b8cd64ce13a4d5d49f76001a6e5cf99b7795eee6610",
+          "findings": [
+            "R4"
+          ],
+          "review": "Both physical landscape directions checked. Capsule and three controls clear the injected 48dp side bar/opposite 32dp cutout plus 20dp margins; labels and outlines remain readable."
+        },
+        {
+          "file": "p9-light-field-font200-enabled-normal-multiline.png",
+          "sourceFile": "p9-light-field-font200-enabled-normal-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "7293c0c65d25e221924ad3e3d3afa46dd1bdcbd952d0be0f74f45d75453ef780",
+          "sha256": "3f88832bd1c551a9c645e375f559d4a9b5429d813f7b7da507d1cf4247d4ef31",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-light-field-font200-enabled-error-multiline.png",
+          "sourceFile": "p9-light-field-font200-enabled-error-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "c392463e173922199a9fadef00b95529d53eb9140e148cfe9e9b4fe6fc17f451",
+          "sha256": "e1167396e1b81c51e911b0fc0f9a5831bee8183b8ee609b2d1fc6376551149dc",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-light-field-font200-disabled-normal-multiline.png",
+          "sourceFile": "p9-light-field-font200-disabled-normal-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "7293c0c65d25e221924ad3e3d3afa46dd1bdcbd952d0be0f74f45d75453ef780",
+          "sha256": "3f88832bd1c551a9c645e375f559d4a9b5429d813f7b7da507d1cf4247d4ef31",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-light-field-font200-disabled-error-multiline.png",
+          "sourceFile": "p9-light-field-font200-disabled-error-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "c392463e173922199a9fadef00b95529d53eb9140e148cfe9e9b4fe6fc17f451",
+          "sha256": "e1167396e1b81c51e911b0fc0f9a5831bee8183b8ee609b2d1fc6376551149dc",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-dark-update-short-idle.png",
+          "sourceFile": "p9-dark-update-short-idle-api35.png",
+          "sourceDimensions": [
+            1080,
+            1920
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "28aa75c7c3a42eb1243ab74018cb57e7bcd2648a1c5e9a0482c5e3e157f342d0",
+          "sha256": "53aaf9ab31def9c2d296307bd92e5987f540c93ea7f5d9a668b96e645283da90",
+          "findings": [
+            "R1"
+          ],
+          "review": "Compact content-sized idle/download panel; last control retains 16dp bottom padding. Progress, buttons and text are readable."
+        },
+        {
+          "file": "p9-dark-update-short-downloading.png",
+          "sourceFile": "p9-dark-update-short-downloading-api35.png",
+          "sourceDimensions": [
+            1080,
+            1920
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "72b06e6e69cdec80e130c57f921fc352c25b262e8263dd413d48e987dd47073e",
+          "sha256": "8006779b1d96ac73be33d23f8fa28e1076261c8788002607fe4a562cc4573f1c",
+          "findings": [
+            "R1"
+          ],
+          "review": "Compact content-sized idle/download panel; last control retains 16dp bottom padding. Progress, buttons and text are readable."
+        },
+        {
+          "file": "p9-dark-update-long-font200.png",
+          "sourceFile": "p9-dark-update-long-font200-api35.png",
+          "sourceDimensions": [
+            1080,
+            1920
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "f18e5c0bdbea594e6492e1f6643e84acb6e4a463b61b7e00e736437ff6adc51f",
+          "sha256": "757dc40a17c408151a2a68e2883f7e8801a6b5e7a803749d512e43c6959d1858",
+          "findings": [
+            "R1"
+          ],
+          "review": "Rendered 200% notes scroll internally; all final controls and 16dp bottom padding are visible. The partial note line at the top is an expected scroll boundary."
+        },
+        {
+          "file": "p9-dark-landscape-right-bar.png",
+          "sourceFile": "p9-dark-landscape-right-bar-api35.png",
+          "sourceDimensions": [
+            1920,
+            1080
+          ],
+          "dimensions": [
+            640,
+            360
+          ],
+          "sourceSha256": "1b1463987be867666c9364cad3baee523ba821b30f177ca9ec96b25773198480",
+          "sha256": "a78375452013f437adb2b7a18cfd728314f97696a5c8f6ee709e4482fc29d1b9",
+          "findings": [
+            "R4"
+          ],
+          "review": "Both physical landscape directions checked. Capsule and three controls clear the injected 48dp side bar/opposite 32dp cutout plus 20dp margins; labels and outlines remain readable."
+        },
+        {
+          "file": "p9-dark-landscape-left-bar.png",
+          "sourceFile": "p9-dark-landscape-left-bar-api35.png",
+          "sourceDimensions": [
+            1920,
+            1080
+          ],
+          "dimensions": [
+            640,
+            360
+          ],
+          "sourceSha256": "2ee6e4102ad219741531a3fbb94cbad509634d56e1b8a8c86f3a26ed85ad9549",
+          "sha256": "88065f550908b4ef3deae4c9b0d24594902b66a1c7cbc00c0edd37b6d548d5dc",
+          "findings": [
+            "R4"
+          ],
+          "review": "Both physical landscape directions checked. Capsule and three controls clear the injected 48dp side bar/opposite 32dp cutout plus 20dp margins; labels and outlines remain readable."
+        },
+        {
+          "file": "p9-dark-field-font200-enabled-normal-multiline.png",
+          "sourceFile": "p9-dark-field-font200-enabled-normal-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "5c149176ff3754c8ece2485594e9bbefb6731ed1750fdb9e0c87eacc387d9344",
+          "sha256": "1fada97858af262866f8d36fcb90ee3b8cc57c92d71a7a2bc00819b406cca2b3",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-dark-field-font200-enabled-error-multiline.png",
+          "sourceFile": "p9-dark-field-font200-enabled-error-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "c3a43ed0c154cb475ad198723132a762ec19829b10a5d5aaa222f079888fa5e8",
+          "sha256": "5e4bb52ab1fda8c6b938b139824771692d19c1b3cf7b92d72e23d0922db84be0",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-dark-field-font200-disabled-normal-multiline.png",
+          "sourceFile": "p9-dark-field-font200-disabled-normal-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "5c149176ff3754c8ece2485594e9bbefb6731ed1750fdb9e0c87eacc387d9344",
+          "sha256": "1fada97858af262866f8d36fcb90ee3b8cc57c92d71a7a2bc00819b406cca2b3",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        },
+        {
+          "file": "p9-dark-field-font200-disabled-error-multiline.png",
+          "sourceFile": "p9-dark-field-font200-disabled-error-multiline-api35.png",
+          "sourceDimensions": [
+            945,
+            1680
+          ],
+          "dimensions": [
+            360,
+            640
+          ],
+          "sourceSha256": "c3a43ed0c154cb475ad198723132a762ec19829b10a5d5aaa222f079888fa5e8",
+          "sha256": "5e4bb52ab1fda8c6b938b139824771692d19c1b3cf7b92d72e23d0922db84be0",
+          "findings": [
+            "R3",
+            "R6"
+          ],
+          "review": "200% four-line field: label above the box, placeholder inside its text width, supporting error when present fully contained and separated. Enabled/disabled and normal/error states remain readable."
+        }
+      ],
+      "sourceCommit": "2ac6d697737780eafc118c976fc86daecb78bcff",
+      "additionalApi26Review": {
+        "sourceRun": 41397605471,
+        "sourceArtifact": 13119948838,
+        "framesInspected": 18,
+        "status": "manually inspected in both themes; raw frames retained in the CI artifact"
+      }
+    },
+    "limitations": [
+      "No local Gradle or emulator execution; Android verification came from GitHub Actions.",
+      "Editor recreation is covered by repeated opening on the retained ViewModel; unsaved/failed/in-flight-save rotation was not manually exercised on a physical device.",
+      "Spoken TalkBack output was not manually tested; editable-node names and duplicate-label absence are asserted in instrumentation.",
+      "Landscape uses both physical emulator rotations and injected side insets: API 35 adds cutouts; API 26 tests side bars because typed synthetic cutout insets are unsupported. Hardware/OEM cutouts were not exercised.",
+      "Abrupt process termination, real signed APK download/install, OEM installers and unknown-app permission return were not tested on hardware. JVM file fixtures cover orphan cleanup, verification and rename; UI captures are deterministic fixtures."
+    ]
+  }
 }
