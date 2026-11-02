@@ -50,8 +50,8 @@ import top.alanvampuke.dininglog.feature.theme.*
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Image(painterResource(if (LocalQuietGridColors.current == QuietGridDark) R.drawable.bite_v1_burger_dark else R.drawable.bite_v1_burger), null, Modifier.size(38.dp).rotate(-3f))
                         Column(Modifier.weight(1f)) {
-                            GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
-                            GridText(title, style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                            GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                            GridText(title, Modifier.fillMaxWidth(), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
                         }
                         if (onAdd != null) BiteButton(onAdd, Modifier.testTag("add")) { Text("记一笔") }
                     }
