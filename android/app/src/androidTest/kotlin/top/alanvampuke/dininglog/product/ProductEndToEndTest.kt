@@ -401,13 +401,13 @@ class ProductEndToEndTest {
             scroller.performScrollToNode(hasTestTag(tag))
             if (compose.onAllNodesWithTag("floating-tabs").fetchSemanticsNodes().isNotEmpty()) {
                 val capsule = compose.onNodeWithTag("floating-tabs").getUnclippedBoundsInRoot()
-                val target = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+                val target = compose.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot()
                 val overlap = target.bottom.value - capsule.top.value + 8f
                 if (overlap > 0f) scroller.performSemanticsAction(SemanticsActions.ScrollBy) {
                     it(0f, overlap * compose.activity.resources.displayMetrics.density)
                 }
                 assertTrue("$tag must be above floating navigation before tapping",
-                    compose.onNodeWithTag(tag).getUnclippedBoundsInRoot().bottom <=
+                    compose.onNodeWithTag(tag, useUnmergedTree = true).getUnclippedBoundsInRoot().bottom <=
                         compose.onNodeWithTag("floating-tabs").getUnclippedBoundsInRoot().top)
             }
         }

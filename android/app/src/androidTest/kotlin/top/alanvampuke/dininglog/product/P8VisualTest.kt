@@ -5,10 +5,13 @@ import android.graphics.Bitmap
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
@@ -126,16 +129,19 @@ class P8VisualTest {
         var error by mutableStateOf(false)
         var lines by mutableStateOf(1)
         var value by mutableStateOf("")
-        lateinit var focus: androidx.compose.ui.focus.FocusManager
+        val idleFocus = FocusRequester()
         compose.setContent { QuietGridTheme(dark) {
-            focus = androidx.compose.ui.platform.LocalFocusManager.current
-            FormField("name", value, { value = it }, enabled, if (error) "请填写名称" else null,
-                label = "字段名称", minLines = lines)
+            Column {
+                // Android 8 can refocus the sole focusable field after clearFocus.
+                Box(Modifier.size(1.dp).focusRequester(idleFocus).focusable())
+                FormField("name", value, { value = it }, enabled, if (error) "请填写名称" else null,
+                    label = "字段名称", minLines = lines)
+            }
         } }
         for (night in listOf(false, true)) for (active in listOf(true, false)) for (invalid in listOf(false, true)) for (minLines in listOf(1, 3)) {
             compose.runOnIdle { dark = night; enabled = active; error = invalid; lines = minLines; value = "" }
             // Apply the new field configuration before clearing any restored focus.
-            compose.runOnIdle { focus.clearFocus(force = true) }
+            compose.runOnIdle { idleFocus.requestFocus() }
             compose.onNodeWithTag("field:name").assertIsNotFocused()
             val c = if (night) QuietGridDark else QuietGridLight
             compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.tertiary.toArgb()))
