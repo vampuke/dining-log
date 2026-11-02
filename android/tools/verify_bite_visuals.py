@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 import re
 import subprocess
+import hashlib
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -61,17 +62,13 @@ for index, name in enumerate(('burger', 'ramen', 'receipt', 'bite', 'radar', 'pr
     assert ET.parse(RES / f'drawable/bite_v{index}_{name}.xml').getroot().tag == 'vector'
 for res in (RES, FEATURE / 'res'):
     assert not [p for p in res.rglob('*') if p.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp')]
-# Existing tag expressions, including interpolated tags, are a compatibility contract.
-missing = []
-for path in (FEATURE / 'kotlin').rglob('*.kt'):
-    relative = str(path.relative_to(ROOT))
-    old = subprocess.run(['git', 'show', f'master:{relative}'], capture_output=True, text=True)
-    if old.returncode: continue
-    old_tags = set(re.findall(r'testTag\(("(?:[^"\\]|\\.)*"|tag)\)', old.stdout))
-    new_tags = set(re.findall(r'testTag\(("(?:[^"\\]|\\.)*"|tag)\)', path.read_text()))
-    missing += [(relative, tag) for tag in old_tags - new_tags]
-assert not missing, missing
-assert not subprocess.check_output(['git', 'diff', 'master', '--name-only', '--', 'backend', 'android/core', 'android/data']).strip()
+# A checked-in baseline makes the same assertions work in shallow PR checkouts.
+baseline = json.loads((ROOT / 'android/tools/p7_baseline.json').read_text())
+for relative, tags in baseline['testTags'].items():
+    new_tags = set(re.findall(r'testTag\(("(?:[^"\\]|\\.)*"|tag)\)', (ROOT / relative).read_text()))
+    assert set(tags) <= new_tags, (relative, set(tags) - new_tags)
+for relative, expected in baseline['protectedHashes'].items():
+    assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected, relative
 print('PASS contrast failures=0, native night colors, visible dark strokes/shadows, vectors, tags, backend/core/data unchanged')
 if '--json' in __import__('sys').argv:
     dest = Path(__import__('sys').argv[-1]); dest.parent.mkdir(parents=True, exist_ok=True)

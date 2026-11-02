@@ -177,8 +177,13 @@ import top.alanvampuke.dininglog.feature.theme.*
 @Composable private fun RowText(record: RecordSummary) {
     var absolute by remember(record.ref.id) { mutableStateOf(false) }
     val large = LocalDensity.current.fontScale > 1.3f
-    GridText(record.title, Modifier.testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium,
-        maxLines = if (large) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium,
+            maxLines = if (large) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
+        if (record.ref.kind == RecordKind.RESTAURANT && record.version > 1)
+            GridText("已修订", Modifier.revisedStamp(LocalQuietGridColors.current.danger).padding(3.dp),
+                style = QuietGridText.caption, color = LocalQuietGridColors.current.danger)
+    }
     val fields = record.fields
     val secondary = when (record.ref.kind) {
         RecordKind.RESTAURANT -> listOf(

@@ -136,7 +136,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
         .brutalBox(if (enabled) c.cta else c.paper, c.border, c.shadow, 12.dp, offset = (4f - 1.5f * shift).dp),
         enabled = enabled, shape = RoundedCornerShape(12.dp), border = BorderStroke(2.5.dp, c.border),
         interactionSource = source, elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
-        colors = colors ?: ButtonDefaults.buttonColors(containerColor = c.cta, contentColor = c.onAccent,
+        colors = colors?.copy(contentColor = c.onAccent, disabledContainerColor = c.paper, disabledContentColor = c.secondary) ?: ButtonDefaults.buttonColors(containerColor = c.cta, contentColor = c.onAccent,
             disabledContainerColor = c.paper, disabledContentColor = c.secondary), content = content)
 }
 @Composable fun BiteTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
