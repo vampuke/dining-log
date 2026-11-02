@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
@@ -142,7 +143,9 @@ class P8VisualTest {
             compose.runOnIdle { dark = night; enabled = active; error = invalid; lines = minLines; value = "" }
             // Apply the new field configuration before clearing any restored focus.
             compose.runOnIdle { idleFocus.requestFocus() }
-            compose.onNodeWithTag("field:name").assertIsNotFocused()
+            compose.onNodeWithTag("field:name").assert(SemanticsMatcher("field has no active focus") {
+                !it.config.contains(SemanticsProperties.Focused) || !it.config[SemanticsProperties.Focused]
+            })
             val c = if (night) QuietGridDark else QuietGridLight
             compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.tertiary.toArgb()))
             compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.secondary.toArgb()))

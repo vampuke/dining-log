@@ -426,7 +426,15 @@ class ProductEndToEndTest {
         compose.onNodeWithTag("record-list", useUnmergedTree = true).performScrollToNode(hasText(text))
         compose.onNodeWithText(text).performClick()
     }
-    private fun type(tag: String, value: String) { scroll(tag); compose.onNodeWithTag(tag).performTextReplacement(value) }
+    private fun type(tag: String, value: String) {
+        scroll(tag)
+        // Focus can resize the lazy viewport when the IME appears. Finish that
+        // transition and fetch the current field before replacing its text.
+        compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+        compose.waitForIdle()
+        scroll(tag)
+        compose.onNodeWithTag(tag).assertIsFocused().performTextReplacement(value)
+    }
     private fun progress(tag: String, value: Float) { scroll(tag); compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(value) } }
     private fun patchWithOtherSession(session: AuthSession, id: String, version: Int, note: String) = runBlocking {
         withContext(Dispatchers.IO) {
