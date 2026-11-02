@@ -64,6 +64,8 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
     // originally entered through registration or account recovery.
     LaunchedEffect(session?.sessionId) { if (session != null) page = AuthPage.LOGIN }
     val authenticated = session
+    SecureScreen(enabled = authenticated == null ||
+        (authenticated.recoveryCodes.isNotEmpty() && acknowledgedFor != authenticated.sessionId))
     if (authenticated != null && (authenticated.recoveryCodes.isEmpty() || acknowledgedFor == authenticated.sessionId) && onAuthenticated != null) {
         key(authenticated.userId) { onAuthenticated(authenticated) { launchAction { message = onLogout(); page = AuthPage.LOGIN } } }
         return

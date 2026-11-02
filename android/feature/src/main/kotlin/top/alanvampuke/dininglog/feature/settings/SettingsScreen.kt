@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.*
@@ -87,10 +88,12 @@ import top.alanvampuke.dininglog.feature.theme.*
 }
 @Composable private fun PasswordDialog(state: SettingsUiState, onPassword: (String, String) -> Unit,
     onInput: (String, String) -> Unit, onDismiss: () -> Unit) {
+    SecureScreen(enabled = true)
     // Kept only in the account-owned ViewModel's memory so an unknown request
     // can be confirmed after closing/reopening. Never Room or SavedStateHandle.
     val (current, replacement, repeated) = state.passwordInputs
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false,
+        dismissOnClickOutside = false, securePolicy = SecureFlagPolicy.SecureOn)) {
         ScreenFrame("screen:password", bottomBar = {
             Surface(color = LocalQuietGridColors.current.surface) {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)) {
