@@ -28,6 +28,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
@@ -149,7 +151,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 // Slot foreground is explicit so GridText and Material Text share label/placeholder roles.
 val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
 @Composable fun BiteTextField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
-    enabled: Boolean = true, label: (@Composable () -> Unit)? = null,
+    enabled: Boolean = true, label: (@Composable () -> Unit)? = null, accessibleLabel: String? = null,
     placeholder: (@Composable () -> Unit)? = null,
     textStyle: TextStyle = QuietGridText.input, singleLine: Boolean = false, minLines: Int = 1,
     isError: Boolean = false, supportingText: (@Composable () -> Unit)? = null,
@@ -161,9 +163,12 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
     val labelColor = when { isError -> c.danger; !enabled -> c.secondary; focused -> c.ink; else -> c.secondary }
     // Always keep the label above the box. Material's collapsed empty label hides placeholders.
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (label != null) CompositionLocalProvider(LocalContentColor provides labelColor, LocalFieldForeground provides labelColor) { label() }
+        if (label != null) Box(Modifier.clearAndSetSemantics {}) {
+            CompositionLocalProvider(LocalContentColor provides labelColor, LocalFieldForeground provides labelColor) { label() }
+        }
         OutlinedTextField(value, onValueChange,
-            modifier.fillMaxWidth().border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
+            modifier.fillMaxWidth().semantics { if (accessibleLabel != null) contentDescription = accessibleLabel }
+                .border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
             enabled = enabled, interactionSource = source, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
             placeholder = {
                 CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {

@@ -105,7 +105,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 GridText("修改成功后其他会话退出。新密码需 12–128 个字符，不能使用常见弱密码。")
                 listOf(Triple("current-password", "当前密码", current), Triple("new-password", "新密码", replacement), Triple("repeat-password", "确认新密码", repeated)).forEach { (tag, label, value) ->
                     BiteTextField(value, { onInput(tag, it) },
-                        modifier = Modifier.fillMaxWidth().testTag(tag), label = { GridText(label) }, placeholder = { GridText(if (tag == "new-password") "12–128 个字符" else "必填") }, enabled = !state.busy && !state.passwordUnknown,
+                        modifier = Modifier.fillMaxWidth().testTag(tag), label = { GridText(label) }, accessibleLabel = label, placeholder = { GridText(if (tag == "new-password") "12–128 个字符" else "必填") }, enabled = !state.busy && !state.passwordUnknown,
                         textStyle = QuietGridText.input, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
                 }
                 if (state.message != null) ErrorMessage(state.message)

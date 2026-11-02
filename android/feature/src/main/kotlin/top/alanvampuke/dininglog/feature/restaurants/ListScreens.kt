@@ -69,8 +69,8 @@ import top.alanvampuke.dininglog.feature.theme.*
                 BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
                     RecordKind.RESTAURANT -> "搜索店名、菜品或评价"
                     RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
-                }) }, textStyle = QuietGridText.input, singleLine = true,
-                    leadingIcon = { Icon(QuietGridIcons.search, "搜索", tint = LocalQuietGridColors.current.ink) })
+                }) }, accessibleLabel = "搜索", textStyle = QuietGridText.input, singleLine = true,
+                    leadingIcon = { Icon(QuietGridIcons.search, null, tint = LocalQuietGridColors.current.ink) })
             }
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -187,6 +187,7 @@ class P8VisualTest {
                 !it.config.contains(SemanticsProperties.Focused) || !it.config[SemanticsProperties.Focused]
             })
             val c = if (night) QuietGridDark else QuietGridLight
+            assertFieldName("字段名称")
             compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, c.tertiary.toArgb()))
             compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.secondary.toArgb()))
             if (active) {
@@ -194,7 +195,15 @@ class P8VisualTest {
                 compose.onNodeWithText("例如：兰巴赫", useUnmergedTree = true).assertDoesNotExist()
                 compose.onNodeWithText("字段名称", useUnmergedTree = true).assert(SemanticsMatcher.expectValue(ForegroundArgb, if (invalid) c.danger.toArgb() else c.ink.toArgb()))
             } else compose.onNodeWithTag("field:name").assertIsNotEnabled()
+            compose.runOnIdle { value = "已填内容" }
+            assertFieldName("字段名称")
         }
+    }
+    private fun assertFieldName(label: String) {
+        val name = SemanticsMatcher.expectValue(SemanticsProperties.ContentDescription, listOf(label))
+        compose.onNodeWithTag("field:name").assert(name).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.EditableText))
+        compose.onAllNodes(name).assertCountEquals(1)
+        compose.onAllNodes(hasText(label)).assertCountEquals(0)
     }
     private fun assertTail(tag: String) {
         // Scroll to the actual end, including the reserved capsule clearance.

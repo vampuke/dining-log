@@ -181,7 +181,7 @@ fun fieldPlaceholder(field: String): String = when (field) {
 @Composable fun FormField(field: String, value: String?, onChange: (String) -> Unit, enabled: Boolean = true,
     error: String? = null, label: String = fieldLabel(field), minLines: Int = 1, supporting: String? = null, placeholder: String = fieldPlaceholder(field)) {
     BiteTextField(value ?: "", onChange, modifier = Modifier.fillMaxWidth().testTag("field:$field"), enabled = enabled,
-        label = { GridText(label) }, placeholder = { GridText(placeholder, style = QuietGridText.input) }, textStyle = QuietGridText.input, minLines = minLines, isError = error != null,
+        label = { GridText(label) }, accessibleLabel = label, placeholder = { GridText(placeholder, style = QuietGridText.input) }, textStyle = QuietGridText.input, minLines = minLines, isError = error != null,
         supportingText = { if (error != null) GridText(error, color = LocalQuietGridColors.current.danger) else if (supporting != null) GridText(supporting, style = MaterialTheme.typography.bodySmall, color = LocalQuietGridColors.current.secondary) })
 }
 @OptIn(ExperimentalLayoutApi::class)
