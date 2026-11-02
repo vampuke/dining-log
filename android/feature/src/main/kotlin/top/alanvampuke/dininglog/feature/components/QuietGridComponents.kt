@@ -83,6 +83,7 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
             content(contentPadding)
             // Hide while typing: leaves the entire resized viewport available to inputs.
             if (showCapsule) Box(Modifier.align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
                 .padding(start = 20.dp, end = 20.dp, bottom = navigationBottom + 16.dp)
                 .onSizeChanged { barHeight = with(density) { it.height.toDp() } }) { bottomBar() }
         }

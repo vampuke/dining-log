@@ -3,7 +3,12 @@ package top.alanvampuke.dininglog.product
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
-import androidx.activity.ComponentActivity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
+import android.view.View
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -15,6 +20,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -32,6 +38,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import top.alanvampuke.dininglog.BuildConfig
+import top.alanvampuke.dininglog.P9VisualActivity
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.*
@@ -41,7 +48,7 @@ import top.alanvampuke.dininglog.feature.theme.*
 
 @RunWith(AndroidJUnit4::class)
 class P8VisualTest {
-    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val compose = createAndroidComposeRule<P9VisualActivity>()
     private val ref = RecordRef(RecordKind.RESTAURANT, "p8-parent")
     private val record = RecordSnapshot(ref, 2, mapOf("name" to "兰巴赫", "category" to "restaurant", "cuisine" to "川菜",
         "review" to "文字记录每一口", "rating_tenths" to "43"), "2026-11-02T08:00:00Z")
@@ -162,6 +169,58 @@ class P8VisualTest {
             assertTrue("panel remains within the available window", panel.top >= 0.dp && panel.bottom <=
                 compose.activity.resources.configuration.screenHeightDp.dp)
             save("p9-${if (night) "dark" else "light"}-update-long-font200", true)
+        }
+    }
+    @Test fun landscapeCapsuleAndControlsRespectSideBarsAndCutoutsInBothDirectionsAndThemes() {
+        var dark by mutableStateOf(false)
+        var composeView: View? = null
+        var pixelsPerDp = 1f
+        compose.setContent {
+            QuietGridTheme(dark) {
+                val view = LocalView.current
+                val density = LocalDensity.current.density
+                SideEffect { composeView = view; pixelsPerDp = density }
+                Box(Modifier.fillMaxSize().testTag("p8-viewport")) {
+                    RecordListScreen(ListUiState(items = rows, localScope = false), "", ListFilters(), {}, {}, {}, {}, {},
+                        bottomBar = { BottomTabs("restaurants", onAdd = {}) {} })
+                }
+            }
+        }
+        val original = compose.activity.requestedOrientation
+        try {
+            for (orientation in listOf(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE)) {
+                compose.runOnIdle { compose.activity.requestedOrientation = orientation }
+                compose.waitUntil(10_000) {
+                    val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
+                    compose.activity.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && viewport.width > viewport.height
+                }
+                for (night in listOf(false, true)) {
+                    compose.runOnIdle { dark = night }
+                    // Simulate a 48dp side navigation bar and a 32dp cutout on the opposite side.
+                    val left = if (orientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) 32 else 48
+                    val right = if (left == 32) 48 else 32
+                    compose.runOnIdle {
+                        val bars = Insets.of(if (left == 48) (left * pixelsPerDp).toInt() else 0, 0,
+                            if (right == 48) (right * pixelsPerDp).toInt() else 0, 0)
+                        val cutout = Insets.of(if (left == 32) (left * pixelsPerDp).toInt() else 0, 0,
+                            if (right == 32) (right * pixelsPerDp).toInt() else 0, 0)
+                        ViewCompat.dispatchApplyWindowInsets(requireNotNull(composeView), WindowInsetsCompat.Builder()
+                            .setInsets(WindowInsetsCompat.Type.navigationBars(), bars)
+                            .setInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars(), bars)
+                            .setInsets(WindowInsetsCompat.Type.displayCutout(), cutout).build())
+                    }
+                    val viewport = compose.onNodeWithTag("p8-viewport").getUnclippedBoundsInRoot()
+                    for (tag in listOf("floating-tabs", "tab:restaurants", "nav-add", "tab:settings")) {
+                        compose.onNodeWithTag(tag).assertIsDisplayed()
+                        val bounds = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+                        assertTrue("$tag clears the left safe inset plus margin", bounds.left >= viewport.left + (left + 20).dp - 1.dp)
+                        assertTrue("$tag clears the right safe inset plus margin", bounds.right <= viewport.right - (right + 20).dp + 1.dp)
+                    }
+                    save("p9-${if (night) "dark" else "light"}-landscape-${if (left == 32) "right-bar" else "left-bar"}", false)
+                }
+            }
+        } finally {
+            compose.runOnIdle { compose.activity.requestedOrientation = original; ViewCompat.requestApplyInsets(requireNotNull(composeView)) }
         }
     }
     @Test fun emptyFocusedDisabledErrorAndMultilineFieldsUseLegibleRolesInBothThemes() {
