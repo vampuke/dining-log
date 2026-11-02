@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-// Small, grid-aligned vectors keep the launcher and navigation language simple.
+// Bolder rounded strokes echo the reference stickers. Existing selected silhouettes remain distinct.
 // Selected variants change their silhouettes as well as their color.
 object QuietGridIcons {
     val restaurantOutline = outline("RestaurantOutline") {
@@ -67,6 +67,14 @@ object QuietGridIcons {
         moveTo(4f, 21f); verticalLineTo(18f)
         curveTo(4f, 13f, 20f, 13f, 20f, 18f); verticalLineTo(21f); close()
     }
+    val search = outline("Search") {
+        moveTo(17f, 10f)
+        curveTo(17f, 6.1f, 13.9f, 3f, 10f, 3f)
+        curveTo(6.1f, 3f, 3f, 6.1f, 3f, 10f)
+        curveTo(3f, 13.9f, 6.1f, 17f, 10f, 17f)
+        curveTo(13.9f, 17f, 17f, 13.9f, 17f, 10f); close()
+        moveTo(15f, 15f); lineTo(21f, 21f)
+    }
     val filter = outline("Filter") {
         moveTo(4f, 6f); horizontalLineTo(20f)
         moveTo(7f, 12f); horizontalLineTo(17f)
@@ -80,8 +88,8 @@ object QuietGridIcons {
         }
     }
     private fun outline(name: String, draw: PathBuilder.() -> Unit) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
-        path(fill = null, stroke = SolidColor(Color.Black), strokeLineWidth = 1.8f,
-            strokeLineCap = StrokeCap.Square, strokeLineJoin = StrokeJoin.Miter, pathBuilder = draw)
+        path(fill = null, stroke = SolidColor(Color.Black), strokeLineWidth = 2.5f,
+            strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round, pathBuilder = draw)
     }.build()
     private fun solid(name: String, draw: PathBuilder.() -> Unit) = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f).apply {
         path(fill = SolidColor(Color.Black), pathFillType = PathFillType.EvenOdd, pathBuilder = draw)

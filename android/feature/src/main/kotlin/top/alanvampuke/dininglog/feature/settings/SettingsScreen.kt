@@ -40,34 +40,34 @@ import top.alanvampuke.dininglog.feature.theme.*
                 PageHeader("我的", subtitle = username)
                 GridText("账号 ${state.profile?.displayName ?: username}", style = MaterialTheme.typography.titleMedium)
                 state.profile?.let { GridText("注册于 ${it.createdAt}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary) }
-                TextButton(onClick = onRefresh, enabled = !state.loading) { Text(if (state.loading) "正在刷新账号…" else "刷新账号与会话") }
+                BiteTextButton(onClick = onRefresh, enabled = !state.loading) { Text(if (state.loading) "正在刷新账号…" else "刷新账号与会话") }
                 if (state.message != null) ErrorMessage(state.message, "settings-message")
             }
             val release = updateState.release
             if (updateState.enabled && release != null) item {
-                TextButton(onClick = { onOpenUpdate(release) }, modifier = Modifier.fillMaxWidth().testTag("app-update")) {
+                BiteTextButton(onClick = { onOpenUpdate(release) }, modifier = Modifier.fillMaxWidth().testTag("app-update")) {
                     Text("有新版本 ${release.versionName}")
                 }
             }
             item { GridText("登录会话", style = MaterialTheme.typography.headlineSmall) }
             items(state.sessions, key = { it.id }) { session ->
-                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                BitePanel {
                     GridText("${session.deviceName}${if (session.current) " · 当前设备" else ""}", style = MaterialTheme.typography.titleMedium)
                     GridText("建立 ${session.createdAt}\n最近刷新 ${session.lastSeenAt}\n到期 ${session.expiresAt}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-                    TextButton(onClick = { revoke = session }, enabled = !state.busy, modifier = Modifier.testTag("revoke:${session.id}")) { Text("撤销会话", color = LocalQuietGridColors.current.danger) }
+                    BiteTextButton(onClick = { revoke = session }, enabled = !state.busy, modifier = Modifier.testTag("revoke:${session.id}")) { Text("撤销会话", color = LocalQuietGridColors.current.danger) }
                     HorizontalDivider(color = LocalQuietGridColors.current.border)
                 }
             }
             if (state.sessions.isEmpty() && !state.loading) item { GridText("尚未取得会话列表，可联网后刷新", color = LocalQuietGridColors.current.secondary) }
             item {
-                Button(onClick = { password = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("change-password")) { Text("修改密码") }
+                BiteButton(onClick = { password = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("change-password")) { Text("修改密码") }
             }
             item {
                 GridText("未提交草稿 · ${drafts.size}", style = MaterialTheme.typography.headlineSmall)
                 GridText("仅保存在本机。结果未知的请求请先重试确认，联网后不会自动上传。", color = LocalQuietGridColors.current.secondary)
             }
             items(drafts, key = { it.id }) { draft ->
-                TextButton(onClick = { onDraft(draft) }, modifier = Modifier.fillMaxWidth().testTag("draft:${draft.id}")) {
+                BiteTextButton(onClick = { onDraft(draft) }, modifier = Modifier.fillMaxWidth().testTag("draft:${draft.id}")) {
                     Text("${draft.localFields["name"] ?: draft.localFields["dining_date"] ?: "草稿"} · ${when (draft.status) { DraftStatus.RESULT_UNKNOWN, DraftStatus.SAVING -> "结果未知"; DraftStatus.EXPIRED_REVIEW -> "等待比较"; else -> "未提交" }}")
                 }
             }
@@ -83,7 +83,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                     Switch(checked = updateState.enabled, onCheckedChange = onUpdateToggle,
                         modifier = Modifier.testTag("update-checks").semantics { contentDescription = "启动时检查更新" })
                 }
-                TextButton(onClick = { logout = true }, modifier = Modifier.testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
+                BiteTextButton(onClick = { logout = true }, modifier = Modifier.testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
             }
         }
     }
@@ -101,9 +101,9 @@ import top.alanvampuke.dininglog.feature.theme.*
         ScreenFrame("screen:password", bottomBar = {
             Surface(color = LocalQuietGridColors.current.surface) {
                 Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)) {
-                    Button(onClick = { onPassword(current, replacement) }, enabled = !state.busy && current.isNotEmpty() && replacement.codePointCount(0, replacement.length) in 12..128 && replacement == repeated,
+                    BiteButton(onClick = { onPassword(current, replacement) }, enabled = !state.busy && current.isNotEmpty() && replacement.codePointCount(0, replacement.length) in 12..128 && replacement == repeated,
                         modifier = Modifier.fillMaxWidth().testTag("password-save")) { Text(if (state.busy) "正在修改…" else if (state.passwordUnknown) "重试原输入确认结果" else "确认修改密码") }
-                    TextButton(onClick = onDismiss, enabled = !state.busy) { Text("关闭") }
+                    BiteTextButton(onClick = onDismiss, enabled = !state.busy) { Text("关闭") }
                 }
             }
         }) { padding ->
@@ -111,7 +111,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 PageHeader("修改密码")
                 GridText("修改成功后其他会话退出。新密码需 12–128 个字符，不能使用常见弱密码。")
                 listOf(Triple("current-password", "当前密码", current), Triple("new-password", "新密码", replacement), Triple("repeat-password", "确认新密码", repeated)).forEach { (tag, label, value) ->
-                    OutlinedTextField(value, { onInput(tag, it) },
+                    BiteTextField(value, { onInput(tag, it) },
                         modifier = Modifier.fillMaxWidth().testTag(tag), label = { GridText(label) }, enabled = !state.busy && !state.passwordUnknown,
                         textStyle = QuietGridText.input, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
                 }
