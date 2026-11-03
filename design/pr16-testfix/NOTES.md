@@ -39,3 +39,10 @@ CI 验收：[run 41621011129](https://github.com/vampuke/dining-log/actions/runs
 - 重新 fetch 后，本地与 `origin/pr14-rebased` 都为 `bf19ee45b17a6311ef5a7020a74135815461fa1f`；执行 `git push origin pr14-rebased` 返回 `Everything up-to-date`。本次实际新增改动文件只有 `design/pr16-testfix/NOTES.md`，用于补充核验记录，并单独以 `fix:` 前缀提交、推送；A+B 的原有提交保留。
 - 重新查询 GitHub Actions run `41621011129` 的提交、作业结果和 artifact `13222634968` 的归属，并下载该 artifact 直接读取 HTML 报告：API 35 确为 44 tests、1 failed、0 skipped；`plan104` 为 `passed (2m9.54s)`；B 的实际值确为 `47.999992.dp`，堆栈为 `Pr16UiTest.kt:125`。API 26 和 `android` 作业均为 SUCCESS。这是对现有 CI 结果的复核，没有启动新一轮测试。
 - 再次读取锁定的 Compose 1.8.2 sources JAR，核实上述 `Size.kt:808–811`、`:824–831`、`BoundsAssertions.kt:256–265`、`Density.kt:82`、`Dp.kt:52`、`:72` 的源码。结合仓库 `Pr16UiTest.kt:112–127`、`ListScreens.kt:215–218`、`HistoryTimeText.kt:25–32`，B 的测量对象确为有最小高度的时间盒子，比较值来自两个浮点 dp 边界相减；已取得的微小差值支持继续调查换算精度，但仍不足以确认 API 35 特有根因。本次没有调整断言、阈值或追加产品修复。
+
+本次执行复核（起始 HEAD 为 `d358a95`）：
+
+- 实际新增改动文件仅为 `design/pr16-testfix/NOTES.md`。任务书要求的 `HistoryTimeText.kt` 与 `Pr16UiTest.kt` 两处修改已在 `7999492` 中提交；从其父提交按任务书生成精确替换结果，与修复提交及当前文件逐字比较，均通过。该 `fix:` 提交的文件清单严格只有这两个 Kotlin 文件，`ProductEndToEndTest.kt` 与修复前逐字一致，`git diff --check 7999492^ HEAD` 通过。
+- 失败 B 的本次读码推理：`Pr16UiTest.kt:112–114` 保留设备 dp 密度，只将字体倍率设为 `2f`；`ListScreens.kt:215–218` 区分盒子与文字的标签，因此 `Pr16UiTest.kt:120–124` 取到的是 `HistoryTimeText.kt:25` 带 `heightIn(min = 48.dp)` 的盒子。Compose 1.8.2 的 `BoundsAssertions.kt:256–265` 分别将 top、bottom 像素坐标转为 dp，`Density.kt:82` 用浮点除法，`Dp.kt:52` 再作浮点减法，`:72` 直接比较浮点值。报告中的 `47.999992.dp` 与此换算链发生微小精度损失的可能相容；仍不能据此确认具体误差步骤或 API 35 特有根因。比较条件始终为 `bounds.bottom - bounds.top >= 48.dp`，本轮对 B 的代码修改仅为任务书指定的失败消息。
+- 通过 GitHub API 重新核对 run `41621011129`、各作业结果和 artifact `13222634968` 的归属，并直接读取现存 HTML 报告：运行提交为 `5e9ad7c`，`android` 和 API 26 作业 SUCCESS；API 35 为 44 tests、1 failed、0 skipped，`plan104` 为 `passed (2m9.54s)`，B 的消息为 `actual 47.999992.dp`。本次复核使用现有 CI 结果，没有启动新一轮测试。
+- `git fetch origin pr14-rebased` 后，本地 HEAD 与远端均为 `d358a95734f63fb71fe8c8b49c5be65487a9f5d4`；随后 `git push origin pr14-rebased` 返回 `Everything up-to-date`。本记录单独以 `fix:` 前缀提交并推送至同一分支。
