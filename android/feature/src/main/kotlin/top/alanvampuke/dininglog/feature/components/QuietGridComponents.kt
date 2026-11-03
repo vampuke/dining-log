@@ -112,7 +112,7 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (offline) GridText("离线缓存 · 联网后可手动刷新", Modifier.testTag("offline"), color = LocalQuietGridColors.current.accentInk)
         if (localSearch) GridText("只搜索已缓存内容；未缓存的内容未参与搜索", Modifier.testTag("cache-scope"), color = LocalQuietGridColors.current.secondary)
-        if (fetchedAt != null && (offline || stale)) GridText("上次更新 ${java.time.Instant.ofEpochMilli(fetchedAt)}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
+        if (fetchedAt != null && (offline || stale)) GridText("上次更新 ${formatAbsoluteTimeMillis(fetchedAt)}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
         if (stale) GridText("此详情已有较新摘要，正在等待刷新", Modifier.testTag("stale-detail"), color = LocalQuietGridColors.current.secondary)
     }
 }
@@ -142,11 +142,31 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
     Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         GridText("评分 · 选填", style = MaterialTheme.typography.titleMedium)
         Score(value, meter = true)
-        Slider(value = (value?.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
+        // Unrated must not draw as 4.0, and it must not borrow a valid score either.
+        // Previously null mapped to (null ?: 40) / 10, so an unrated record showed a
+        // mid-track fill while its label said 未评分. Mapping null to the 1f endpoint
+        // fixed the picture but kept 无评分 encoded as the legal score 1.0, which made
+        // a touch on that endpoint a no-op while an accessibility SetProgress(1f)
+        // still wrote "10". So render a non-interactive empty track until a score
+        // exists; 设置评分 below is the only explicit way in.
+        if (value == null) {
+            // Canvas draws in DrawScope, which is not composable, so the theme lookup
+            // has to be hoisted out of the lambda.
+            val c = LocalQuietGridColors.current
+            Canvas(Modifier.fillMaxWidth().height(14.dp).testTag(tag).semantics {
+                contentDescription = "未评分"
+                if (enabled) setProgress { selected ->
+                    onChange((selected * 10).roundToInt().coerceIn(10, 50).toString()); true
+                }
+            }) {
+                drawRoundRect(c.bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
+                drawRoundRect(c.border, topLeft = Offset(1.25.dp.toPx(), 1.25.dp.toPx()),
+                    size = Size(size.width - 2.5.dp.toPx(), size.height - 2.5.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(2.5.dp.toPx()))
+            }
+        } else Slider(value = (value.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
             enabled = enabled, valueRange = 1f..5f, steps = 39, modifier = Modifier.fillMaxWidth().testTag(tag).semantics {
                 contentDescription = "评分，0.1 步进"
-                // Selecting the displayed default must also turn an unrated
-                // record into an explicitly rated one, including accessibility.
                 if (enabled) setProgress { selected ->
                     onChange((selected * 10).roundToInt().coerceIn(10, 50).toString())
                     true
@@ -165,9 +185,12 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
                         cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(2.5.dp.toPx()))
                 }
             })
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BiteTextButton(onClick = { onChange(((value?.toInt() ?: 40) - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:minus")) { Text("− 0.1") }
-            BiteTextButton(onClick = { onChange(((value?.toInt() ?: 40) + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:plus")) { Text("+ 0.1") }
+        // The steppers previously defaulted from 40 as well, so they implied a rating
+        // existed before one was set. Hide them until a rating exists; "设置评分" below
+        // sets an explicit 4.0 and is the only entry point for an unrated record.
+        if (value != null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            BiteTextButton(onClick = { onChange(((value.toInt()) - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:minus")) { Text("− 0.1") }
+            BiteTextButton(onClick = { onChange(((value.toInt()) + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:plus")) { Text("+ 0.1") }
         }
         BiteTextButton(onClick = { onChange(if (value == null) "40" else null) }, enabled = enabled) { Text(if (value == null) "设置评分" else "清除评分") }
     }

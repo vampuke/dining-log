@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
@@ -277,6 +278,13 @@ class ProductVisualTest {
         var value by mutableStateOf<String?>(null)
         compose.setContent { QuietGridTheme(true) { RatingEditor(value, { value = it }, true) } }
         compose.onNodeWithText("未评分").assertExists()
+        // Unrated renders a non-interactive empty track: no valid score is implied,
+        // and the steppers are absent until a score actually exists.
+        compose.onNodeWithTag("rating").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ProgressBarRangeInfo))
+        compose.onNodeWithTag("rating:plus").assertDoesNotExist()
+        compose.onNodeWithTag("rating:minus").assertDoesNotExist()
+        // An accessibility SetProgress on the unrated track must set an explicit score,
+        // not a hidden 1.0 borrowed from the slider's lower bound.
         compose.onNodeWithTag("rating").performSemanticsAction(SemanticsActions.SetProgress) { it(4.0f) }
         compose.onNodeWithText("★ 4.0").assertExists()
         compose.onNodeWithTag("rating:plus").performClick()
@@ -286,6 +294,18 @@ class ProductVisualTest {
         compose.onNodeWithTag("rating").performSemanticsAction(SemanticsActions.SetProgress) { it(4.3f) }
         compose.onNodeWithText("★ 4.3").assertExists()
         compose.runOnIdle { assertEquals("43", value) }
+    }
+
+    @Test fun clearingARatingReturnsToAnUnratedTrackWithNoImpliedScore() {
+        var value by mutableStateOf<String?>("43")
+        compose.setContent { QuietGridTheme(true) { RatingEditor(value, { value = it }, true) } }
+        compose.onNodeWithText("★ 4.3").assertExists()
+        compose.onNodeWithTag("rating").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+        compose.onNodeWithText("清除评分").performClick()
+        compose.runOnIdle { assertNull(value) }
+        compose.onNodeWithText("未评分").assertExists()
+        compose.onNodeWithTag("rating").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ProgressBarRangeInfo))
+        compose.onNodeWithTag("rating:plus").assertDoesNotExist()
     }
 
     @Test fun longReviewsAndHistoryValuesCanBeReadInFullInBothThemesAt200Percent() {

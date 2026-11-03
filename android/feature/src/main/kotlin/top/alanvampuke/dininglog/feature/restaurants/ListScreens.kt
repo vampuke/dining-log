@@ -184,7 +184,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             listOfNotNull(categoryLabel(fields["category"]), fields["cuisine"]?.takeIf { it.isNotBlank() },
                 fields["dish_count"]?.let { "$it 道菜" }).joinToString(" · "),
             listOfNotNull(fields["address_excerpt"]?.takeIf { it.isNotBlank() },
-                fields["last_visit_date"]?.takeIf { it.isNotBlank() }?.let { "到店 $it" } ?: record.updatedAt.takeIf { it.isNotBlank() }?.let { "更新 ${it.take(10)}" }).joinToString(" · ")
+                fields["last_visit_date"]?.takeIf { it.isNotBlank() }?.let { "到店 $it" } ?: record.updatedAt.takeIf { it.isNotBlank() }?.let { "更新 ${formatAbsoluteTime(it).take(10)}" }).joinToString(" · ")
         ).joinToString("\n")
         RecordKind.DISH -> fields["review_excerpt"]?.takeIf { it.isNotBlank() } ?: ""
         RecordKind.VISIT -> listOfNotNull(
@@ -199,7 +199,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         BiteTextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time:${record.ref.id}")) {
             Text(if (absolute) "收起绝对时间" else "显示绝对时间")
         }
-        if (absolute) GridText(record.updatedAt, Modifier.testTag("history-absolute:${record.ref.id}"), style = QuietGridText.date)
+        if (absolute) GridText(formatAbsoluteTime(record.updatedAt), Modifier.testTag("history-absolute:${record.ref.id}"), style = QuietGridText.date)
     }
 }
 @Composable fun ListFilterPanel(kind: RecordKind, filters: ListFilters, onChange: (ListFilters) -> Unit) {
