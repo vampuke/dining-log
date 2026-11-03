@@ -50,7 +50,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 if (state.message != null) ErrorMessage(state.message, "settings-message")
             }
             val release = updateState.release
-            if (updateState.enabled && release != null) item {
+            if ((updateState.enabled || updateState.manual) && release != null) item {
                 BiteTextButton(onClick = { onOpenUpdate(release) }, modifier = Modifier.fillMaxWidth().testTag("app-update")) {
                     Text("有新版本 ${release.versionName}")
                 }
@@ -90,8 +90,10 @@ import top.alanvampuke.dininglog.feature.theme.*
                     BiteTextButton(onClick = onCheckUpdate, enabled = !updateState.checking, modifier = Modifier.testTag("check-update")) {
                         Text(if (updateState.checking) "正在检查…" else "检查更新")
                     }
-                    if (updateState.upToDate && updateState.release == null) GridText("已是最新版本", style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
                 }
+                if (updateState.failed) ErrorMessage("检查失败，请重试", "update-check-error")
+                else if (!updateState.checking && updateState.upToDate && updateState.release == null)
+                    GridText("已是最新版本", Modifier.testTag("update-up-to-date"), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
             }
             item {
                 BiteTextButton(onClick = { logout = true }, modifier = Modifier.testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
@@ -99,7 +101,9 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
     }
     val revoking = revoke
-    if (revoking != null) ConfirmAction("撤销此会话？", if (revoking.current) "这是当前设备。撤销后会退出，并清理本机缓存。" else "该设备的旧 access 与 refresh 将不可用。", "确认撤销", { revoke = null; onRevoke(revoking.id) }, { revoke = null })
+    if (revoking != null) ConfirmAction(if (revoking.current) "退出登录？" else "撤销此会话？",
+        if (revoking.current) "这是当前设备。退出后会清理本机缓存。" else "该设备的旧 access 与 refresh 将不可用。",
+        if (revoking.current) "确认退出" else "确认撤销", { revoke = null; onRevoke(revoking.id) }, { revoke = null })
     if (logout) ConfirmAction("退出登录？", "将清理此账号的本机缓存。服务器已保存记录仍属于账号。", "确认退出", { logout = false; onLogout() }, { logout = false })
     if (password) PasswordDialog(state, onPassword, onPasswordInput) { if (!state.busy) password = false }
 }

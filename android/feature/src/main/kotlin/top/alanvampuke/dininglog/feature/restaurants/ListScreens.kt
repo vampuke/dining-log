@@ -142,13 +142,11 @@ import top.alanvampuke.dininglog.feature.theme.*
     val c = LocalQuietGridColors.current
     val rated = records.mapNotNull { it.fields["rating_tenths"]?.toIntOrNull() }
     val counts = records.map { it.fields["dish_count"]?.toIntOrNull() }
-    // Was "已加载 / 已加载均分 / 已加载菜品": internal pagination language,
-    // and the average only covered the currently loaded page. The labels now
-    // say what the numbers are; the page scope is inherent to the list.
-    val stats = listOf("餐厅" to "${records.size} 家", "均分" to
+    // These aggregates cover only the loaded results, including any filters.
+    val stats = listOf("已加载餐厅" to "${records.size} 家", "已加载均分" to
         (if (rated.isEmpty()) "未评分" else String.format(java.util.Locale.ROOT, "%.1f", rated.average() / 10)),
-        "菜品" to (if (counts.any { it == null }) "未提供" else "${counts.filterNotNull().sum()} 道"))
-    Row(Modifier.fillMaxWidth().brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        "已加载菜品" to (if (counts.any { it == null }) "未提供" else "${counts.filterNotNull().sum()} 道"))
+    Row(Modifier.fillMaxWidth().testTag("loaded-stats").brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         stats.forEachIndexed { index, (label, value) ->
             if (index > 0) Box(Modifier.width(2.dp).height(28.dp).background(c.border))
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -184,7 +182,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     }
 }
 @Composable private fun RowText(record: RecordSummary) {
-    var absolute by remember(record.ref.id) { mutableStateOf(false) }
+    var absolute by rememberSaveable(record.ref.id) { mutableStateOf(false) }
     val large = LocalDensity.current.fontScale > 1.3f
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium,
@@ -208,20 +206,15 @@ import top.alanvampuke.dininglog.feature.theme.*
         // The entity label used to repeat the title verbatim ("披萨 / 披萨",
         // "2026-11-01 / 2026-11-01"). Keep it only when it adds context, i.e.
         // when it differs from the title; otherwise the summary line is enough.
-        RecordKind.REVISION -> listOfNotNull(fields["entity_label"]?.takeIf { it != record.title } ?: if (fields["entity_label"] == null) "记录" else null, historySummary(record, null),
+        RecordKind.REVISION -> listOfNotNull(fields["entity_label"]?.takeIf { it != record.title } ?: if (fields["entity_label"] == null) "记录" else null, historySummary(record, null, includeTime = false),
             fields["note"]?.takeIf { it.isNotBlank() }).joinToString("\n")
     }
     if (secondary.isNotEmpty()) GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary,
         style = QuietGridText.metadata, maxLines = if (large) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
     if (record.ref.kind == RecordKind.REVISION) {
-        // Was a full-width BiteTextButton per row (min 48dp tall), which made
-        // every history card tall with empty space below it. The time itself
-        // is now the toggle: one caption line, tap to switch relative/absolute.
-        if (absolute) GridText("绝对时间 ${formatAbsoluteTime(record.updatedAt)} · 收起",
-            Modifier.testTag("history-absolute:${record.ref.id}").clickable { absolute = false },
-            style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-        else GridText("显示绝对时间", Modifier.testTag("history-time:${record.ref.id}").clickable { absolute = true },
-            style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+        HistoryTimeText(record.updatedAt, absolute, { absolute = !absolute },
+            Modifier.testTag("history-time:${record.ref.id}"),
+            Modifier.testTag(if (absolute) "history-absolute:${record.ref.id}" else "history-relative:${record.ref.id}"))
     }
 }
 @Composable fun ListFilterPanel(kind: RecordKind, filters: ListFilters, onChange: (ListFilters) -> Unit) {

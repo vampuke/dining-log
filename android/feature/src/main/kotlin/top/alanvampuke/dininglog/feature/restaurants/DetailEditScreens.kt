@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
@@ -172,12 +173,12 @@ import top.alanvampuke.dininglog.feature.theme.*
                             GridText("同时新增首访", Modifier.padding(top = 12.dp)) }
                         val visit = input.firstVisit
                         if (visit != null) {
-                            // First-visit fields used to always render in full,
-                            // making the create form one very long column. They
-                            // now start collapsed behind a summary line; the
-                            // date already defaults to today, so collapsing
-                            // loses nothing if the user never expands it.
-                            var firstVisitExpanded by remember(visit.id) { mutableStateOf(false) }
+                            var firstVisitExpanded by rememberSaveable(visit.id) { mutableStateOf(false) }
+                            val dateError = state.errors["first_visit"]
+                            val noteError = state.errors["first_visit_note"]
+                            LaunchedEffect(visit.id, dateError, noteError) {
+                                if (dateError != null || noteError != null) firstVisitExpanded = true
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 GridText("首访 ${visit.date}${visit.meal?.let { " · ${mealLabel(it)}" } ?: ""}", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = LocalQuietGridColors.current.secondary)
                                 BiteTextButton(onClick = { firstVisitExpanded = !firstVisitExpanded }, modifier = Modifier.testTag("first-visit-toggle")) {
@@ -185,9 +186,13 @@ import top.alanvampuke.dininglog.feature.theme.*
                                 }
                             }
                             if (firstVisitExpanded) {
-                                FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, state.errors["first_visit"], label = "首访日期", supporting = if (visit.date.isBlank()) "YYYY-MM-DD" else null)
+                                FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, dateError, label = "首访日期", supporting = if (visit.date.isBlank() || !validDate(visit.date)) "YYYY-MM-DD" else null)
                                 ChoiceChips(listOf(null to "不选餐次") + Meal.entries.map { it.code to mealLabel(it.code) }, visit.meal, { onFirstVisit(visit.copy(meal = it)) }, enabled)
-                                FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, state.errors["first_visit_note"], label = "首访备注 · 选填", minLines = 2)
+                                FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, noteError, label = "首访备注 · 选填", minLines = 2)
+                            } else {
+                                // Errors stay visible if the user folds the section again.
+                                if (dateError != null) ErrorMessage(dateError, "first-visit-date-error")
+                                if (noteError != null) ErrorMessage(noteError, "first-visit-note-error")
                             }
                         }
                     }

@@ -3,8 +3,11 @@ package top.alanvampuke.dininglog.core
 import java.net.URI
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 
 data class AppRelease(val versionCode: Int, val versionName: String, val url: String,
     val sha256: String, val notes: String, val releasedAt: Long) {
@@ -14,54 +17,56 @@ data class AppRelease(val versionCode: Int, val versionName: String, val url: St
             address.scheme == "https" && !address.host.isNullOrBlank() && address.userInfo == null
         }.getOrDefault(false)
 }
-// checking/upToDate support a manual "检查更新" button: without them a
-// manual check that finds nothing would show no feedback at all. Both
-// default to false, so existing AppUpdateState(...) constructions and
-// equality in tests are unchanged.
+// The startup preference does not hide results explicitly requested by the user.
 data class AppUpdateState(val enabled: Boolean = true, val release: AppRelease? = null,
-    val checking: Boolean = false, val upToDate: Boolean = false)
+    val checking: Boolean = false, val upToDate: Boolean = false,
+    val failed: Boolean = false, val manual: Boolean = false)
 interface AppVersionGateway { suspend fun latest(): AppRelease }
 interface UpdatePreferences {
     val updateChecksEnabled: Flow<Boolean>
     suspend fun setUpdateChecksEnabled(enabled: Boolean)
 }
 
-class AppUpdateChecker(gateway: AppVersionGateway, private val preferences: UpdatePreferences,
-    installedVersionCode: Int, scope: CoroutineScope) {
+class AppUpdateChecker(private val gateway: AppVersionGateway, private val preferences: UpdatePreferences,
+    private val installedVersionCode: Int, scope: CoroutineScope) {
     private val mutableState = MutableStateFlow(AppUpdateState())
+    private val requestLock = Mutex()
     val state: StateFlow<AppUpdateState> = mutableState.asStateFlow()
     init {
         scope.launch {
             // Wait for persisted preferences before making any network request.
             preferences.updateChecksEnabled.catch { emit(false) }.distinctUntilChanged().collectLatest { enabled ->
-                mutableState.value = AppUpdateState(enabled)
-                if (enabled) {
-                    try {
-                        val release = gateway.latest()
-                        if (release.valid && isNewerVersion(release.versionCode, installedVersionCode)) {
-                            mutableState.value = AppUpdateState(true, release)
-                        }
-                    } catch (cancelled: CancellationException) { throw cancelled }
-                    catch (_: Exception) { /* A background version check never interrupts the UI. */ }
+                mutableState.update { current ->
+                    if (current.manual) current.copy(enabled = enabled)
+                    else current.copy(enabled = enabled, release = null, upToDate = false, failed = false)
                 }
+                if (enabled) check(manual = false)
             }
         }
     }
     suspend fun setEnabled(enabled: Boolean) { preferences.setUpdateChecksEnabled(enabled) }
-    // Manual check, independent of the startup-check preference: a user who
-    // turned startup checks off still needs a way to ask. Runs the same
-    // gateway and validity rules as the background check; a failure leaves
-    // the previous state alone instead of surfacing a blocking error.
-    suspend fun checkNow() {
-        val enabled = mutableState.value.enabled
-        mutableState.value = mutableState.value.copy(checking = true, upToDate = false)
+    suspend fun checkNow() { check(manual = true) }
+
+    // Both sources share one guard. A duplicate call returns without owning or
+    // clearing the active request's state; preference changes cancel only the
+    // collector's background request, never an independently launched manual one.
+    private suspend fun check(manual: Boolean) {
+        if (!requestLock.tryLock()) return
         try {
+            // A pending background request does not change the provenance of
+            // an existing manual result. Only a valid response replaces it.
+            mutableState.update { it.copy(checking = true, upToDate = false, failed = false, manual = it.manual || manual) }
             val release = gateway.latest()
-            mutableState.value = if (release.valid && isNewerVersion(release.versionCode, installedVersionCode))
-                AppUpdateState(enabled, release)
-            else AppUpdateState(enabled, null, checking = false, upToDate = true)
+            currentCoroutineContext().ensureActive()
+            require(release.valid) { "Invalid app release metadata" }
+            val newer = isNewerVersion(release.versionCode, installedVersionCode)
+            mutableState.update { it.copy(release = if (newer) release else null,
+                checking = false, upToDate = manual && !newer, failed = false, manual = manual) }
         } catch (cancelled: CancellationException) {
-            mutableState.value = mutableState.value.copy(checking = false); throw cancelled
-        } catch (_: Exception) { mutableState.value = mutableState.value.copy(checking = false) }
+            mutableState.update { it.copy(checking = false, upToDate = false) }
+            throw cancelled
+        } catch (_: Exception) {
+            mutableState.update { it.copy(checking = false, upToDate = false, failed = manual) }
+        } finally { requestLock.unlock() }
     }
 }

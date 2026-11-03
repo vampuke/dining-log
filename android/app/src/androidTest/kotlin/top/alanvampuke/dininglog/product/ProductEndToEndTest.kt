@@ -149,6 +149,7 @@ class ProductEndToEndTest {
             type("field:review", "餐厅评价鸡块酥脆")
             type("field:note", "笔记和朋友一起到店")
             progress("rating", 4.0f)
+            tap("first-visit-toggle")
             type("field:first-visit-date", "2026-11-01")
             tap("save"); waitFor { vm.detail.value.cached.snapshot?.title == "P4兰记川味小馆" && !vm.detail.value.refreshing }
             val restaurantId = vm.detail.value.cached.snapshot!!.ref.id
