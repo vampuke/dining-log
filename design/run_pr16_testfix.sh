@@ -19,6 +19,7 @@ END_PROMPT
 for i in $(seq 1 "$MAX_ATTEMPTS"); do
   echo "=== attempt $i $(date +%H:%M:%S) ==="
   rm -f logs/pr16_testfix_summary.md
+  BEFORE_SHA=$(git rev-parse origin/pr14-rebased 2>/dev/null || echo "")
   source "$HOME/.codex/env"
   codex exec --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox \
     -m gpt-6.1-sol \
@@ -28,10 +29,11 @@ for i in $(seq 1 "$MAX_ATTEMPTS"); do
   echo "exit=$rc"
   if [ $rc -eq 0 ]; then
     git fetch -q origin
-    if git log --oneline -1 origin/pr14-rebased | grep -qv "$(git rev-parse --short HEAD 2>/dev/null || echo none)"; then :; fi
-    head_sha=$(git rev-parse --short origin/pr14-rebased)
+    # Compare against the tip BEFORE this attempt, not the local checkout
+    # (which sits on master in the dispatcher's own workspace).
+    head_sha=$(git rev-parse origin/pr14-rebased 2>/dev/null || echo "")
     echo "branch head now: $head_sha"
-    if [ "$head_sha" != "$(git rev-parse --short HEAD)" ]; then
+    if [ -n "${BEFORE_SHA:-}" ] && [ "$head_sha" != "$BEFORE_SHA" ]; then
       echo "SUCCESS on attempt $i"
       exit 0
     fi
