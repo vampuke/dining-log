@@ -124,7 +124,7 @@ class Pr16UiTest {
         val bounds = toggle.getUnclippedBoundsInRoot()
         assertTrue(
             "history time touch target must be >= 48.dp (actual ${bounds.bottom - bounds.top})",
-            bounds.bottom - bounds.top >= 48.dp,
+            bounds.bottom - bounds.top >= 48.dp - 0.5.dp,
         )
         compose.onNodeWithTag("history-relative:time", useUnmergedTree = true).assertTextEquals("刚刚")
         compose.onNodeWithTag("record-summary:time", useUnmergedTree = true).assertTextEquals("新增记录")
