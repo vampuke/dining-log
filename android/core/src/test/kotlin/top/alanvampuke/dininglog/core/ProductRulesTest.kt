@@ -58,6 +58,30 @@ class ProductRulesTest {
         assertTrue(historySummary(summary().copy(changedFields = listOf("rating_tenths")), detail).contains("★ 4.0 → ★ 4.3"))
         assertTrue(historySummary(summary().copy(cachedDiff = detail.diff), null).contains("★ 4.0 → ★ 4.3"))
     }
+    @Test fun bothRestaurantAndDishRatingFiltersIncludeExactChipBoundariesAndExcludeNull() {
+        // queries.ts ratingWhere uses >= min_rating*10 and <= max_rating*10
+        // for both kinds. These expected sets also apply to cached searches.
+        for (kind in listOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
+            val rows = listOf(31, 32, 45, 46, null).map { rating ->
+                RecordSummary(RecordRef(kind, "rating-${rating ?: "null"}", if (kind == RecordKind.DISH) ref.id else null),
+                    "边界 $rating", 1, "2026-11-01T00:00:00Z", mapOf("rating_tenths" to rating?.toString()))
+            }
+            for (withDetails in listOf(false, true)) {
+                val details = if (withDetails) rows.map { RecordSnapshot(it.ref, it.version, it.fields, it.updatedAt) } else emptyList()
+                val top = localSearch(ListQuery(kind, filters = ListFilters(minRating = 46)), rows, details)
+                val low = localSearch(ListQuery(kind, filters = ListFilters(maxRating = 31)), rows, details)
+                assertEquals(setOf("rating-46"), top.map { it.ref.id }.toSet(), "$kind high tier")
+                assertEquals(setOf("rating-31"), low.map { it.ref.id }.toSet(), "$kind low tier")
+            }
+        }
+    }
+    @Test fun historyChangeSummaryCanBeRenderedWithoutDuplicatingTheTimeToggle() {
+        val row = summary().copy(fields = mapOf("action" to "create"))
+        assertEquals("新增记录", historySummary(row, null, includeTime = false))
+        assertEquals("${relativeTime(row.updatedAt)} · 新增记录", historySummary(row, null))
+        val rating = row.copy(cachedDiff = listOf(Change("rating_tenths", null, "46")))
+        assertEquals("评分 未评分 → ★ 4.6", historySummary(rating, null, includeTime = false))
+    }
     @Test fun newerSummaryRatingWinsOverStaleDetailAndDeletedParentKeepsHistoryVisible() {
         val newer = summary().copy(version = 2, fields = mapOf("rating_tenths" to "46"))
         assertEquals(listOf(ref.id), localSearch(ListQuery(filters = ListFilters(minRating = 45)), listOf(newer), listOf(snapshot())).map { it.ref.id })

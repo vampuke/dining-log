@@ -51,7 +51,10 @@ import top.alanvampuke.dininglog.feature.theme.*
                             GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
                             GridText(title, Modifier.fillMaxWidth(), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
                         }
-                        if (onAdd != null) BiteButton(onAdd, Modifier.testTag("add")) { Text("记一笔") }
+                        // Was "记一笔", which sounds like logging a visit, but this
+                        // button creates a restaurant (same destination as the
+                        // bottom "+" ). Name it for what it actually does.
+                        if (onAdd != null) BiteButton(onAdd, Modifier.testTag("add")) { Text("新增餐厅") }
                     }
                 } else {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -67,14 +70,23 @@ import top.alanvampuke.dininglog.feature.theme.*
                 BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
                     RecordKind.RESTAURANT -> "搜索店名、菜品或评价"
                     RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
+                }) }, placeholder = { GridText(when (kind) {
+                    RecordKind.RESTAURANT -> "例如：兰巴赫"
+                    RecordKind.DISH -> "例如：披萨"; RecordKind.VISIT -> "例如：2026-11-01"; RecordKind.REVISION -> "例如：评分"
                 }) }, accessibleLabel = "搜索", textStyle = QuietGridText.input, singleLine = true,
                     leadingIcon = { Icon(QuietGridIcons.search, null, tint = LocalQuietGridColors.current.ink) })
             }
             item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        listOf("全部" to ListFilters(), "封神必吃" to filters.copy(minRating = 46, maxRating = null, unrated = false),
-                            "踩雷预警" to filters.copy(minRating = null, maxRating = 31, unrated = false)).forEach { (label, next) ->
+                        // Thresholds were invisible: the top tier is minRating 46
+                        // and the low tier maxRating 31, and the dish verdicts are
+                        // "惊艳"/"踩雷" rather than the restaurant ones. Put both
+                        // the right label and the threshold on the chip itself.
+                        val topLabel = if (kind == RecordKind.DISH) "惊艳 ★4.6+" else "封神必吃 ★4.6+"
+                        val lowLabel = if (kind == RecordKind.DISH) "踩雷 ★3.1−" else "踩雷预警 ★3.1−"
+                        listOf("全部" to ListFilters(), topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
+                            lowLabel to filters.copy(minRating = null, maxRating = 31, unrated = false)).forEach { (label, next) ->
                             FilterChip(selected = filters == next, onClick = { onFilters(next) }, label = { Text(label, style = MaterialTheme.typography.labelSmall) },
                                 modifier = Modifier.heightIn(min = 48.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, LocalQuietGridColors.current.border),
                                 colors = FilterChipDefaults.filterChipColors(containerColor = LocalQuietGridColors.current.surface,
@@ -130,10 +142,11 @@ import top.alanvampuke.dininglog.feature.theme.*
     val c = LocalQuietGridColors.current
     val rated = records.mapNotNull { it.fields["rating_tenths"]?.toIntOrNull() }
     val counts = records.map { it.fields["dish_count"]?.toIntOrNull() }
-    val stats = listOf("已加载" to "${records.size} 家", "已加载均分" to
+    // These aggregates cover only the loaded results, including any filters.
+    val stats = listOf("已加载餐厅" to "${records.size} 家", "已加载均分" to
         (if (rated.isEmpty()) "未评分" else String.format(java.util.Locale.ROOT, "%.1f", rated.average() / 10)),
         "已加载菜品" to (if (counts.any { it == null }) "未提供" else "${counts.filterNotNull().sum()} 道"))
-    Row(Modifier.fillMaxWidth().brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().testTag("loaded-stats").brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         stats.forEachIndexed { index, (label, value) ->
             if (index > 0) Box(Modifier.width(2.dp).height(28.dp).background(c.border))
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -169,7 +182,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     }
 }
 @Composable private fun RowText(record: RecordSummary) {
-    var absolute by remember(record.ref.id) { mutableStateOf(false) }
+    var absolute by rememberSaveable(record.ref.id) { mutableStateOf(false) }
     val large = LocalDensity.current.fontScale > 1.3f
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium,
@@ -190,16 +203,19 @@ import top.alanvampuke.dininglog.feature.theme.*
         RecordKind.VISIT -> listOfNotNull(
             listOfNotNull(fields["restaurant_name"] ?: "餐厅", fields["meal"]?.let(::mealLabel)).joinToString(" · "),
             fields["note_excerpt"]?.takeIf { it.isNotBlank() }).joinToString("\n")
-        RecordKind.REVISION -> listOfNotNull(fields["entity_label"] ?: "记录", historySummary(record, null),
+        // The entity label used to repeat the title verbatim ("披萨 / 披萨",
+        // "2026-11-01 / 2026-11-01"). Keep it only when it adds context, i.e.
+        // when it differs from the title; otherwise the summary line is enough.
+        RecordKind.REVISION -> listOfNotNull(fields["entity_label"]?.takeIf { it != record.title } ?: if (fields["entity_label"] == null) "记录" else null, historySummary(record, null, includeTime = false),
             fields["note"]?.takeIf { it.isNotBlank() }).joinToString("\n")
     }
     if (secondary.isNotEmpty()) GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary,
         style = QuietGridText.metadata, maxLines = if (large) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
     if (record.ref.kind == RecordKind.REVISION) {
-        BiteTextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time:${record.ref.id}")) {
-            Text(if (absolute) "收起绝对时间" else "显示绝对时间")
-        }
-        if (absolute) GridText(formatAbsoluteTime(record.updatedAt), Modifier.testTag("history-absolute:${record.ref.id}"), style = QuietGridText.date)
+        HistoryTimeText(record.updatedAt, absolute, { absolute = !absolute },
+            Modifier.testTag("history-time:${record.ref.id}"),
+            if (absolute) Modifier.testTag("history-absolute:${record.ref.id}")
+            else Modifier.testTag("history-relative:${record.ref.id}"))
     }
 }
 @Composable fun ListFilterPanel(kind: RecordKind, filters: ListFilters, onChange: (ListFilters) -> Unit) {
@@ -212,6 +228,8 @@ import top.alanvampuke.dininglog.feature.theme.*
             ChoiceChips(listOf(null to "全部", "true" to "已到店", "false" to "未到店"), filters.visited?.toString(), { onChange(filters.copy(visited = it?.toBooleanStrictOrNull())) })
         }
         if (kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
+            GridText(if (kind == RecordKind.DISH) "评分档位：★4.6+ 为惊艳，★3.1− 为踩雷" else "评分档位：★4.6+ 为封神必吃，★3.1− 为踩雷预警",
+                style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
             ChoiceChips(listOf("updated_desc" to "最近更新", "rating_desc" to "评分高到低"), filters.sort, { onChange(filters.copy(sort = it ?: "updated_desc")) })
             Row { Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }, modifier = Modifier.testTag("filter-unrated")); GridText("只看未评分", Modifier.padding(top = 12.dp)) }
             Row { Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }, modifier = Modifier.testTag("filter-rating-range")); GridText("限定评分区间", Modifier.padding(top = 12.dp)) }

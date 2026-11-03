@@ -68,6 +68,150 @@ class UpdatesTest {
         runCurrent()
         assertEquals(AppUpdateState(true), checker.state.value)
     }
+    @Test fun manualCheckFindsAnUpdateWithStartupChecksDisabled() = runTest {
+        val preferences = Preferences(false)
+        var calls = 0
+        val checker = AppUpdateChecker(object : AppVersionGateway {
+            override suspend fun latest(): AppRelease { calls++; return release }
+        }, preferences, 5, backgroundScope)
+        runCurrent()
+        assertEquals(0, calls)
+        checker.checkNow()
+        assertEquals(1, calls)
+        assertEquals(release, checker.state.value.release)
+        assertTrue(checker.state.value.manual)
+        assertFalse(checker.state.value.enabled)
+        assertFalse(checker.state.value.checking)
+        assertFalse(checker.state.value.upToDate)
+        assertFalse(checker.state.value.failed)
+    }
+    @Test fun repeatedManualCallsShareOneInFlightRequest() = runTest {
+        val gate = CompletableDeferred<AppRelease>()
+        var calls = 0
+        val checker = AppUpdateChecker(object : AppVersionGateway {
+            override suspend fun latest(): AppRelease { calls++; return gate.await() }
+        }, Preferences(false), 5, backgroundScope)
+        runCurrent()
+        val first = launch(start = CoroutineStart.UNDISPATCHED) { checker.checkNow() }
+        checker.checkNow()
+        assertEquals(1, calls)
+        assertTrue(checker.state.value.checking)
+        assertFalse(first.isCompleted)
+        gate.complete(release); first.join()
+        assertEquals(1, calls)
+        assertFalse(checker.state.value.checking)
+        assertEquals(release, checker.state.value.release)
+    }
+    @Test fun cancellingABackgroundRecheckKeepsAnExistingManualUpdateVisibleWithTheSettingOff() = runTest {
+        val preferences = Preferences(false)
+        val gate = CompletableDeferred<AppRelease>()
+        var calls = 0
+        val checker = AppUpdateChecker(object : AppVersionGateway {
+            override suspend fun latest(): AppRelease {
+                calls++
+                return if (calls == 1) release else gate.await()
+            }
+        }, preferences, 5, backgroundScope)
+        runCurrent(); checker.checkNow()
+        checker.setEnabled(true); runCurrent()
+        assertEquals(2, calls)
+        assertTrue(checker.state.value.checking)
+        checker.setEnabled(false); runCurrent()
+        assertFalse(checker.state.value.enabled)
+        assertFalse(checker.state.value.checking)
+        assertTrue(checker.state.value.manual)
+        assertEquals(release, checker.state.value.release)
+    }
+    @Test fun manualAndBackgroundChecksUseTheSameGuardAndCancellationAllowsRetry() = runTest {
+        val preferences = Preferences()
+        var calls = 0
+        val gate = CompletableDeferred<AppRelease>()
+        val checker = AppUpdateChecker(object : AppVersionGateway {
+            override suspend fun latest(): AppRelease { calls++; return gate.await() }
+        }, preferences, 5, backgroundScope)
+        runCurrent()
+        checker.checkNow()
+        assertEquals(1, calls)
+        assertTrue(checker.state.value.checking)
+        checker.setEnabled(false); runCurrent()
+        assertFalse(checker.state.value.checking)
+        val manual = launch(start = CoroutineStart.UNDISPATCHED) { checker.checkNow() }
+        assertEquals(2, calls)
+        manual.cancelAndJoin()
+        assertFalse(checker.state.value.checking)
+        gate.complete(release)
+        checker.checkNow()
+        assertEquals(3, calls)
+        assertEquals(release, checker.state.value.release)
+        assertFalse(checker.state.value.checking)
+    }
+    @Test fun manualFailuresAndInvalidMetadataNeverReportUpToDateAndCanBeRetried() = runTest {
+        var candidate = release.copy(versionCode = 5)
+        var failure: Exception? = null
+        val checker = AppUpdateChecker(object : AppVersionGateway {
+            override suspend fun latest(): AppRelease {
+                failure?.let { throw it }
+                return candidate
+            }
+        }, Preferences(false), 5, backgroundScope)
+        runCurrent()
+        checker.checkNow()
+        assertTrue(checker.state.value.upToDate)
+        failure = IOException("Public fixture network failure")
+        checker.checkNow()
+        assertTrue(checker.state.value.failed)
+        assertFalse(checker.state.value.upToDate)
+        assertFalse(checker.state.value.checking)
+        failure = null; candidate = release.copy(sha256 = "invalid")
+        checker.checkNow()
+        assertTrue(checker.state.value.failed)
+        assertFalse(checker.state.value.upToDate)
+        assertNull(checker.state.value.release)
+        candidate = release
+        checker.checkNow()
+        assertFalse(checker.state.value.failed)
+        assertEquals(release, checker.state.value.release)
+        assertFalse(checker.state.value.checking)
+    }
+    @Test fun validSameOrOlderManualResponseConfirmsUpToDate() = runTest {
+        for (latestCode in listOf(4, 5)) {
+            val checker = AppUpdateChecker(object : AppVersionGateway {
+                override suspend fun latest() = release.copy(versionCode = latestCode)
+            }, Preferences(false), 5, backgroundScope)
+            runCurrent(); checker.checkNow()
+            assertTrue(checker.state.value.upToDate)
+            assertFalse(checker.state.value.failed)
+            assertFalse(checker.state.value.checking)
+            assertNull(checker.state.value.release)
+        }
+    }
+    @Test fun manualCompletionKeepsTheLatestPreferenceInBothDirections() = runTest {
+        for (initiallyEnabled in listOf(true, false)) {
+            val preferences = Preferences(initiallyEnabled)
+            val gate = CompletableDeferred<AppRelease>()
+            var calls = 0
+            val checker = AppUpdateChecker(object : AppVersionGateway {
+                override suspend fun latest(): AppRelease {
+                    calls++
+                    if (initiallyEnabled && calls == 1) return release.copy(versionCode = 5)
+                    return gate.await()
+                }
+            }, preferences, 5, backgroundScope)
+            runCurrent()
+            val request = launch(start = CoroutineStart.UNDISPATCHED) { checker.checkNow() }
+            val expectedCalls = if (initiallyEnabled) 2 else 1
+            checker.setEnabled(!initiallyEnabled); runCurrent()
+            assertEquals(!initiallyEnabled, checker.state.value.enabled)
+            assertTrue(checker.state.value.checking)
+            assertEquals(expectedCalls, calls)
+            gate.complete(release); request.join()
+            assertEquals(preferences.stored.value, checker.state.value.enabled)
+            assertEquals(!initiallyEnabled, checker.state.value.enabled)
+            assertEquals(release, checker.state.value.release)
+            assertTrue(checker.state.value.manual)
+            assertFalse(checker.state.value.checking)
+        }
+    }
     @Test fun rejectsInvalidReleaseMetadataAndUnsafeDownloadLinks() = runTest {
         for (candidate in listOf(release.copy(versionCode = 0), release.copy(versionName = ""), release.copy(sha256 = "invalid"),
             release.copy(releasedAt = 0), release.copy(url = "http://example.invalid/app.apk"),

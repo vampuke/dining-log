@@ -48,7 +48,8 @@ import top.alanvampuke.dininglog.feature.theme.*
 
 @Composable fun ProductRoot(vm: ProductViewModel, username: String, theme: ThemeChoice, onTheme: (ThemeChoice) -> Unit,
     onLogout: () -> Unit, version: String,
-    updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {}) {
+    updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {},
+    onCheckUpdate: () -> Unit = {}) {
     // New registry key prevents an upgrade from restoring the removed tab destination.
     val nav = key("p8-navigation") { rememberNavController() }
     val animate = rememberNavigationAnimationsEnabled()
@@ -134,7 +135,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             SettingsScreen(settings, username, theme, version, vm::loadSettings, vm::revokeSession, vm::changePassword,
                 onLogout, onTheme, tabs,
                 onPasswordInput = vm::editPassword, listState = settingsScroll,
-                updateState = updateState, onUpdateToggle = onUpdateToggle, onOpenUpdate = onOpenUpdate)
+                updateState = updateState, onUpdateToggle = onUpdateToggle, onOpenUpdate = onOpenUpdate, onCheckUpdate = onCheckUpdate)
         }
         composable<DetailRoute> { destination ->
             val route = destination.toRoute<DetailRoute>()

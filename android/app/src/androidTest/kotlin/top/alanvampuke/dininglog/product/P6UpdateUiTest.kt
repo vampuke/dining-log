@@ -9,6 +9,9 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.io.IOException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +26,76 @@ import top.alanvampuke.dininglog.feature.theme.*
 @RunWith(AndroidJUnit4::class)
 class P6UpdateUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun manualCheckWithStartupDisabledShowsAnEntryThatOpensTheDiscoveredRelease() {
+        val release = AppRelease(BuildConfig.VERSION_CODE + 1, "next", "https://github.com/vampuke/dining-log/releases/download/next/app-release.apk",
+            "0".repeat(64), "公开测试版本", 1793544038)
+        val preferences = object : UpdatePreferences {
+            override val updateChecksEnabled = MutableStateFlow(false)
+            override suspend fun setUpdateChecksEnabled(enabled: Boolean) { updateChecksEnabled.value = enabled }
+        }
+        var calls = 0
+        var opened: AppRelease? = null
+        lateinit var checker: AppUpdateChecker
+        compose.setContent { QuietGridTheme(true) {
+            val scope = rememberCoroutineScope()
+            val updates = remember { AppUpdateChecker(object : AppVersionGateway {
+                override suspend fun latest(): AppRelease { calls++; return release }
+            }, preferences, BuildConfig.VERSION_CODE, scope).also { checker = it } }
+            val state by updates.state.collectAsState()
+            SettingsScreen(SettingsUiState(), "p6_owner", ThemeChoice.DARK, BuildConfig.VERSION_NAME,
+                {}, {}, { _, _ -> }, {}, {}, {}, updateState = state,
+                onCheckUpdate = { scope.launch { updates.checkNow() } }, onOpenUpdate = { opened = it })
+        } }
+        compose.runOnIdle { assertEquals(0, calls) }
+        compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("check-update"))
+        compose.onNodeWithTag("check-update").performClick()
+        compose.runOnIdle {
+            assertEquals(1, calls)
+            assertFalse(checker.state.value.enabled)
+            assertFalse(checker.state.value.checking)
+            assertTrue(checker.state.value.manual)
+        }
+        compose.onNodeWithTag("update-checks").assertIsOff()
+        compose.onNodeWithTag("settings-scroll").performScrollToIndex(0)
+        compose.onNodeWithTag("app-update").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(release, opened) }
+        compose.onNodeWithTag("update-up-to-date").assertDoesNotExist()
+    }
+    @Test fun failedManualCheckReplacesTheLatestVersionMessageAndAllowsRetry() {
+        var calls = 0
+        val release = AppRelease(BuildConfig.VERSION_CODE, "current", "https://github.com/vampuke/dining-log/releases/download/current/app-release.apk",
+            "0".repeat(64), "公开测试版本", 1793544038)
+        val preferences = object : UpdatePreferences {
+            override val updateChecksEnabled = MutableStateFlow(false)
+            override suspend fun setUpdateChecksEnabled(enabled: Boolean) { updateChecksEnabled.value = enabled }
+        }
+        compose.setContent { QuietGridTheme(true) {
+            val scope = rememberCoroutineScope()
+            val checker = remember { AppUpdateChecker(object : AppVersionGateway {
+                override suspend fun latest(): AppRelease {
+                    calls++
+                    if (calls == 2) throw IOException("Public UI fixture failure")
+                    return release
+                }
+            }, preferences, BuildConfig.VERSION_CODE, scope) }
+            val state by checker.state.collectAsState()
+            SettingsScreen(SettingsUiState(), "p6_owner", ThemeChoice.DARK, BuildConfig.VERSION_NAME,
+                {}, {}, { _, _ -> }, {}, {}, {}, updateState = state,
+                onCheckUpdate = { scope.launch { checker.checkNow() } })
+        } }
+        compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("check-update"))
+        compose.onNodeWithTag("check-update").performClick()
+        compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("update-up-to-date"))
+        compose.onNodeWithTag("update-up-to-date").assertTextEquals("已是最新版本")
+        compose.onNodeWithTag("check-update").performClick()
+        compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("update-check-error"))
+        compose.onNodeWithTag("update-check-error").assertTextEquals("检查失败，请重试")
+        compose.onNodeWithTag("update-up-to-date").assertDoesNotExist()
+        compose.onNodeWithTag("check-update").assertIsEnabled().performClick()
+        compose.onNodeWithTag("update-up-to-date").assertExists()
+        compose.onNodeWithTag("update-check-error").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(3, calls) }
+    }
     @Test fun inlineEntryAllowsOptOutAndInstallProviderExposesOnlyTheUpdatesSubdirectory() {
         val release = AppRelease(BuildConfig.VERSION_CODE + 1, "0.7.0", "https://github.com/vampuke/dining-log/releases/download/v0.7.0/app-release.apk",
             "0".repeat(64), "新的发布说明", 1793544038)

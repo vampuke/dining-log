@@ -106,14 +106,14 @@ fun formatAbsoluteTimeMillis(epochMilli: Long): String = runCatching {
     java.time.Instant.ofEpochMilli(epochMilli).atZone(java.time.ZoneId.systemDefault())
         .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
 }.getOrDefault(epochMilli.toString())
-fun historySummary(summary: RecordSummary, detail: RecordSnapshot?): String {
+fun historySummary(summary: RecordSummary, detail: RecordSnapshot?, includeTime: Boolean = true): String {
     val score = (detail?.diff ?: summary.cachedDiff).firstOrNull { it.field == "rating_tenths" }
     val change = if (score != null) "评分 ${displayValue(score.field, score.before)} → ${displayValue(score.field, score.after)}"
         else when (summary.fields["action"]) {
             "create" -> "新增记录"; "delete" -> "删除记录"; "restore" -> "恢复记录"
             else -> "修改了 ${summary.changedFields.joinToString("、", transform = ::fieldLabel)}"
         }
-    return "${relativeTime(summary.updatedAt)} · $change"
+    return if (includeTime) "${relativeTime(summary.updatedAt)} · $change" else change
 }
 fun validDate(value: String) = runCatching {
     val date = LocalDate.parse(value)

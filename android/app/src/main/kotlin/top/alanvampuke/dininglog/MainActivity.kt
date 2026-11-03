@@ -114,6 +114,7 @@ class MainActivity : ComponentActivity() {
                         ProductRoot(vm, session.username, choice, onTheme = { next -> scope.launch { preferences.setTheme(next) } }, onLogout = logout,
                             version = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) " 调试版" else "",
                             updateState = updateState, onUpdateToggle = { enabled -> scope.launch { updates.setEnabled(enabled) } },
+                            onCheckUpdate = { scope.launch { updates.checkNow() } },
                             onOpenUpdate = { release -> inAppUpdates.open(release); showUpdate = true })
                     })
             }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -22,7 +23,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     onNote: (RecordSnapshot) -> Unit, onHide: (RecordSnapshot) -> Unit, onRestore: (RecordSnapshot) -> Unit,
     onApply: (RecordSnapshot) -> Unit, bottomBar: @Composable () -> Unit = {}) {
     val record = state.cached.snapshot
-    var absolute by remember { mutableStateOf(false) }
+    var absolute by rememberSaveable(record?.ref?.id) { mutableStateOf(false) }
     var hide by remember { mutableStateOf(false) }
     var restore by remember { mutableStateOf(false) }
     ScreenFrame("screen:history", bottomBar, floatingBottomBar = true) { padding ->
@@ -35,9 +36,8 @@ import top.alanvampuke.dininglog.feature.theme.*
             }
             if (record != null) {
                 item {
-                    GridText(relativeTime(record.fields["created_at"] ?: record.updatedAt), style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-                    BiteTextButton(onClick = { absolute = !absolute }) { Text(if (absolute) "收起绝对时间" else "显示绝对时间") }
-                    if (absolute) GridText(formatAbsoluteTime(record.fields["created_at"] ?: record.updatedAt), Modifier.testTag("absolute-time"), style = QuietGridText.date)
+                    HistoryTimeText(record.fields["created_at"] ?: record.updatedAt, absolute, { absolute = !absolute },
+                        Modifier.testTag("history-time"), if (absolute) Modifier.testTag("absolute-time") else Modifier)
                     GridText("版本 ${record.fields["entity_version_before"] ?: "0"} → ${record.fields["entity_version_after"] ?: "1"}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
                 }
                 record.diff.forEach { change -> item(key = change.field) {
