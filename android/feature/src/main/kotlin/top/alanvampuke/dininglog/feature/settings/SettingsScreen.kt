@@ -40,7 +40,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             item {
                 PageHeader("我的", subtitle = username)
                 GridText("账号 ${state.profile?.displayName ?: username}", style = MaterialTheme.typography.titleMedium)
-                state.profile?.let { GridText("注册于 ${it.createdAt}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary) }
+                state.profile?.let { GridText("注册于 ${formatAbsoluteTime(it.createdAt)}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary) }
                 BiteTextButton(onClick = onRefresh, enabled = !state.loading) { Text(if (state.loading) "正在刷新账号…" else "刷新账号与会话") }
                 if (state.message != null) ErrorMessage(state.message, "settings-message")
             }
@@ -54,7 +54,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             items(state.sessions, key = { it.id }) { session ->
                 BitePanel {
                     GridText("${session.deviceName}${if (session.current) " · 当前设备" else ""}", style = MaterialTheme.typography.titleMedium)
-                    GridText("建立 ${session.createdAt}\n最近刷新 ${session.lastSeenAt}\n到期 ${session.expiresAt}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
+                    GridText("建立 ${formatAbsoluteTime(session.createdAt)}\n最近刷新 ${formatAbsoluteTime(session.lastSeenAt)}\n到期 ${formatAbsoluteTime(session.expiresAt)}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
                     BiteTextButton(onClick = { revoke = session }, enabled = !state.busy, modifier = Modifier.testTag("revoke:${session.id}")) { Text("撤销会话", color = LocalQuietGridColors.current.danger) }
                     HorizontalDivider(color = LocalQuietGridColors.current.border)
                 }

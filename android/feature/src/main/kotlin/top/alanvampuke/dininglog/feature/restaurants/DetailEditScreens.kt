@@ -51,12 +51,13 @@ import top.alanvampuke.dininglog.feature.theme.*
                         if (!date.isNullOrBlank()) Sticker("到店 $date", c.mint)
                         if (record.version > 1) GridText("已修订 · 版本 ${record.version}", Modifier.revisedStamp(c.danger).padding(7.dp),
                             style = QuietGridText.caption, color = c.danger)
-                        GridText("版本 ${record.version} · 更新于 ${record.updatedAt}", style = QuietGridText.date, color = c.secondary)
+                        GridText("版本 ${record.version} · 更新于 ${formatAbsoluteTime(record.updatedAt)}", style = QuietGridText.date, color = c.secondary)
                     }
                 }
-                item {
+                val extraFields = editableFields(record.ref.kind).filter { it !in setOf("name", "rating_tenths", "review", "note") && !record.fields[it].isNullOrBlank() }
+                if (extraFields.isNotEmpty()) item {
                     BitePanel(fill = c.paper) {
-                        editableFields(record.ref.kind).filter { it !in setOf("name", "rating_tenths", "review", "note") && !record.fields[it].isNullOrBlank() }.forEach { field ->
+                        extraFields.forEach { field ->
                             if (field == "address") Sticker("地址", c.klein)
                             else GridText(fieldLabel(field), style = MaterialTheme.typography.titleSmall, color = c.secondary)
                             GridText(displayValue(field, record.fields[field]), Modifier.testTag("detail:$field"))
@@ -78,7 +79,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                             BiteButton(onClick = { onEdit(record) }, modifier = Modifier.fillMaxWidth().testTag("edit")) { Text("编辑") }
                             BiteTextButton(onClick = { confirmDelete = true }, modifier = Modifier.testTag("delete")) { Text("删除记录", color = c.danger) }
                         } else {
-                            GridText("此记录在回收站 · 删除于 ${record.deletedAt}", color = c.danger)
+                            GridText("此记录在回收站 · 删除于 ${record.deletedAt?.let { formatAbsoluteTime(it) } ?: ""}", color = c.danger)
                             BiteButton(onClick = { confirmRestore = true }, modifier = Modifier.fillMaxWidth().testTag("restore")) { Text("恢复记录") }
                         }
                     }
@@ -110,7 +111,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                         GridText("修改历史", style = MaterialTheme.typography.headlineSmall)
                         Column(Modifier.revisionRail(c.border).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             GridText("当前版本 ${record.version}", style = MaterialTheme.typography.titleMedium)
-                            GridText(record.updatedAt, style = QuietGridText.date, color = c.secondary)
+                            GridText(formatAbsoluteTime(record.updatedAt), style = QuietGridText.date, color = c.secondary)
                             BiteTextButton(onClick = { onHistory(record) }, modifier = Modifier.testTag("history")) { Text("查看修改历史") }
                         }
                         ReceiptBarcode()

@@ -37,7 +37,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 item {
                     GridText(relativeTime(record.fields["created_at"] ?: record.updatedAt), style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
                     BiteTextButton(onClick = { absolute = !absolute }) { Text(if (absolute) "收起绝对时间" else "显示绝对时间") }
-                    if (absolute) GridText(record.fields["created_at"] ?: record.updatedAt, Modifier.testTag("absolute-time"), style = QuietGridText.date)
+                    if (absolute) GridText(formatAbsoluteTime(record.fields["created_at"] ?: record.updatedAt), Modifier.testTag("absolute-time"), style = QuietGridText.date)
                     GridText("版本 ${record.fields["entity_version_before"] ?: "0"} → ${record.fields["entity_version_after"] ?: "1"}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
                 }
                 record.diff.forEach { change -> item(key = change.field) {

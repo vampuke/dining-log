@@ -91,6 +91,18 @@ fun relativeTime(iso: String, now: Instant = Instant.now()): String {
     val seconds = runCatching { java.time.Duration.between(Instant.parse(iso), now).seconds.coerceAtLeast(0) }.getOrDefault(0)
     return when { seconds < 60 -> "刚刚"; seconds < 3600 -> "${seconds / 60} 分钟前"; seconds < 86400 -> "${seconds / 3600} 小时前"; else -> "${seconds / 86400} 天前" }
 }
+// Single user-facing absolute-time format. Raw ISO strings (e.g. "2026-11-03T00:12:12.491Z")
+// must never be interpolated into UI text; route every displayed timestamp through here
+// (or formatAbsoluteTimeMillis for epoch-millis values) so it renders in local time.
+// Unparseable input falls back to the original string instead of crashing the screen.
+fun formatAbsoluteTime(iso: String): String = runCatching {
+    java.time.Instant.parse(iso).atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+}.getOrDefault(iso)
+fun formatAbsoluteTimeMillis(epochMilli: Long): String = runCatching {
+    java.time.Instant.ofEpochMilli(epochMilli).atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+}.getOrDefault(epochMilli.toString())
 fun historySummary(summary: RecordSummary, detail: RecordSnapshot?): String {
     val score = (detail?.diff ?: summary.cachedDiff).firstOrNull { it.field == "rating_tenths" }
     val change = if (score != null) "评分 ${displayValue(score.field, score.before)} → ${displayValue(score.field, score.after)}"

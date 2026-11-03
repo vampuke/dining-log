@@ -199,7 +199,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         BiteTextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time:${record.ref.id}")) {
             Text(if (absolute) "收起绝对时间" else "显示绝对时间")
         }
-        if (absolute) GridText(record.updatedAt, Modifier.testTag("history-absolute:${record.ref.id}"), style = QuietGridText.date)
+        if (absolute) GridText(formatAbsoluteTime(record.updatedAt), Modifier.testTag("history-absolute:${record.ref.id}"), style = QuietGridText.date)
     }
 }
 @Composable fun ListFilterPanel(kind: RecordKind, filters: ListFilters, onChange: (ListFilters) -> Unit) {
