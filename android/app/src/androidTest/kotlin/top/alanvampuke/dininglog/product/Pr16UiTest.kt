@@ -14,7 +14,6 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.Instant
@@ -122,7 +121,8 @@ class Pr16UiTest {
         toggle.assertHasClickAction().assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
         toggle.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "相对时间"))
         assertEquals("切换为绝对时间", toggle.fetchSemanticsNode().config[SemanticsActions.OnClick].label)
-        assertTrue(toggle.getUnclippedBoundsInRoot().height >= 48.dp)
+        val bounds = toggle.getUnclippedBoundsInRoot()
+        assertTrue(bounds.bottom - bounds.top >= 48.dp)
         compose.onNodeWithTag("history-relative:time", useUnmergedTree = true).assertTextEquals("刚刚")
         compose.onNodeWithTag("record-summary:time", useUnmergedTree = true).assertTextEquals("新增记录")
         val nextTop = compose.onNodeWithTag("following-row").getUnclippedBoundsInRoot().top
