@@ -214,7 +214,8 @@ import top.alanvampuke.dininglog.feature.theme.*
     if (record.ref.kind == RecordKind.REVISION) {
         HistoryTimeText(record.updatedAt, absolute, { absolute = !absolute },
             Modifier.testTag("history-time:${record.ref.id}"),
-            Modifier.testTag(if (absolute) "history-absolute:${record.ref.id}" else "history-relative:${record.ref.id}"))
+            if (absolute) Modifier.testTag("history-absolute:${record.ref.id}")
+            else Modifier.testTag("history-relative:${record.ref.id}"))
     }
 }
 @Composable fun ListFilterPanel(kind: RecordKind, filters: ListFilters, onChange: (ListFilters) -> Unit) {
