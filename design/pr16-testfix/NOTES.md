@@ -32,3 +32,10 @@ CI 验收：[run 41621011129](https://github.com/vampuke/dining-log/actions/runs
 - API 26 仪器作业 SUCCESS，包含 `plan104RegistrationThroughOfflineConflictRestorePasswordAndLogin` 的完整仪器测试套件通过。
 - API 35 仪器报告为 44 tests、1 failed、0 skipped。`ProductEndToEndTest` 为 1 test、0 failed，`plan104RegistrationThroughOfflineConflictRestorePasswordAndLogin` 明确显示 `passed (2m9.54s)`，失败 A 在两种 API 上的验收完成。
 - API 35 唯一失败为 B。artifact `13222634968`（`android-auth-api-35`）中的 `reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr16UiTest.html` 显示：`java.lang.AssertionError: history time touch target must be >= 48.dp (actual 47.999992.dp)`，堆栈仍定位 `Pr16UiTest.kt:125`。新增消息已取得所需实际数值；本轮按任务书保留该失败，不追加修法。
+
+本次复核（起始 HEAD 为 `bf19ee4`）：
+
+- 完整重读任务书后，确认 A+B 修复已在 `7999492` 中提交。本次分别从其父提交生成任务书要求的精确替换结果，与该提交及当前工作区逐字比较，两份 Kotlin 文件均完全一致；修复提交的文件清单也严格只有上述两个文件。`ProductEndToEndTest.kt` 从修复前至当前 HEAD 没有改动，`git diff --check 7999492^ HEAD` 通过。
+- 重新 fetch 后，本地与 `origin/pr14-rebased` 都为 `bf19ee45b17a6311ef5a7020a74135815461fa1f`；执行 `git push origin pr14-rebased` 返回 `Everything up-to-date`。本次实际新增改动文件只有 `design/pr16-testfix/NOTES.md`，用于补充核验记录，并单独以 `fix:` 前缀提交、推送；A+B 的原有提交保留。
+- 重新查询 GitHub Actions run `41621011129` 的提交、作业结果和 artifact `13222634968` 的归属，并下载该 artifact 直接读取 HTML 报告：API 35 确为 44 tests、1 failed、0 skipped；`plan104` 为 `passed (2m9.54s)`；B 的实际值确为 `47.999992.dp`，堆栈为 `Pr16UiTest.kt:125`。API 26 和 `android` 作业均为 SUCCESS。这是对现有 CI 结果的复核，没有启动新一轮测试。
+- 再次读取锁定的 Compose 1.8.2 sources JAR，核实上述 `Size.kt:808–811`、`:824–831`、`BoundsAssertions.kt:256–265`、`Density.kt:82`、`Dp.kt:52`、`:72` 的源码。结合仓库 `Pr16UiTest.kt:112–127`、`ListScreens.kt:215–218`、`HistoryTimeText.kt:25–32`，B 的测量对象确为有最小高度的时间盒子，比较值来自两个浮点 dp 边界相减；已取得的微小差值支持继续调查换算精度，但仍不足以确认 API 35 特有根因。本次没有调整断言、阈值或追加产品修复。
