@@ -150,14 +150,17 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
         // still wrote "10". So render a non-interactive empty track until a score
         // exists; 设置评分 below is the only explicit way in.
         if (value == null) {
+            // Canvas draws in DrawScope, which is not composable, so the theme lookup
+            // has to be hoisted out of the lambda.
+            val c = LocalQuietGridColors.current
             Canvas(Modifier.fillMaxWidth().height(14.dp).testTag(tag).semantics {
                 contentDescription = "未评分"
                 if (enabled) setProgress { selected ->
                     onChange((selected * 10).roundToInt().coerceIn(10, 50).toString()); true
                 }
             }) {
-                drawRoundRect(LocalQuietGridColors.current.bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
-                drawRoundRect(LocalQuietGridColors.current.border, topLeft = Offset(1.25.dp.toPx(), 1.25.dp.toPx()),
+                drawRoundRect(c.bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
+                drawRoundRect(c.border, topLeft = Offset(1.25.dp.toPx(), 1.25.dp.toPx()),
                     size = Size(size.width - 2.5.dp.toPx(), size.height - 2.5.dp.toPx()),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(2.5.dp.toPx()))
             }
