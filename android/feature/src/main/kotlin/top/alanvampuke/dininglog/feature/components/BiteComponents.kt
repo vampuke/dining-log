@@ -119,7 +119,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 }
 @Composable fun ReceiptBarcode() {
     val c = LocalQuietGridColors.current
-    Canvas(Modifier.fillMaxWidth().height(28.dp)) {
+    Canvas(Modifier.fillMaxWidth().height(20.dp)) {
         var x = 4.dp.toPx(); var index = 0
         while (x < size.width - 4.dp.toPx()) {
             val width = (if (index % 3 == 0) 3 else 1).dp.toPx()
@@ -176,7 +176,10 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
             placeholder = {
                 Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) {
                     CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {
-                        if (placeholder != null) placeholder() else Text("请输入", style = textStyle)
+                        // No generic fallback: a bare "请输入" repeats the
+                        // label above the box and teaches nothing. Call sites
+                        // pass a real example, or nothing at all.
+                        if (placeholder != null) placeholder() else Text("", style = textStyle)
                     }
                 }
             },

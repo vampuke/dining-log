@@ -184,7 +184,11 @@ fun fieldPlaceholder(field: String): String = when (field) {
     "name" -> "例如：兰巴赫"
     "cuisine", "filter-cuisine" -> "例如：川菜"
     "dining_date", "first-visit-date", "filter-from", "filter-to" -> "例如：2026-11-02"
-    "address", "review", "note", "first-visit-note" -> "选填"
+    // Was "选填" for all of these, duplicating the "· 选填" already in the
+    // label. Give each a real example instead; optionality stays in the label.
+    "address" -> "例如：中山路 123 号"
+    "review" -> "例如：花椒香，鸡块酥脆"
+    "note", "first-visit-note" -> "例如：下次带朋友再来"
     else -> "必填"
 }
 @Composable fun FormField(field: String, value: String?, onChange: (String) -> Unit, enabled: Boolean = true,
