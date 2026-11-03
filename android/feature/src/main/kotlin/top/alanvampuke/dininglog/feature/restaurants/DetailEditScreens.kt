@@ -154,7 +154,9 @@ import top.alanvampuke.dininglog.feature.theme.*
                         }
                         "meal" -> {
                             GridText("餐次 · 选填", style = MaterialTheme.typography.titleMedium)
-                            ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, input.localFields[field], { onField(field, it) }, enabled)
+                            // The null chip is the "clear selection" action, not a
+                            // meal type; label it as such instead of "未填写".
+                            ChoiceChips(listOf(null to "不选餐次") + Meal.entries.map { it.code to mealLabel(it.code) }, input.localFields[field], { onField(field, it) }, enabled)
                         }
                         else -> FormField(field, input.localFields[field], { onField(field, it) }, enabled, state.errors[field],
                             label = (if (field == "review" && kind == RecordKind.DISH) "短评" else if (field == "note" && kind == RecordKind.REVISION) "历史说明" else fieldLabel(field)) +
@@ -170,9 +172,23 @@ import top.alanvampuke.dininglog.feature.theme.*
                             GridText("同时新增首访", Modifier.padding(top = 12.dp)) }
                         val visit = input.firstVisit
                         if (visit != null) {
-                            FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, state.errors["first_visit"], label = "首访日期", supporting = "YYYY-MM-DD")
-                            ChoiceChips(listOf(null to "未填写") + Meal.entries.map { it.code to mealLabel(it.code) }, visit.meal, { onFirstVisit(visit.copy(meal = it)) }, enabled)
-                            FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, state.errors["first_visit_note"], label = "首访备注 · 选填", minLines = 2)
+                            // First-visit fields used to always render in full,
+                            // making the create form one very long column. They
+                            // now start collapsed behind a summary line; the
+                            // date already defaults to today, so collapsing
+                            // loses nothing if the user never expands it.
+                            var firstVisitExpanded by remember(visit.id) { mutableStateOf(false) }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GridText("首访 ${visit.date}${visit.meal?.let { " · ${mealLabel(it)}" } ?: ""}", Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = LocalQuietGridColors.current.secondary)
+                                BiteTextButton(onClick = { firstVisitExpanded = !firstVisitExpanded }, modifier = Modifier.testTag("first-visit-toggle")) {
+                                    Text(if (firstVisitExpanded) "收起" else "展开详情")
+                                }
+                            }
+                            if (firstVisitExpanded) {
+                                FormField("first-visit-date", visit.date, { onFirstVisit(visit.copy(date = it)) }, enabled, state.errors["first_visit"], label = "首访日期", supporting = if (visit.date.isBlank()) "YYYY-MM-DD" else null)
+                                ChoiceChips(listOf(null to "不选餐次") + Meal.entries.map { it.code to mealLabel(it.code) }, visit.meal, { onFirstVisit(visit.copy(meal = it)) }, enabled)
+                                FormField("first-visit-note", visit.note, { onFirstVisit(visit.copy(note = it)) }, enabled, state.errors["first_visit_note"], label = "首访备注 · 选填", minLines = 2)
+                            }
                         }
                     }
                 }
