@@ -122,7 +122,10 @@ class Pr16UiTest {
         toggle.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "相对时间"))
         assertEquals("切换为绝对时间", toggle.fetchSemanticsNode().config[SemanticsActions.OnClick].label)
         val bounds = toggle.getUnclippedBoundsInRoot()
-        assertTrue(bounds.bottom - bounds.top >= 48.dp)
+        assertTrue(
+            "history time touch target must be >= 48.dp (actual ${bounds.bottom - bounds.top})",
+            bounds.bottom - bounds.top >= 48.dp,
+        )
         compose.onNodeWithTag("history-relative:time", useUnmergedTree = true).assertTextEquals("刚刚")
         compose.onNodeWithTag("record-summary:time", useUnmergedTree = true).assertTextEquals("新增记录")
         val nextTop = compose.onNodeWithTag("following-row").getUnclippedBoundsInRoot().top

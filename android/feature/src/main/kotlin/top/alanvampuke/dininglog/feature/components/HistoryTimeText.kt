@@ -2,8 +2,8 @@ package top.alanvampuke.dininglog.feature.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,7 +22,7 @@ import top.alanvampuke.dininglog.feature.theme.QuietGridText
     // A nested clickable consumes the time action independently of its card.
     // Both states share one line and a minimum 48dp target. Text semantics keep
     // the full timestamp readable by accessibility services if it is ellipsized.
-    Box(modifier.fillMaxWidth().heightIn(min = 48.dp)
+    Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp)
         .clickable(role = Role.Button,
             onClickLabel = if (absolute) "切换为相对时间" else "切换为绝对时间", onClick = onToggle)
         .semantics { stateDescription = if (absolute) "绝对时间" else "相对时间" },
