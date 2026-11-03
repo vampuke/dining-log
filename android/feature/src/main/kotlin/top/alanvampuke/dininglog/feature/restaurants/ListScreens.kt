@@ -184,7 +184,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             listOfNotNull(categoryLabel(fields["category"]), fields["cuisine"]?.takeIf { it.isNotBlank() },
                 fields["dish_count"]?.let { "$it 道菜" }).joinToString(" · "),
             listOfNotNull(fields["address_excerpt"]?.takeIf { it.isNotBlank() },
-                fields["last_visit_date"]?.takeIf { it.isNotBlank() }?.let { "到店 $it" } ?: record.updatedAt.takeIf { it.isNotBlank() }?.let { "更新 ${it.take(10)}" }).joinToString(" · ")
+                fields["last_visit_date"]?.takeIf { it.isNotBlank() }?.let { "到店 $it" } ?: record.updatedAt.takeIf { it.isNotBlank() }?.let { "更新 ${formatAbsoluteTime(it).take(10)}" }).joinToString(" · ")
         ).joinToString("\n")
         RecordKind.DISH -> fields["review_excerpt"]?.takeIf { it.isNotBlank() } ?: ""
         RecordKind.VISIT -> listOfNotNull(

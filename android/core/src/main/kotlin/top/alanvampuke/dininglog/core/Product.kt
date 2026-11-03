@@ -85,6 +85,9 @@ fun displayValue(field: String, value: String?): String = when {
     field == "rating_tenths" -> "★ ${Rating.fromTenths(value.toInt()).display}"
     field == "category" -> categoryLabel(value)
     field == "meal" -> mealLabel(value)
+    // Diffs carry deleted_at as a raw ISO string from the API; show it like every
+    // other absolute timestamp instead of leaking "2026-11-03T00:12:12.491Z".
+    field == "deleted_at" -> formatAbsoluteTime(value)
     else -> value
 }
 fun relativeTime(iso: String, now: Instant = Instant.now()): String {
