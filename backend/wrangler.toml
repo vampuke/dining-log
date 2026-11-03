@@ -26,12 +26,12 @@ API_BODY_MAX_BYTES = "65536"
 REVISION_MAX_BYTES = "131072"
 SOFT_DELETE_RETENTION_DAYS = "30"
 # Advertise only an actually published APK; replace all six values at release.
-APP_VERSION_CODE = "8"
-APP_VERSION_NAME = "0.8.0"
-APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.8.0/app-release.apk"
-APP_APK_SHA256 = "1da994089277076ab0a112843eced8d3d71502b47ab82d50e7e39f249dcb2bf4"
-APP_RELEASE_NOTES = "移除草稿；修复输入框提示与旋转丢输入；底部导航改悬浮胶囊并去掉到店 tab；支持应用内下载安装更新；允许截图（敏感页除外）。"
-APP_RELEASED_AT = "1793609298"
+APP_VERSION_CODE = "9"
+APP_VERSION_NAME = "0.8.1"
+APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.8.1/app-release.apk"
+APP_APK_SHA256 = "23b42bb838106c607dd4da625744f01ee35c50184508690f1aa2eb7c6bf3e3dd"
+APP_RELEASE_NOTES = "修复历史卡片点按被时间切换吞掉、检查更新手动入口与失败提示、首访区折叠与统计口径等评审问题。"
+APP_RELEASED_AT = "1793713299"
 
 [[d1_databases]]
 binding = "DB"
