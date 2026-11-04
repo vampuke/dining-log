@@ -10,7 +10,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.layout.LayoutInfo
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
@@ -300,8 +303,11 @@ class Pr17UiTest {
             configure(font, false, content + 48)
             scroll("detail-scroll", "detail-refresh")
             val title = bounds("page-title"); val refresh = bounds("detail-refresh")
-            if (font <= 1.3f && content >= 280) assertTrue(title.top < refresh.bottom && refresh.top < title.bottom)
-            else assertTrue(refresh.top >= title.bottom)
+            if (font <= 1.3f && content >= 280) assertTrue(
+                "at font=$font content=$content title=$title refresh=$refresh must share a row",
+                title.top < refresh.bottom && refresh.top < title.bottom)
+            else assertTrue("at font=$font content=$content title=$title refresh=$refresh must be stacked",
+                refresh.top >= title.bottom)
             assertTextFits(target("page-title"))
             if (font > 1.3f) {
                 val back = bounds("back")
@@ -354,6 +360,23 @@ class Pr17UiTest {
     }
 
     @Test fun ratingEditorNullSteppersBoundariesAndFilterControlsDoNotCrossValues() {
+        fun layoutBounds(tag: String): Rect {
+            // Slider's merging semantics expands each horizontal edge by 10dp.
+            // Inner layout coordinates describe its visual box, without that expansion
+            // or scroll clipping. Compare both editors at the same scroll offset.
+            val coordinates = target(tag).fetchSemanticsNode().layoutInfo.coordinates
+            val position = coordinates.positionInRoot()
+            return Rect(position.x, position.y, position.x + coordinates.size.width,
+                position.y + coordinates.size.height)
+        }
+        fun sharedLayout(first: String, second: String): LayoutInfo {
+            val ancestors = generateSequence(target(first).fetchSemanticsNode().layoutInfo) { it.parentInfo }.toList()
+            // For both G2 and G3 the first shared layout is the fillMaxWidth
+            // Row/Column directly inside BoxWithConstraints. Its measured width
+            // equals that box's maxWidth, even when individual editors use weight.
+            return generateSequence(target(second).fetchSemanticsNode().layoutInfo) { it.parentInfo }
+                .first { candidate -> ancestors.any { it === candidate } }
+        }
         var filters by mutableStateOf(ListFilters(minRating = 10, maxRating = 50))
         var editor by mutableStateOf(true)
         var rating by mutableStateOf<String?>(null)
@@ -386,27 +409,39 @@ class Pr17UiTest {
         }
         compose.runOnIdle { editor = false }
         for (night in listOf(false, true)) for (font in listOf(1f, 1.3f, 1.31f, 2f))
-            for (content in listOf(319, 320, 491, 492)) {
+            for (content in listOf(316, 324, 488, 496)) {
             configure(font, night, content + 28)
             compose.runOnIdle { filters = ListFilters(minRating = 10, maxRating = 50) }
             target("pr17:controls-scroll").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, -100_000f) }
             scroll("pr17:controls-scroll", "filter-rating-range")
+            val g3 = sharedLayout("filter-unrated", "filter-rating-range")
+            recordEvidence("filter-constraints group=G3 font=$font dark=$night content=$content " +
+                "maxWidthDp=${g3.width / g3.density.density} widthPx=${g3.width} density=${g3.density.density} " +
+                "unrated=${bounds("filter-unrated")} range=${bounds("filter-rating-range")}")
             assertPair("filter-unrated", "filter-rating-range", font <= 1.3f && content >= 320)
             scroll("pr17:controls-scroll", "filter-min")
-            val min = bounds("filter-min")
+            val minSemantics = bounds("filter-min")
             scroll("pr17:controls-scroll", "filter-max")
-            // Compare placement without changes in scroll offset: at 492 both tracks
-            // can be observed together; in the vertical branch their x positions match.
-            val max = bounds("filter-max")
-            if (font <= 1.3f && content >= 492) assertTrue(max.left > min.right)
-            else assertEquals(min.left, max.left, 1f)
+            val maxSemantics = bounds("filter-max")
+            val min = layoutBounds("filter-min"); val max = layoutBounds("filter-max")
+            val g2 = sharedLayout("filter-min", "filter-max")
+            recordEvidence("filter-constraints group=G2 font=$font dark=$night content=$content " +
+                "maxWidthDp=${g2.width / g2.density.density} widthPx=${g2.width} density=${g2.density.density} " +
+                "minimum=$min maximum=$max minimumSemantics=$minSemantics maximumSemantics=$maxSemantics")
+            if (font <= 1.3f && content >= 492) assertTrue(
+                "at font=$font dark=$night content=$content min=$min max=$max must be side-by-side", max.left > min.right)
+            else assertEquals("at font=$font dark=$night content=$content min=$min max=$max must be stacked",
+                min.left, max.left, 1f)
             tap("pr17:controls-scroll", "filter-min:plus")
             compose.runOnIdle { assertEquals(11, filters.minRating); assertEquals(50, filters.maxRating) }
             tap("pr17:controls-scroll", "filter-max:minus")
             compose.runOnIdle { assertEquals(11, filters.minRating); assertEquals(49, filters.maxRating) }
             assertVisibleTextFits(); save("filter-$content-with-editors")
             tap("pr17:controls-scroll", "filter-unrated")
-            compose.runOnIdle { assertTrue(filters.unrated); assertNull(filters.minRating); assertNull(filters.maxRating) }
+            compose.runOnIdle {
+                assertTrue("at font=$font dark=$night content=$content selecting unrated must enable it: $filters", filters.unrated)
+                assertNull(filters.minRating); assertNull(filters.maxRating)
+            }
             target("filter-min").assertDoesNotExist(); target("filter-max").assertDoesNotExist()
             tap("pr17:controls-scroll", "filter-rating-range")
             compose.runOnIdle { assertFalse(filters.unrated); assertEquals(10, filters.minRating); assertEquals(50, filters.maxRating) }
@@ -530,7 +565,7 @@ class Pr17UiTest {
             compose.onNodeWithText("应用新值").performScrollTo().performClick()
             target("apply-proposed:name").performScrollTo().assertTextEquals("新名称")
             target("apply-field:name").performScrollTo().assertIsEnabled().performClick()
-            target("apply-save").assertIsEnabled().performClick(); assertTrue(saved > 0)
+            target("apply-save").assertIsEnabled().performClick(); assertTrue("apply-save must invoke its callback: saved=$saved", saved > 0)
             target("apply-current:address").performScrollTo().assertTextEquals("当前地址")
             target("expand:apply-proposed:address").performScrollTo().performClick()
             target("apply-proposed:address").performScrollTo().assertTextEquals(longAddress)

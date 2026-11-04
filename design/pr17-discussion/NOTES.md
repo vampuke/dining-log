@@ -133,3 +133,25 @@
 - 四个修改的 Kotlin 文件用 `/tmp/pr17-syntax-parser` 的 tree-sitter 做静态解析，均无语法错误；`git diff --check` 通过。静态解析不是 Kotlin 编译或 instrumentation 通过记录。
 - **没有本机 Gradle/npm 执行，没有伪造修复后截图或宣称四个 CI job 已绿**。原 ProductVisualTest、48dp 容差与更新 footer 的 16dp 断言保留；新增负例和截图随原 instrumentation suite 运行。新 CI 由助手监控，本轮交付为修复并推送。
 - 本轮仅改 `Pr17UiTest.kt`、`ProductVisualTest.kt`、`QuietGridComponents.kt`、`ListScreens.kt`、本 NOTES；没有改依赖/BOM、生产 Dialog、主题字号、守卫脚本/基线、PLAN/DISCUSSION 或业务会话代码。
+
+## Round 2 修复：筛选边界轮次与 bounds 语义
+
+### 源码与 CI 复核
+
+- 独立查询 [CI run 41886927903](https://github.com/vampuke/dining-log/actions/runs/41886927903)，确认 HEAD 为 `9d1b2fd247d8e7f1148727543fa20048ee63e905`，backend/android 成功，API26/35 instrumentation 失败。两份 job 原日志（`/tmp/pr17_r2_i26.log`、`/tmp/pr17_r2_i35.log`）均为 55 项中仅 1 项失败；两套 HTML 的失败栈均指向 `ratingEditorNullSteppersBoundariesAndFilterControlsDoNotCrossValues` 原 `Pr17UiTest.kt:401`。API35 HTML 的 apply/detail/editor/history/update 等原 Round 1 失败用例均 passed。
+- API35 artifact `13352029636`（`/tmp/pr17_r2_art35/`）及独立下载的 API26 artifact `13351569695`（所需 HTML/布局日志提取到 `/tmp/pr17_r2_review26/`）都只有 font=1.0 的 content=319/320/491 轮末记录，没有 492 轮末记录。491 轮两 Slider 的语义 x 区间均为 `[4, 515]`，确认该轮竖排及同列断言通过；缺少 492 记录只证明它在记录前失败，**不能据此断定没有触发横排**。
+- `ListFilterPanel` 的宽度链是测试 viewport/滚动 Column → `fillMaxWidth().brutalBox(...).padding(14.dp)` → G2/G3 `BoxWithConstraints(fillMaxWidth)` → 铺满内容宽的 Row/Column → `RatingEditor(framed=false)`。`brutalBox` 仅 `drawBehind`，描边 2.5dp 和阴影不参与测量；`Arrangement.spacedBy` 只影响相应子项间距。测试 `exactPixels=true` 使用 density=1，原 492 轮 viewport=520px，按该源码约束内容宽为 `520-14-14=492px`，没有发现会吞掉 1px 的布局 modifier。旧 CI 没有直接记录 BoxWithConstraints 的 maxWidth，故这个 492 值是源码推导，不冒充旧 CI 的实测。
+- **已证实的根因是 Slider 语义 bounds 被用于布局分列断言。** BOM 对应 Material3 1.3.2 `Slider.sliderSemantics` 追加 `IncreaseHorizontalSemanticsBounds`；其 `internal/AccessibilityUtil.kt` 的 `HorizontalSemanticsBoundsPadding=10.dp`，通过负 padding 保持布局宽度，同时左右各扩大语义框 10dp。UI 1.8.2 `SemanticsNode.findCoordinatorToGetBounds` 选择这个 merging semantics coordinator。491 轮真实布局应为 `[14,505]`，语义框恰为 CI 的 `[4,515]`，外扩全部对上，并非绘制溢出或额外 padding。原 492 轮正常两列布局应为 `[14,254]` / `[266,506]`，语义框变成 `[4,264]` / `[256,516]`，原 `max.left > min.right` 即 `256 > 264` 必然失败；12dp 列间距被两侧合计 20dp 的语义扩张覆盖 8dp。仅把 492 换成 496 仍无法修复这个坐标语义错误。
+
+### 修复与证据记录方法
+
+- 仅在测试中将筛选内容轮次改为 `316/324/488/496`：G3 的 320dp 阈值两侧及 G2 的 492dp 阈值两侧各留 4dp；四档字体、深浅主题、阈值条件和全部数值/回调/互斥断言保留。
+- G2 使用 Slider `SemanticsNode.layoutInfo.coordinates` 的实际内层布局位置与尺寸构造 Rect，避开语义扩张和滚动裁剪；两个编辑器在同一滚动偏移下取样。仍严格断言横排 `max.left > min.right`，竖排仍核对同列及原 1px 容差；两分支补 font/theme/content/min/max 消息。原始语义 bounds 另存，便于与旧 CI 对照，未用硬编码减去 10dp 的方式修剪语义框。
+- **不改生产代码取得实际 maxWidth：** 从 G3 两 Checkbox、G2 两 Slider 的 `layoutInfo.parentInfo` 链分别查找最近公共布局祖先。当前生产结构中它就是对应 BoxWithConstraints 直接子级的 `fillMaxWidth` Row/Column；两分支均铺满约束宽，因此其实际测得的 `LayoutInfo.width / LayoutInfo.density.density` 等于该 BoxWithConstraints 的 maxWidth。此取法不依赖测试传入的 `content+28`，也不把单列 weight 后的 Slider 宽或扩张后的语义框当作父宽。G3 在 `assertPair` 前、G2 在分列断言前分别 `recordEvidence("filter-constraints group=G3/G2 ...")`，输出 requested content、实际 maxWidthDp/widthPx/density、字体、主题及相关 bounds；G2 同时输出布局和语义两套 Rect。将来若断言失败，该轮宽度与坐标已经落盘。
+- 原 :303/:304 的标题/刷新断言、:409 的 `filters.unrated` 断言补上下文消息；全文件剩余裸 `assertTrue(saved > 0)` 也只补保存回调消息，不改条件。原 :401 分列断言保留且补消息。
+
+### 验证与交付范围
+
+- 本轮只改 `Pr17UiTest.kt` 与本 NOTES。Round 1 的生产布局修复、Checkbox `heightIn(min=48.dp)`、`>=47.5dp` 触达断言、Dialog scale 处理、文本重测和等待机制原样保留。
+- 本机 Kotlin tree-sitter 静态解析无错误；原两个 Python 视觉守卫均通过；`git diff --check` 通过。本机没有运行 Gradle/npm；静态检查不能替代编译和 instrumentation 结果。
+- 本轮交付为一次修复提交推送到原分支；新 CI 由助手监控，修复后实测 maxWidth、截图与动态结果待新 CI 产物。若 content=496、普通字体仍实际竖排，应在 NOTES 报告产品分支问题并停止进一步猜测，不继续改生产布局。
