@@ -96,13 +96,54 @@ fun listViewportPadding(padding: PaddingValues) = PaddingValues(
 fun listContentPadding(padding: PaddingValues) = PaddingValues(
     start = QuietGridDimensions.edge, top = QuietGridDimensions.edge, end = QuietGridDimensions.edge,
     bottom = QuietGridDimensions.edge + padding.calculateBottomPadding())
-@Composable fun PageHeader(title: String, onBack: (() -> Unit)? = null, subtitle: String? = null) {
-    Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (onBack != null) BiteTextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
-            GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+// Measure at the call site's content width, after its existing padding.
+@Composable internal fun ResponsiveActions(
+    first: (@Composable (Modifier) -> Unit)?, second: (@Composable (Modifier) -> Unit)?,
+    threshold: androidx.compose.ui.unit.Dp = 280.dp, alignment: Alignment.Vertical = Alignment.CenterVertically,
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (first != null && second != null && LocalDensity.current.fontScale <= 1.3f && maxWidth >= threshold) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = alignment) {
+                first(Modifier.weight(1f)); second(Modifier)
+            }
+        } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            first?.invoke(Modifier.fillMaxWidth()); second?.invoke(Modifier.fillMaxWidth())
         }
-        if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
+    }
+}
+@Composable internal fun ResponsiveHeading(
+    title: @Composable (Modifier) -> Unit, trailing: (@Composable (Modifier) -> Unit)? = null,
+    trailingIsButton: Boolean = true,
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (trailing != null && LocalDensity.current.fontScale <= 1.3f && maxWidth >= 280.dp) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                title(Modifier.weight(1f)); trailing(Modifier)
+            }
+        } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            title(Modifier.fillMaxWidth())
+            trailing?.invoke(if (trailingIsButton) Modifier.fillMaxWidth() else Modifier.align(Alignment.End))
+        }
+    }
+}
+@Composable fun PageHeader(title: String, onBack: (() -> Unit)? = null, subtitle: String? = null,
+    trailing: (@Composable (Modifier) -> Unit)? = null) {
+    Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (trailing == null) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onBack != null) BiteTextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
+                GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+            }
+            if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
+        } else ResponsiveHeading(title = { modifier ->
+            Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onBack != null) BiteTextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    GridText(title, Modifier.testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                    if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
+                }
+            }
+        }, trailing = trailing)
     }
 }
 @Composable fun ErrorMessage(message: String, tag: String = "error") {
@@ -129,18 +170,23 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
             .semantics { this[BackgroundArgb] = fill.toArgb() },
             style = if (prominent) QuietGridText.detailRating else QuietGridText.listRating,
             color = if (tenths == null) c.ink else c.stickerInk)
-        if (meter && value != null) {
-            val filled = (value.toInt() / 5.0).roundToInt()
-            Row(Modifier.width(120.dp).semantics { contentDescription = "评分 ${Rating.fromTenths(value.toInt()).display}，满分 5.0" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                repeat(10) { index -> Box(Modifier.weight(1f).height(5.dp).background(if (index < filled) c.accent else c.borderStrong)) }
-            }
-        }
+        if (meter) RatingMeter(value)
+    }
+}
+@Composable fun RatingMeter(value: String?, modifier: Modifier = Modifier) {
+    if (value == null) return
+    val c = LocalQuietGridColors.current
+    val filled = (value.toInt() / 5.0).roundToInt()
+    Row(modifier.width(120.dp).semantics { contentDescription = "评分 ${Rating.fromTenths(value.toInt()).display}，满分 5.0" }, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        repeat(10) { index -> Box(Modifier.weight(1f).height(5.dp).background(if (index < filled) c.accent else c.borderStrong)) }
     }
 }
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun RatingEditor(value: String?, onChange: (String?) -> Unit, enabled: Boolean, tag: String = "rating") {
-    Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        GridText("评分 · 选填", style = MaterialTheme.typography.titleMedium)
+@Composable fun RatingEditor(value: String?, onChange: (String?) -> Unit, enabled: Boolean, tag: String = "rating",
+    framed: Boolean = true, label: String = "评分 · 选填") {
+    val frame = if (framed) Modifier.brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(14.dp) else Modifier
+    Column(Modifier.fillMaxWidth().then(frame), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        GridText(label, style = MaterialTheme.typography.titleMedium)
         Score(value, meter = true)
         // Unrated must not draw as 4.0, and it must not borrow a valid score either.
         // Previously null mapped to (null ?: 40) / 10, so an unrated record showed a
@@ -188,11 +234,27 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
         // The steppers previously defaulted from 40 as well, so they implied a rating
         // existed before one was set. Hide them until a rating exists; "设置评分" below
         // sets an explicit 4.0 and is the only entry point for an unrated record.
-        if (value != null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            BiteTextButton(onClick = { onChange(((value.toInt()) - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:minus")) { Text("− 0.1") }
-            BiteTextButton(onClick = { onChange(((value.toInt()) + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = Modifier.testTag("$tag:plus")) { Text("+ 0.1") }
-        }
-        BiteTextButton(onClick = { onChange(if (value == null) "40" else null) }, enabled = enabled) { Text(if (value == null) "设置评分" else "清除评分") }
+        if (value != null) BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val minus: @Composable (Modifier) -> Unit = { modifier ->
+                BiteTextButton(onClick = { onChange((value.toInt() - 1).coerceAtLeast(10).toString()) }, enabled = enabled, modifier = modifier.testTag("$tag:minus")) { Text("− 0.1") }
+            }
+            val plus: @Composable (Modifier) -> Unit = { modifier ->
+                BiteTextButton(onClick = { onChange((value.toInt() + 1).coerceAtMost(50).toString()) }, enabled = enabled, modifier = modifier.testTag("$tag:plus")) { Text("+ 0.1") }
+            }
+            val clear: @Composable (Modifier) -> Unit = { modifier ->
+                BiteTextButton(onClick = { onChange(null) }, enabled = enabled, modifier = modifier) { Text("清除评分") }
+            }
+            if (LocalDensity.current.fontScale > 1.3f) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                minus(Modifier.fillMaxWidth()); plus(Modifier.fillMaxWidth()); clear(Modifier.fillMaxWidth())
+            } else if (maxWidth >= 280.dp) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                minus(Modifier.weight(1f)); plus(Modifier.weight(1f)); clear(Modifier.weight(1f))
+            } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    minus(Modifier.weight(1f)); plus(Modifier.weight(1f))
+                }
+                clear(Modifier.fillMaxWidth())
+            }
+        } else BiteTextButton(onClick = { onChange("40") }, enabled = enabled, modifier = Modifier.fillMaxWidth()) { Text("设置评分") }
     }
 }
 fun fieldPlaceholder(field: String): String = when (field) {

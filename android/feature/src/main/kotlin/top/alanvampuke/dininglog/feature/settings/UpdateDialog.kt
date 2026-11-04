@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -16,6 +17,7 @@ import top.alanvampuke.dininglog.feature.components.*
 import top.alanvampuke.dininglog.feature.theme.*
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun UpdateDialog(state: UpdateInstallState, onDownload: () -> Unit, onCancel: () -> Unit,
     onInstall: () -> Unit, onDownloadPage: () -> Unit, onDismiss: () -> Unit) {
     val release = state.release ?: return
@@ -31,8 +33,10 @@ import java.util.Locale
                         GridText("发现新版本 ${release.versionName}", style = MaterialTheme.typography.headlineSmall)
                         GridText(release.notes.ifBlank { "更新食记，继续记录每一口。" }, color = c.secondary)
                         if (state.busy) {
-                            GridText(if (state.stage == UpdateStage.VERIFYING) "正在校验安装包…" else "正在下载 · ${state.percent?.let { "$it%" } ?: "百分比待确认"}", Modifier.testTag("update-progress"))
-                            GridText("${sizeText(state.downloaded)} / ${state.total?.let(::sizeText) ?: "总大小未知"}", color = c.secondary)
+                            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                GridText(if (state.stage == UpdateStage.VERIFYING) "正在校验安装包…" else "正在下载 · ${state.percent?.let { "$it%" } ?: "百分比待确认"}", Modifier.testTag("update-progress"))
+                                GridText("${sizeText(state.downloaded)} / ${state.total?.let(::sizeText) ?: "总大小未知"}", color = c.secondary)
+                            }
                             if (state.percent != null) LinearProgressIndicator(progress = { (state.percent ?: 0) / 100f },
                                 color = c.ink, trackColor = c.paper, modifier = Modifier.fillMaxWidth())
                             else LinearProgressIndicator(color = c.ink, trackColor = c.paper, modifier = Modifier.fillMaxWidth())
@@ -49,8 +53,11 @@ import java.util.Locale
                                 modifier = Modifier.fillMaxWidth().testTag("update-install")) { Text("继续安装") }
                             else -> Unit
                         }
-                        BiteTextButton(onClick = onDownloadPage, modifier = Modifier.fillMaxWidth().testTag("update-download-page")) { Text("打开下载页") }
-                        BiteTextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().testTag("update-close")) { Text(if (state.busy) "后台继续下载" else "稍后") }
+                        ResponsiveActions(first = { modifier ->
+                            BiteTextButton(onClick = onDownloadPage, modifier = modifier.testTag("update-download-page")) { Text("打开下载页") }
+                        }, second = { modifier ->
+                            BiteTextButton(onClick = onDismiss, modifier = modifier.testTag("update-close")) { Text(if (state.busy) "后台继续下载" else "稍后") }
+                        }, threshold = 240.dp, alignment = Alignment.Bottom)
                     }
                 }
             }

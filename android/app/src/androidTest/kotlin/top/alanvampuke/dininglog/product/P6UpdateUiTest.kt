@@ -43,7 +43,7 @@ class P6UpdateUiTest {
             }, preferences, BuildConfig.VERSION_CODE, scope).also { checker = it } }
             val state by updates.state.collectAsState()
             SettingsScreen(SettingsUiState(), "p6_owner", ThemeChoice.DARK, BuildConfig.VERSION_NAME,
-                {}, {}, { _, _ -> }, {}, {}, {}, updateState = state,
+                onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = {}, updateState = state,
                 onCheckUpdate = { scope.launch { updates.checkNow() } }, onOpenUpdate = { opened = it })
         } }
         compose.runOnIdle { assertEquals(0, calls) }
@@ -80,7 +80,7 @@ class P6UpdateUiTest {
             }, preferences, BuildConfig.VERSION_CODE, scope) }
             val state by checker.state.collectAsState()
             SettingsScreen(SettingsUiState(), "p6_owner", ThemeChoice.DARK, BuildConfig.VERSION_NAME,
-                {}, {}, { _, _ -> }, {}, {}, {}, updateState = state,
+                onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = {}, updateState = state,
                 onCheckUpdate = { scope.launch { checker.checkNow() } })
         } }
         compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("check-update"))
@@ -104,7 +104,7 @@ class P6UpdateUiTest {
         var toggled: Boolean? = null
         compose.setContent { QuietGridTheme(true) {
             SettingsScreen(SettingsUiState(), "p6_owner", ThemeChoice.DARK, BuildConfig.VERSION_NAME,
-                {}, {}, { _, _ -> }, {}, {}, { BottomTabs("settings") {} },
+                onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = { BottomTabs("settings") {} },
                 updateState = state, onUpdateToggle = { enabled -> toggled = enabled; state = AppUpdateState(enabled) }, onOpenUpdate = { opened = it })
         } }
         compose.onAllNodes(isDialog()).assertCountEquals(0)

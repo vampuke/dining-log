@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import java.time.LocalDate
@@ -18,7 +19,7 @@ import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.*
 import top.alanvampuke.dininglog.feature.theme.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun RecordDetailScreen(state: DetailUiState, onBack: () -> Unit, onRefresh: () -> Unit,
     onEdit: (RecordSnapshot) -> Unit, onDelete: (RecordSnapshot) -> Unit, onRestore: (RecordSnapshot) -> Unit,
     onHistory: (RecordSnapshot) -> Unit, dishes: CachedPage = CachedPage(), visits: CachedPage = CachedPage(),
@@ -31,38 +32,69 @@ import top.alanvampuke.dininglog.feature.theme.*
     ScreenFrame("screen:detail", bottomBar, floatingBottomBar = true) { padding ->
         PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize().padding(listViewportPadding(padding))) {
         LazyColumn(Modifier.fillMaxSize().testTag("detail-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { PageHeader("探店小票", onBack) }
-            item {
+            item { PageHeader("探店小票", onBack, trailing = { modifier ->
+                BiteTextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = modifier.testTag("detail-refresh")) { Text(if (state.refreshing) "正在刷新…" else "刷新详情") }
+            }) }
+            if (state.offline || state.cached.stale || state.error != null || record == null) item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
                 if (state.error != null) ErrorMessage(state.error)
-                BiteTextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = Modifier.testTag("detail-refresh")) { Text(if (state.refreshing) "正在刷新…" else "刷新详情") }
                 if (record == null) GridText(if (state.refreshing) "正在读取详情…" else "尚无完整详情缓存，请联网后重试", Modifier.testTag("detail-empty"))
             }
             if (record != null) {
                 item {
                     ReceiptEdge(true)
-                    BitePanel {
-                        GridText("BITE! 食记 · 探店小票", style = QuietGridText.date, color = c.secondary)
-                        GridText(record.title, style = MaterialTheme.typography.headlineMedium)
-                        if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
-                            Score(record.fields["rating_tenths"], prominent = true, meter = true)
-                            VerdictSticker(record.fields["rating_tenths"], record.ref.kind == RecordKind.DISH)
+                    BitePanel(Modifier.testTag("pr17:receipt-head")) {
+                        GridText("BITE! 食记 · 探店小票 · 版本 ${record.version}", style = QuietGridText.date, color = c.secondary)
+                        val ratedKind = record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)
+                        BoxWithConstraints(Modifier.fillMaxWidth()) {
+                            if (ratedKind && LocalDensity.current.fontScale <= 1.3f && maxWidth >= 280.dp) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    GridText(record.title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+                                    Score(record.fields["rating_tenths"], prominent = true, meter = false)
+                                }
+                            } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                GridText(record.title, Modifier.fillMaxWidth(), style = MaterialTheme.typography.headlineMedium)
+                                if (ratedKind) Score(record.fields["rating_tenths"], prominent = true, meter = false)
+                            }
                         }
-                        val date = record.fields["dining_date"] ?: record.fields["last_visit_date"]
-                        if (!date.isNullOrBlank()) Sticker("到店 $date", c.mint)
-                        if (record.version > 1) GridText("已修订 · 版本 ${record.version}", Modifier.revisedStamp(c.danger).padding(7.dp),
-                            style = QuietGridText.caption, color = c.danger)
-                        GridText("版本 ${record.version} · 更新于 ${formatAbsoluteTime(record.updatedAt)}", style = QuietGridText.date, color = c.secondary)
+                        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (ratedKind) {
+                                RatingMeter(record.fields["rating_tenths"])
+                                VerdictSticker(record.fields["rating_tenths"], record.ref.kind == RecordKind.DISH)
+                            }
+                            val date = record.fields["dining_date"] ?: record.fields["last_visit_date"]
+                            if (!date.isNullOrBlank()) Sticker("到店 $date", c.mint)
+                            if (record.version > 1) GridText("已修订", Modifier.revisedStamp(c.danger).padding(7.dp),
+                                style = QuietGridText.caption, color = c.danger)
+                            GridText("更新于 ${formatAbsoluteTime(record.updatedAt)}", style = QuietGridText.date, color = c.secondary)
+                        }
                     }
                 }
                 val extraFields = editableFields(record.ref.kind).filter { it !in setOf("name", "rating_tenths", "review", "note") && !record.fields[it].isNullOrBlank() }
                 if (extraFields.isNotEmpty()) item {
                     BitePanel(fill = c.paper) {
-                        extraFields.forEach { field ->
-                            if (field == "address") Sticker("地址", c.klein)
-                            else GridText(fieldLabel(field), style = MaterialTheme.typography.titleSmall, color = c.secondary)
-                            GridText(displayValue(field, record.fields[field]), Modifier.testTag("detail:$field"))
+                        val shortFields = (if (record.ref.kind == RecordKind.RESTAURANT) listOf("category", "cuisine") else listOf("dining_date", "meal")).filter { it in extraFields }
+                        val fieldValue: @Composable (String, Modifier) -> Unit = { field, modifier ->
+                            val label: @Composable () -> Unit = {
+                                if (field == "address") Sticker("地址", c.klein)
+                                else GridText("${fieldLabel(field)}：", style = QuietGridText.caption, color = c.secondary)
+                            }
+                            if (LocalDensity.current.fontScale > 1.3f) Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                label()
+                                GridText(displayValue(field, record.fields[field]), Modifier.fillMaxWidth().testTag("detail:$field"))
+                            } else Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                label()
+                                GridText(displayValue(field, record.fields[field]), Modifier.weight(1f).testTag("detail:$field"))
+                            }
                         }
+                        if (shortFields.isNotEmpty()) BoxWithConstraints(Modifier.fillMaxWidth()) {
+                            if (shortFields.size == 2 && LocalDensity.current.fontScale <= 1.3f && maxWidth >= 280.dp) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                shortFields.forEach { fieldValue(it, Modifier.weight(1f)) }
+                            } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                shortFields.forEach { fieldValue(it, Modifier.fillMaxWidth()) }
+                            }
+                        }
+                        extraFields.filter { it !in shortFields }.forEach { fieldValue(it, Modifier.fillMaxWidth()) }
                     }
                 }
                 if ("review" in editableFields(record.ref.kind) && !record.fields["review"].isNullOrBlank()) item {
@@ -77,8 +109,11 @@ import top.alanvampuke.dininglog.feature.theme.*
                 item {
                     BitePanel {
                         if (record.deletedAt == null) {
-                            BiteButton(onClick = { onEdit(record) }, modifier = Modifier.fillMaxWidth().testTag("edit")) { Text("编辑") }
-                            BiteTextButton(onClick = { confirmDelete = true }, modifier = Modifier.testTag("delete")) { Text("删除记录", color = c.danger) }
+                            ResponsiveActions(first = { modifier ->
+                                BiteButton(onClick = { onEdit(record) }, modifier = modifier.testTag("edit")) { Text("编辑") }
+                            }, second = { modifier ->
+                                BiteTextButton(onClick = { confirmDelete = true }, modifier = modifier.testTag("delete")) { Text("删除记录", color = c.danger) }
+                            })
                         } else {
                             GridText("此记录在回收站 · 删除于 ${record.deletedAt?.let { formatAbsoluteTime(it) } ?: ""}", color = c.danger)
                             BiteButton(onClick = { confirmRestore = true }, modifier = Modifier.fillMaxWidth().testTag("restore")) { Text("恢复记录") }
@@ -89,32 +124,52 @@ import top.alanvampuke.dininglog.feature.theme.*
                     item {
                         BitePanel {
                             GridText("菜品测评清单", style = MaterialTheme.typography.headlineSmall)
-                            record.fields["dish_count"]?.let { GridText("店内菜品 · $it 道", style = QuietGridText.caption) }
-                            if (onAddDish != null) BiteButton(onClick = onAddDish, modifier = Modifier.fillMaxWidth().testTag("add-dish")) { Text("新增菜品") }
-                            if (onDishes != null) BiteTextButton(onClick = onDishes) { Text("管理店内菜品") }
-                            if (dishes.items.isEmpty()) GridText("菜品在本餐厅内管理", color = c.secondary)
+                            val count = record.fields["dish_count"]
+                            val caption = when {
+                                count != null -> "店内菜品 · $count 道" + if (dishes.items.isEmpty()) " · 菜品在本餐厅内管理" else ""
+                                dishes.items.isEmpty() -> "菜品在本餐厅内管理"
+                                else -> null
+                            }
+                            if (caption != null) GridText(caption, style = QuietGridText.caption, color = c.secondary)
+                            ResponsiveActions(first = onAddDish?.let { callback -> { modifier ->
+                                BiteButton(onClick = callback, modifier = modifier.testTag("add-dish")) { Text("新增菜品") }
+                            } }, second = onDishes?.let { callback -> { modifier ->
+                                BiteTextButton(onClick = callback, modifier = modifier) { Text("管理店内菜品") }
+                            } })
                         }
                     }
                     items(dishes.items, key = { "dish:${it.ref.id}" }) { RecordRow(it, onChild, number = dishes.items.indexOf(it) + 1) }
                     item {
                         BitePanel {
-                            GridText("到店记录", style = MaterialTheme.typography.headlineSmall)
-                            record.fields["visit_count"]?.let { GridText("已记录 $it 次", style = QuietGridText.caption) }
-                            record.fields["last_visit_date"]?.takeIf { it.isNotBlank() }?.let { Sticker("最近到店 $it", c.mint) }
-                            if (onNewVisit != null) BiteButton(onClick = onNewVisit, modifier = Modifier.fillMaxWidth().testTag("add-visit")) { Text("再次到店") }
-                            if (onVisits != null) BiteTextButton(onClick = onVisits, modifier = Modifier.testTag("visit-history")) { Text("查看全部到店记录") }
+                            val recent = record.fields["last_visit_date"]?.takeIf { it.isNotBlank() }
+                            ResponsiveHeading(title = { modifier ->
+                                GridText(record.fields["visit_count"]?.let { "到店记录 · $it 次" } ?: "到店记录", modifier, style = MaterialTheme.typography.headlineSmall)
+                            }, trailing = recent?.let { date -> { modifier -> Sticker("最近到店 $date", c.mint, modifier) } }, trailingIsButton = false)
+                            ResponsiveActions(first = onNewVisit?.let { callback -> { modifier ->
+                                BiteButton(onClick = callback, modifier = modifier.testTag("add-visit")) { Text("再次到店") }
+                            } }, second = onVisits?.let { callback -> { modifier ->
+                                BiteTextButton(onClick = callback, modifier = modifier.testTag("visit-history")) { Text("查看全部到店记录") }
+                            } })
                         }
                     }
                     items(visits.items, key = { "visit:${it.ref.id}" }) { RecordRow(it, onChild) }
                 }
                 item {
-                    BitePanel {
-                        GridText("修改历史", style = MaterialTheme.typography.headlineSmall)
+                    BitePanel(Modifier.testTag("pr17:detail-history-panel")) {
+                        ResponsiveHeading(title = { modifier ->
+                            GridText("修改历史", modifier, style = MaterialTheme.typography.headlineSmall)
+                        }, trailing = { modifier ->
+                            BiteTextButton(onClick = { onHistory(record) }, modifier = modifier.testTag("history")) { Text("查看修改历史") }
+                        })
                         Column(Modifier.revisionRail(c.border).padding(start = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             GridText("当前版本 ${record.version}", style = MaterialTheme.typography.titleMedium)
                             GridText(formatAbsoluteTime(record.updatedAt), style = QuietGridText.date, color = c.secondary)
-                            BiteTextButton(onClick = { onHistory(record) }, modifier = Modifier.testTag("history")) { Text("查看修改历史") }
                         }
+                    }
+                }
+                item {
+                    Column(Modifier.fillMaxWidth().testTag("pr17:receipt-footer").brutalBox(c.surface, c.border, c.shadow)
+                        .padding(horizontal = 14.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         ReceiptBarcode()
                         GridText("食记 · 每一口都值得记录", style = QuietGridText.caption, color = c.secondary)
                     }
@@ -137,7 +192,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     val dirty = input?.let { it.action in setOf(WriteAction.CREATE, WriteAction.DELETE, WriteAction.RESTORE, WriteAction.APPLY) || it.changedFields.isNotEmpty() } == true
     ScreenFrame("screen:edit", bottomBar = { SaveBar(input != null && dirty, state.saving,
         onSave, state.message) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("edit-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.fillMaxSize().padding(padding).testTag("edit-scroll"), contentPadding = PaddingValues(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { PageHeader(if (input?.action == WriteAction.CREATE) when (kind) { RecordKind.RESTAURANT -> "新增餐厅"; RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; else -> "新增" }
                 else if (kind == RecordKind.REVISION) "修改历史说明" else "编辑${when (kind) { RecordKind.RESTAURANT -> "餐厅"; RecordKind.DISH -> "菜品"; RecordKind.VISIT -> "到店"; else -> "记录" }}", onBack) }
             item {
@@ -148,7 +203,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 editableFields(kind).forEach { field -> item(key = field) {
                     BitePanel {
                     when (field) {
-                        "rating_tenths" -> RatingEditor(input.localFields[field], { onField(field, it) }, enabled)
+                        "rating_tenths" -> RatingEditor(input.localFields[field], { onField(field, it) }, enabled, framed = false)
                         "category" -> {
                             GridText("类型", style = MaterialTheme.typography.titleMedium)
                             ChoiceChips(Category.entries.map { it.code to categoryLabel(it.code) }, input.localFields[field], { onField(field, it) }, enabled)
@@ -202,8 +257,11 @@ import top.alanvampuke.dininglog.feature.theme.*
                         GridText("店内菜品", style = MaterialTheme.typography.headlineSmall)
                         if (input.baseSnapshot == null) GridText("保存餐厅后即可在这里新增、编辑、删除菜品", color = LocalQuietGridColors.current.secondary)
                         else {
-                            if (onAddDish != null) BiteButton(onClick = onAddDish, enabled = !state.saving, modifier = Modifier.fillMaxWidth().testTag("edit-add-dish")) { Text("新增菜品") }
-                            if (onManageDishes != null) BiteTextButton(onClick = onManageDishes, enabled = !state.saving, modifier = Modifier.testTag("edit-manage-dishes")) { Text("菜品列表与回收站") }
+                            ResponsiveActions(first = onAddDish?.let { callback -> { modifier ->
+                                BiteButton(onClick = callback, enabled = !state.saving, modifier = modifier.testTag("edit-add-dish")) { Text("新增菜品") }
+                            } }, second = onManageDishes?.let { callback -> { modifier ->
+                                BiteTextButton(onClick = callback, enabled = !state.saving, modifier = modifier.testTag("edit-manage-dishes")) { Text("菜品列表与回收站") }
+                            } })
                         }
                     }
                     items(dishes, key = { "edit-dish:${it.ref.id}" }) { RecordRow(it, onDish) }

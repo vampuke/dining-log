@@ -33,7 +33,7 @@ class ScreenshotSecurityTest {
                         if (tab == "settings") {
                             SettingsScreen(SettingsUiState(), "screenshot_test",
                                 if (dark) ThemeChoice.DARK else ThemeChoice.LIGHT, BuildConfig.VERSION_NAME,
-                                {}, {}, { _, _ -> }, {}, {}, bottomBar = {})
+                                onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = {})
                         } else {
                             RecordListScreen(ListUiState(localScope = false), "", ListFilters(),
                                 {}, {}, {}, {}, {})

@@ -260,6 +260,87 @@ describe('P2 authentication against Workers D1', () => {
     await env.DB.prepare('UPDATE sessions SET created_at=1,last_refreshed_at=1,expires_at=? WHERE id=?').bind(Math.floor(Date.now() / 1000) - 1, bob.session_id).run();
     await assertInvalidated(bob);
   });
+  it('slides sessions beyond 180 days with consistent token, DB and encrypted replay deadlines', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const t0 = Date.parse('2026-11-04T00:00:00Z') / 1000;
+      vi.setSystemTime(t0 * 1000);
+      let auth = await register('sliding_owner');
+      const sessionId = auth.session_id;
+      const session = () => env.DB.prepare('SELECT expires_at,last_refreshed_at FROM sessions WHERE id=?')
+        .bind(sessionId).first<{ expires_at: number; last_refreshed_at: number }>();
+      expect(await session()).toEqual({ expires_at: t0 + 15552000, last_refreshed_at: t0 });
+      expect(auth.session_expires_at).toBe(new Date((t0 + 15552000) * 1000).toISOString());
+      expect(auth.refresh_expires_at).toBe(new Date((t0 + 604800) * 1000).toISOString());
+      // Six-day steps keep each refresh inside its seven-day idle limit.
+      for (let step = 1; step <= 31; step++) {
+        const now = t0 + step * 6 * 86400;
+        vi.setSystemTime(now * 1000);
+        const oldToken = auth.refresh_token, requestId = crypto.randomUUID();
+        const response = await refresh(oldToken, requestId);
+        expect(response.status).toBe(200);
+        const bytes = await response.text();
+        auth = (JSON.parse(bytes) as { data: AuthResult }).data;
+        expect(auth.session_id).toBe(sessionId);
+        expect(await session()).toEqual({ expires_at: now + 15552000, last_refreshed_at: now });
+        expect(auth.session_expires_at).toBe(new Date((now + 15552000) * 1000).toISOString());
+        expect(auth.refresh_expires_at).toBe(new Date((now + 604800) * 1000).toISOString());
+        expect(Date.parse(auth.refresh_expires_at)).toBeLessThanOrEqual(Date.parse(auth.session_expires_at));
+        expect((await lookupRefresh(env.DB, auth.refresh_token))!.expires_at).toBe(now + 604800);
+        if (step === 31) {
+          vi.setSystemTime((now + 60) * 1000);
+          const replay = await refresh(oldToken, requestId);
+          expect(replay.status).toBe(200);
+          expect(await replay.text()).toBe(bytes);
+          expect(await session()).toEqual({ expires_at: now + 15552000, last_refreshed_at: now });
+          expect((await request('/auth/session', undefined, bearer(auth.access_token))).status).toBe(200);
+          const reused = await refresh(oldToken);
+          expect(reused.status).toBe(401); expect((await error(reused)).code).toBe('REFRESH_REUSED');
+          const revoked = await refresh(auth.refresh_token);
+          expect(revoked.status).toBe(401); expect((await error(revoked)).code).toBe('SESSION_REVOKED');
+          expect(await session()).toEqual({ expires_at: now + 15552000, last_refreshed_at: now });
+        }
+      }
+    } finally { vi.useRealTimers(); }
+  });
+  it('renews one second before 180 days but cannot revive sessions at or after the deadline', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const t0 = Date.parse('2026-11-04T00:00:00Z') / 1000;
+      vi.setSystemTime(t0 * 1000);
+      const fixtures = await Promise.all(['before_limit', 'at_limit', 'after_limit'].map(name => register(name)));
+      for (const [index, auth] of fixtures.entries()) {
+        const token = (await lookupRefresh(env.DB, auth.refresh_token))!;
+        // Test-only extension isolates the session guard from the seven-day token guard.
+        await env.DB.prepare('UPDATE refresh_tokens SET expires_at=? WHERE id=?')
+          .bind(t0 + 15552000 + 86400, token.id).run();
+        const before = await env.DB.prepare('SELECT expires_at,last_refreshed_at FROM sessions WHERE id=?')
+          .bind(auth.session_id).first<{ expires_at: number; last_refreshed_at: number }>();
+        expect(before).toEqual({ expires_at: t0 + 15552000, last_refreshed_at: t0 });
+        const now = t0 + 15552000 + index - 1;
+        vi.setSystemTime(now * 1000);
+        // A freshly signed access token lets the session deadline decide the result.
+        const access = await jwt.signAccessToken({ sub: auth.user.id, sid: auth.session_id, av: 1 }, jwtConfig(bindings));
+        const profile = await request('/auth/session', undefined, bearer(access));
+        const response = await refresh(auth.refresh_token);
+        if (index === 0) {
+          expect(profile.status).toBe(200); expect(response.status).toBe(200);
+          const next = (await response.json() as { data: AuthResult }).data;
+          expect(next.session_id).toBe(auth.session_id);
+          expect(next.session_expires_at).toBe(new Date((now + 15552000) * 1000).toISOString());
+          expect(await env.DB.prepare('SELECT expires_at,last_refreshed_at FROM sessions WHERE id=?').bind(auth.session_id).first())
+            .toEqual({ expires_at: now + 15552000, last_refreshed_at: now });
+        } else {
+          expect(profile.status).toBe(401); expect((await error(profile)).code).toBe('SESSION_REVOKED');
+          expect(response.status).toBe(401); expect((await error(response)).code).toBe('SESSION_REVOKED');
+          expect(await env.DB.prepare('SELECT expires_at,last_refreshed_at FROM sessions WHERE id=?').bind(auth.session_id).first()).toEqual(before);
+          expect((await lookupRefresh(env.DB, auth.refresh_token))!.consumed_at).toBeNull();
+          expect(await env.DB.prepare('SELECT count(*) n FROM refresh_tokens WHERE parent_token_id=?').bind(token.id).first('n')).toBe(0);
+          expect(await env.DB.prepare('SELECT count(*) n FROM refresh_rotation_results WHERE old_token_id=?').bind(token.id).first('n')).toBe(0);
+        }
+      }
+    } finally { vi.useRealTimers(); }
+  });
   it('refresh racing with logout cannot consume token or commit a child', async () => {
     const auth = await register(); const original = jwt.signAccessToken;
     let release!: () => void, started!: () => void;

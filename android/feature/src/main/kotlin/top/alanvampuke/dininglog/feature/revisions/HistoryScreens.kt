@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -27,27 +28,42 @@ import top.alanvampuke.dininglog.feature.theme.*
     var hide by remember { mutableStateOf(false) }
     var restore by remember { mutableStateOf(false) }
     ScreenFrame("screen:history", bottomBar, floatingBottomBar = true) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("history-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            item { PageHeader("修改详情", onBack, record?.fields?.get("entity_label")) }
-            item {
+        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("history-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item { PageHeader("修改详情", onBack, record?.fields?.get("entity_label"), trailing = { modifier ->
+                BiteTextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = modifier.testTag("pr17:history-refresh")) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
+            }) }
+            if (state.offline || state.cached.stale || state.error != null) item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
                 if (state.error != null) ErrorMessage(state.error)
-                BiteTextButton(onClick = onRefresh, enabled = !state.refreshing) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
             }
             if (record != null) {
                 item {
-                    HistoryTimeText(record.fields["created_at"] ?: record.updatedAt, absolute, { absolute = !absolute },
-                        Modifier.testTag("history-time"), if (absolute) Modifier.testTag("absolute-time") else Modifier)
-                    GridText("版本 ${record.fields["entity_version_before"] ?: "0"} → ${record.fields["entity_version_after"] ?: "1"}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val time: @Composable (Modifier) -> Unit = { modifier ->
+                            HistoryTimeText(record.fields["created_at"] ?: record.updatedAt, absolute, { absolute = !absolute },
+                                modifier.testTag("history-time"), if (absolute) Modifier.testTag("absolute-time") else Modifier)
+                        }
+                        val version: @Composable () -> Unit = {
+                            GridText("版本 ${record.fields["entity_version_before"] ?: "0"} → ${record.fields["entity_version_after"] ?: "1"}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
+                        }
+                        if (LocalDensity.current.fontScale <= 1.3f && maxWidth >= 280.dp) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            time(Modifier.weight(1f)); version()
+                        } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            time(Modifier.fillMaxWidth()); version()
+                        }
+                    }
                 }
                 record.diff.forEach { change -> item(key = change.field) {
                     BitePanel(Modifier.revisionRail(LocalQuietGridColors.current.border).padding(start = 16.dp)) {
                         GridText(fieldLabel(change.field), style = MaterialTheme.typography.titleMedium)
-                        GridText("原值", color = LocalQuietGridColors.current.secondary)
-                        ExpandableValue(change.field, change.before, "before:${change.field}")
-                        GridText("新值", color = LocalQuietGridColors.current.accentInk)
-                        ExpandableValue(change.field, change.after, "after:${change.field}")
-                        HorizontalDivider(color = LocalQuietGridColors.current.border)
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            GridText("原值", style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                            ExpandableValue(change.field, change.before, "before:${change.field}")
+                        }
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            GridText("新值", style = QuietGridText.caption, color = LocalQuietGridColors.current.accentInk)
+                            ExpandableValue(change.field, change.after, "after:${change.field}")
+                        }
                     }
                 } }
                 item {
@@ -55,8 +71,11 @@ import top.alanvampuke.dininglog.feature.theme.*
                     ExpandableValue("note", record.fields["note"], "history:note")
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (record.deletedAt == null) {
-                            BiteTextButton(onClick = { onNote(record) }, modifier = Modifier.testTag("history-note")) { Text("加说明 / 修改说明") }
-                            BiteTextButton(onClick = { hide = true }, modifier = Modifier.testTag("hide-history")) { Text("隐藏此条历史", color = LocalQuietGridColors.current.danger) }
+                            ResponsiveActions(first = { modifier ->
+                                BiteTextButton(onClick = { onNote(record) }, modifier = modifier.testTag("history-note")) { Text("加说明 / 修改说明") }
+                            }, second = { modifier ->
+                                BiteTextButton(onClick = { hide = true }, modifier = modifier.testTag("hide-history")) { Text("隐藏此条历史", color = LocalQuietGridColors.current.danger) }
+                            })
                         } else {
                             GridText("此条历史已隐藏，普通列表不显示", color = LocalQuietGridColors.current.secondary)
                             BiteButton(onClick = { restore = true }, modifier = Modifier.fillMaxWidth().testTag("restore-history")) { Text("取消隐藏") }
@@ -95,7 +114,7 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
         fields.forEach { field -> Row(Modifier.height(IntrinsicSize.Min)) {
             listOf(field.server, field.local).forEachIndexed { index, value ->
-                Column(Modifier.width(width).padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.width(width).padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     GridText(fieldLabel(field.name), style = MaterialTheme.typography.titleSmall, color = LocalQuietGridColors.current.secondary)
                     ExpandableValue(field.name, value, "compare:${field.name}:$index")
                 }
@@ -134,10 +153,16 @@ import top.alanvampuke.dininglog.feature.theme.*
                 Checkbox(change.field in state.selected, { onField(change.field, it) }, enabled = allowed && state.current.deletedAt == null, modifier = Modifier.testTag("apply-field:${change.field}"))
                 GridText(fieldLabel(change.field), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.titleMedium)
             }
-            GridText("当前值", color = LocalQuietGridColors.current.secondary)
-            ExpandableValue(change.field, state.current.fields[change.field], "apply-current:${change.field}")
-            GridText("拟修改值", color = LocalQuietGridColors.current.accentInk)
-            ExpandableValue(change.field, proposed, "apply-proposed:${change.field}")
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    GridText("当前值", style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                    ExpandableValue(change.field, state.current.fields[change.field], "apply-current:${change.field}")
+                }
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    GridText("拟修改值", style = QuietGridText.caption, color = LocalQuietGridColors.current.accentInk)
+                    ExpandableValue(change.field, proposed, "apply-proposed:${change.field}")
+                }
+            }
             if (!allowed) GridText("必填字段不能恢复为空", color = LocalQuietGridColors.current.secondary)
             HorizontalDivider(color = LocalQuietGridColors.current.border)
         }

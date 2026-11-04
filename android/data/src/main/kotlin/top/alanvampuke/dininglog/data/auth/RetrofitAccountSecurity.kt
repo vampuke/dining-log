@@ -6,7 +6,6 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -22,8 +21,6 @@ import top.alanvampuke.dininglog.data.remote.*
     @SerialName("new_password") val replacement: String, @SerialName("device_name") val deviceName: String = "Android")
 interface SecurityApi {
     @GET("auth/session") suspend fun profile(@Header("Authorization") token: String): Response<ObjectEnvelope>
-    @GET("auth/sessions") suspend fun sessions(@Header("Authorization") token: String): Response<ObjectEnvelope>
-    @DELETE("auth/sessions/{id}") suspend fun revoke(@Path("id") id: String, @Header("Authorization") token: String, @Header("Idempotency-Key") key: String): Response<Unit>
     @POST("auth/password") suspend fun password(@Header("Authorization") token: String, @Header("Idempotency-Key") key: String, @Body body: PasswordBody): Response<AuthEnvelope>
 }
 class RetrofitAccountSecurity(private val api: SecurityApi, private val refresh: RefreshCoordinator,
@@ -34,19 +31,6 @@ class RetrofitAccountSecurity(private val api: SecurityApi, private val refresh:
     override suspend fun profile(): AccountInfo = read { token ->
         val value = checked(api.profile("Bearer $token")).data["user"]!!.jsonObject
         AccountInfo(requireNotNull(value.text("id")), requireNotNull(value.text("username")), value.text("display_name") ?: "", value.text("created_at") ?: "")
-    }
-    override suspend fun sessions(): List<DeviceSession> = read { token -> checked(api.sessions("Bearer $token")).data["items"]!!.jsonArray.map { item ->
-        val s = item.jsonObject
-        DeviceSession(requireNotNull(s.text("id")), s.text("device_name") ?: "Android", s.text("created_at") ?: "",
-            s.text("last_refreshed_at") ?: "", s.text("expires_at") ?: "", s.text("is_current") == "true")
-    } }
-    override suspend fun revokeSession(id: String) {
-        val key = UUID.randomUUID().toString()
-        read { token ->
-            val response = api.revoke(id, "Bearer $token", key)
-            if (!response.isSuccessful) checked(response)
-        }
-        if (account.session.value?.sessionId == id) account.clear()
     }
     override suspend fun changePassword(current: String, replacement: String) {
         val body = PasswordBody(current, replacement)

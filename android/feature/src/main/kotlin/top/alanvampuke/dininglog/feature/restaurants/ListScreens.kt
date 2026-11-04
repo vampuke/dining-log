@@ -42,27 +42,26 @@ import top.alanvampuke.dininglog.feature.theme.*
     var menu by remember { mutableStateOf(false) }
     ScreenFrame(tag, bottomBar, floatingBottomBar = true) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("record-list"), state = listState,
-            contentPadding = PaddingValues(start = QuietGridDimensions.edge, top = 8.dp, end = QuietGridDimensions.edge, bottom = 8.dp + padding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            contentPadding = PaddingValues(start = QuietGridDimensions.edge, top = 8.dp, end = QuietGridDimensions.edge, bottom = 8.dp + padding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             item {
                 if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && state.query.deleted != DeletedFilter.ONLY) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Image(painterResource(if (LocalQuietGridColors.current == QuietGridDark) R.drawable.bite_v1_burger_dark else R.drawable.bite_v1_burger), null, Modifier.size(38.dp).rotate(-3f))
-                        Column(Modifier.weight(1f)) {
-                            GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
-                            GridText(title, Modifier.fillMaxWidth(), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                    ResponsiveHeading(title = { modifier ->
+                        Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Image(painterResource(if (LocalQuietGridColors.current == QuietGridDark) R.drawable.bite_v1_burger_dark else R.drawable.bite_v1_burger), null, Modifier.size(38.dp).rotate(-3f))
+                            Column(Modifier.weight(1f)) {
+                                GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                                GridText(title, Modifier.fillMaxWidth(), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                            }
                         }
-                        // Was "记一笔", which sounds like logging a visit, but this
-                        // button creates a restaurant (same destination as the
-                        // bottom "+" ). Name it for what it actually does.
-                        if (onAdd != null) BiteButton(onAdd, Modifier.testTag("add")) { Text("新增餐厅") }
-                    }
+                    }, trailing = onAdd?.let { callback -> { modifier ->
+                        BiteButton(callback, modifier.testTag("add")) { Text("新增餐厅") }
+                    } })
                 } else {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.weight(1f)) { PageHeader(title, onBack) }
-                        if (onAdd != null) BiteButton(onAdd, Modifier.testTag("add")) {
+                    PageHeader(title, onBack, trailing = onAdd?.let { callback -> { modifier ->
+                        BiteButton(callback, modifier.testTag("add")) {
                             Text(if (kind == RecordKind.DISH) "新增菜品" else if (kind == RecordKind.VISIT) "新增到店" else "新增")
                         }
-                    }
+                    } })
                 }
             }
             if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && !isSearch && state.query.deleted != DeletedFilter.ONLY) item { LoadedStats(state.items) }
@@ -162,18 +161,18 @@ import top.alanvampuke.dininglog.feature.theme.*
     val history = record.ref.kind == RecordKind.REVISION
     val outside = if (history) Modifier.revisionRail(c.border).padding(start = 16.dp) else Modifier
     Column(Modifier.fillMaxWidth().then(outside).rotate(tilt).brutalBox(c.surface, c.border, c.shadow)
-        .heightIn(min = 48.dp).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        .heightIn(min = 48.dp).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(7.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)) {
         if (large) {
             if (number != null) Sticker("%02d".format(number), c.butter)
             RowText(record)
             if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
                 Score(record.fields["rating_tenths"]); VerdictSticker(record.fields["rating_tenths"], record.ref.kind == RecordKind.DISH)
             }
-        } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             if (number != null) Sticker("%02d".format(number), c.butter)
             Column(Modifier.weight(1f)) { RowText(record) }
-            if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Score(record.fields["rating_tenths"])
                 VerdictSticker(record.fields["rating_tenths"], record.ref.kind == RecordKind.DISH)
             }
@@ -231,11 +230,38 @@ import top.alanvampuke.dininglog.feature.theme.*
             GridText(if (kind == RecordKind.DISH) "评分档位：★4.6+ 为惊艳，★3.1− 为踩雷" else "评分档位：★4.6+ 为封神必吃，★3.1− 为踩雷预警",
                 style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
             ChoiceChips(listOf("updated_desc" to "最近更新", "rating_desc" to "评分高到低"), filters.sort, { onChange(filters.copy(sort = it ?: "updated_desc")) })
-            Row { Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }, modifier = Modifier.testTag("filter-unrated")); GridText("只看未评分", Modifier.padding(top = 12.dp)) }
-            Row { Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }, modifier = Modifier.testTag("filter-rating-range")); GridText("限定评分区间", Modifier.padding(top = 12.dp)) }
-            if (filters.minRating != null || filters.maxRating != null) {
-                GridText("最低评分"); RatingEditor((filters.minRating ?: 10).toString(), { onChange(filters.copy(minRating = it?.toInt() ?: 10)) }, true, "filter-min")
-                GridText("最高评分"); RatingEditor((filters.maxRating ?: 50).toString(), { onChange(filters.copy(maxRating = it?.toInt() ?: 50)) }, true, "filter-max")
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val unrated: @Composable (Modifier) -> Unit = { modifier ->
+                    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }, modifier = Modifier.testTag("filter-unrated"))
+                        GridText("只看未评分", Modifier.weight(1f))
+                    }
+                }
+                val range: @Composable (Modifier) -> Unit = { modifier ->
+                    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }, modifier = Modifier.testTag("filter-rating-range"))
+                        GridText("限定评分区间", Modifier.weight(1f))
+                    }
+                }
+                if (LocalDensity.current.fontScale <= 1.3f && maxWidth >= 320.dp) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    unrated(Modifier.weight(1f)); range(Modifier.weight(1f))
+                } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    unrated(Modifier.fillMaxWidth()); range(Modifier.fillMaxWidth())
+                }
+            }
+            if (filters.minRating != null || filters.maxRating != null) BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val minimum: @Composable () -> Unit = {
+                    RatingEditor((filters.minRating ?: 10).toString(), { onChange(filters.copy(minRating = it?.toInt() ?: 10)) }, true, "filter-min", framed = false, label = "最低评分")
+                }
+                val maximum: @Composable () -> Unit = {
+                    RatingEditor((filters.maxRating ?: 50).toString(), { onChange(filters.copy(maxRating = it?.toInt() ?: 50)) }, true, "filter-max", framed = false, label = "最高评分")
+                }
+                if (LocalDensity.current.fontScale <= 1.3f && maxWidth >= 492.dp) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) { minimum() }
+                    Column(Modifier.weight(1f)) { maximum() }
+                } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    minimum(); maximum()
+                }
             }
         }
         if (kind in setOf(RecordKind.RESTAURANT, RecordKind.VISIT)) {

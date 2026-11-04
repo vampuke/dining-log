@@ -132,8 +132,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
         composable<SettingsRoute> {
             LaunchedEffect(Unit) { vm.loadSettings() }
-            SettingsScreen(settings, username, theme, version, vm::loadSettings, vm::revokeSession, vm::changePassword,
-                onLogout, onTheme, tabs,
+            SettingsScreen(state = settings, username = username, theme = theme, version = version,
+                onPassword = vm::changePassword, onLogout = onLogout, onTheme = onTheme, bottomBar = tabs,
                 onPasswordInput = vm::editPassword, listState = settingsScroll,
                 updateState = updateState, onUpdateToggle = onUpdateToggle, onOpenUpdate = onOpenUpdate, onCheckUpdate = onCheckUpdate)
         }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -20,8 +21,8 @@ import top.alanvampuke.dininglog.feature.theme.QuietGridText
 @Composable fun HistoryTimeText(iso: String, absolute: Boolean, onToggle: () -> Unit,
     modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
     // A nested clickable consumes the time action independently of its card.
-    // Both states share one line and a minimum 48dp target. Text semantics keep
-    // the full timestamp readable by accessibility services if it is ellipsized.
+    // Large fonts may wrap the full timestamp inside the minimum 48dp target.
+    val large = LocalDensity.current.fontScale > 1.3f
     Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp)
         .clickable(role = Role.Button,
             onClickLabel = if (absolute) "切换为相对时间" else "切换为绝对时间", onClick = onToggle)
@@ -29,6 +30,6 @@ import top.alanvampuke.dininglog.feature.theme.QuietGridText
         contentAlignment = Alignment.CenterStart) {
         GridText(if (absolute) formatAbsoluteTime(iso) else relativeTime(iso), textModifier,
             style = QuietGridText.date, color = LocalQuietGridColors.current.secondary,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
+            maxLines = if (large) Int.MAX_VALUE else 1, overflow = if (large) TextOverflow.Clip else TextOverflow.Ellipsis)
     }
 }

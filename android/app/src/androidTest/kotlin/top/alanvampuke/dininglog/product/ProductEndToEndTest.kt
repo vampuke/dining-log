@@ -340,9 +340,26 @@ class ProductEndToEndTest {
             compose.onNodeWithTag("tab:visits").assertDoesNotExist()
 
             phase = "sessions password logout and fresh login"
-            tap("tab:settings"); waitFor { !vm.settings.value.loading && vm.settings.value.sessions.any { it.id == other.sessionId } }
+            tap("tab:settings"); waitFor { vm.settings.value.profile != null && !vm.settings.value.loading }
             assertSecureWindow(false, "ordinary settings")
-            tap("revoke:${other.sessionId}"); tap("confirm"); waitFor { vm.settings.value.sessions.none { it.id == other.sessionId } && !vm.settings.value.loading }
+            runBlocking { withContext(Dispatchers.IO) {
+                val key = UUID.randomUUID().toString()
+                refresh.authenticated { token ->
+                    val request = Request.Builder().url(baseUrl + "auth/sessions/" + other.sessionId)
+                        .header("Authorization", "Bearer $token").header("Idempotency-Key", key).delete().build()
+                    client.newCall(request).execute().use { assertEquals(204, it.code) }
+                }
+                val revokedAccess = Request.Builder().url(baseUrl + "auth/session")
+                    .header("Authorization", "Bearer ${other.accessToken}").build()
+                client.newCall(revokedAccess).execute().use { response ->
+                    assertEquals(401, response.code)
+                }
+                try {
+                    gateway.refresh(other.refreshToken, UUID.randomUUID().toString())
+                    fail("Revoked session must not refresh")
+                } catch (failure: AuthFailure) { assertEquals("SESSION_REVOKED", failure.code) }
+                assertEquals(account.session.value!!.userId, security.profile().id)
+            } }
             tap("change-password")
             compose.onNodeWithTag("screen:password").assertExists()
             assertSecureWindow(true, "change password")
