@@ -18,6 +18,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -25,6 +27,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -75,6 +78,7 @@ class Pr17UiTest {
     }
     private fun configure(font: Float, night: Boolean, w: Int = 360, h: Int = 640) {
         compose.runOnIdle { scale = font; dark = night; width = w; height = h }
+        settleLayout()
     }
     private fun scroll(list: String, tag: String) {
         compose.onNodeWithTag(list).performScrollToNode(hasTestTag(tag))
@@ -91,24 +95,54 @@ class Pr17UiTest {
         } else assertTrue("$second must be below $first", b.top >= a.bottom)
         for (tag in listOf(first, second)) {
             val box = bounds(tag)
+            recordEvidence("touch-target tag=$tag font=$scale bounds=$box heightDp=${box.height / pixelsPerDp}")
             assertTrue("$tag keeps a 48dp touch target", box.height / pixelsPerDp >= 47.5f)
         }
     }
-    private fun assertTextFits(node: SemanticsNodeInteraction) {
+    private fun settleLayout() {
+        compose.waitForIdle()
+        runBlocking { compose.awaitIdle() }
+    }
+    private fun textLayouts(node: SemanticsNodeInteraction): List<TextLayoutResult> {
         val layouts = mutableListOf<TextLayoutResult>()
         node.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertTrue("text exposes layout", layouts.isNotEmpty())
-        for (layout in layouts) {
-            assertFalse("overflow at font=$scale: ${layout.layoutInput.text}", layout.hasVisualOverflow)
-            assertEquals(scale, layout.layoutInput.density.fontScale, 0.001f)
-            recordEvidence("text font=$scale lines=${layout.lineCount} size=${layout.size} overflow=${layout.hasVisualOverflow} value=${layout.layoutInput.text}")
+        return layouts
+    }
+    private fun layoutInMeasuredBounds(reported: TextLayoutResult): TextLayoutResult = with(reported.layoutInput) {
+        // Compose 1.8.2's simple-String semantics rebuilds MultiParagraph at the
+        // parent's maxWidth, then compares it with the smaller rendered Paragraph.
+        // Remeasure in the actual text box, preserving density and all clipping rules.
+        TextMeasurer(fontFamilyResolver, density, layoutDirection, cacheSize = 0).measure(
+            text = text, style = style, placeholders = placeholders, maxLines = maxLines,
+            softWrap = softWrap, overflow = overflow,
+            constraints = Constraints.fixed(reported.size.width, reported.size.height), skipCache = true)
+    }
+    private fun assertTextFits(node: SemanticsNodeInteraction) {
+        settleLayout()
+        val inDialog = hasAnyAncestor(isDialog()).matches(node.fetchSemanticsNode())
+        for (reported in textLayouts(node)) {
+            val font = reported.layoutInput.density.fontScale
+            // Dialog owners provide window density unless content explicitly overrides it.
+            val layout = layoutInMeasuredBounds(reported)
+            recordEvidence("text window=${if (inDialog) "dialog" else "host"} requestedFont=$scale font=$font " +
+                "density=${reported.layoutInput.density.density} constraints=${reported.layoutInput.constraints} " +
+                "reportedSize=${reported.size} reportedOverflow=${reported.hasVisualOverflow} " +
+                "lines=${layout.lineCount} size=${layout.size} widthOverflow=${layout.didOverflowWidth} " +
+                "heightOverflow=${layout.didOverflowHeight} overflow=${layout.hasVisualOverflow} value=${layout.layoutInput.text}")
+            if (!inDialog) assertEquals("host text must use the configured fontScale", scale, font, 0.001f)
+            assertFalse("overflow at font=$font: ${layout.layoutInput.text}, size=${layout.size}, " +
+                "widthOverflow=${layout.didOverflowWidth}, heightOverflow=${layout.didOverflowHeight}", layout.hasVisualOverflow)
         }
     }
     private fun assertVisibleTextFits() {
+        settleLayout()
         // Use unmerged text nodes, including children of clickable buttons. Original
         // list ellipsis is checked by the existing tests, outside this assertion.
         val nodes = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult), useUnmergedTree = true)
-        for (index in nodes.fetchSemanticsNodes().indices) assertTextFits(nodes[index])
+        for (index in nodes.fetchSemanticsNodes().indices) {
+            if (nodes[index].isDisplayed()) assertTextFits(nodes[index])
+        }
     }
     private fun folder() = ApplicationProvider.getApplicationContext<Context>()
         .getExternalFilesDir("p4-screenshots")!!.apply { mkdirs() }
@@ -116,10 +150,30 @@ class Pr17UiTest {
         File(folder(), "pr17-layout-api${Build.VERSION.SDK_INT}.txt").appendText("$text\n")
     }
     private fun save(name: String, dialog: Boolean = false) {
+        settleLayout()
         val bitmap = if (dialog) requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
             else target("pr17:viewport").captureToImage().asAndroidBitmap()
         File(folder(), "pr17-$name-font$scale-${if (dark) "dark" else "light"}-api${Build.VERSION.SDK_INT}.png")
             .outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+    }
+
+    @Test fun measuredTextLayoutsStillRejectRealWidthHeightAndMaxLinesOverflow() {
+        render {
+            Column(Modifier.width(120.dp)) {
+                GridText("短文本", Modifier.testTag("pr17:text-natural-width"))
+                androidx.compose.material3.Text("LongUnbreakableText", softWrap = false,
+                    modifier = Modifier.width(24.dp).testTag("pr17:text-width-clip"))
+                GridText("高度", Modifier.height(1.dp).testTag("pr17:text-height-clip"))
+                GridText("第一行\n第二行", Modifier.testTag("pr17:text-max-lines"), maxLines = 1)
+            }
+        }
+        configure(1f, false)
+        assertTextFits(target("pr17:text-natural-width"))
+        for (tag in listOf("pr17:text-width-clip", "pr17:text-height-clip", "pr17:text-max-lines")) {
+            val layouts = textLayouts(target(tag)).map(::layoutInMeasuredBounds)
+            if (tag == "pr17:text-width-clip") assertTrue("real width clipping remains an overflow", layouts.any { it.didOverflowWidth })
+            else assertTrue("$tag retains height/maxLines overflow", layouts.any { it.didOverflowHeight })
+        }
     }
 
     @Test fun detailEntityStateMatrixPreservesValuesMetadataAndAllCallbacks() {
@@ -249,6 +303,13 @@ class Pr17UiTest {
             if (font <= 1.3f && content >= 280) assertTrue(title.top < refresh.bottom && refresh.top < title.bottom)
             else assertTrue(refresh.top >= title.bottom)
             assertTextFits(target("page-title"))
+            if (font > 1.3f) {
+                val back = bounds("back")
+                val titleWidth = title.width / pixelsPerDp
+                assertTrue("large title follows the back button", title.top >= back.bottom)
+                assertEquals("large title uses the full header content width", content.toFloat(), titleWidth, 1f)
+                save("header-full-title-$content")
+            }
             target("detail-refresh").performClick()
             recordEvidence("header font=$font content=$content title=$title refresh=$refresh")
         }
@@ -502,6 +563,7 @@ class Pr17UiTest {
         for (night in listOf(false, true)) for (font in listOf(1f, 1.3f, 1.31f, 2f)) {
             configure(font, night, if (font > 1.3f) 320 else 360)
             scroll("settings-scroll", "page-title")
+            assertVisibleTextFits()
             compose.onNodeWithText("账号 显示名称", useUnmergedTree = true).assertExists()
             compose.onNodeWithText("登录会话").assertDoesNotExist()
             compose.onNodeWithText("刷新账号与会话").assertDoesNotExist()
@@ -519,9 +581,11 @@ class Pr17UiTest {
             compose.onNodeWithTag("settings-scroll").performScrollToNode(hasText("跟随系统"))
             compose.onNodeWithText("跟随系统").performClick(); assertEquals("theme", actions.last())
             tap("settings-scroll", "change-password"); target("screen:password").assertExists()
+            assertVisibleTextFits()
             compose.onNodeWithText("关闭").performClick()
             tap("settings-scroll", "logout")
             compose.onNodeWithText("将清理此账号的本机缓存。服务器已保存记录仍属于账号。").assertExists()
+            assertVisibleTextFits()
             val before = actions.size
             compose.onNodeWithText("取消").performClick(); assertEquals(before, actions.size)
             tap("settings-scroll", "logout"); target("confirm").performClick(); assertEquals("logout", actions.last())

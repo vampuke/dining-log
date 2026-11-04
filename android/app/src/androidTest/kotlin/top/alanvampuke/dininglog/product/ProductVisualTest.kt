@@ -176,6 +176,7 @@ class ProductVisualTest {
         }
         for (night in listOf(false, true)) for (screen in listOf("list", "detail", "history", "settings")) {
             compose.runOnIdle { dark = night; page = screen }
+            compose.waitForIdle()
             val folder = ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir("p4-screenshots")!!
             folder.mkdirs()
             val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())

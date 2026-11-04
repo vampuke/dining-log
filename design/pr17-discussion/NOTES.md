@@ -85,3 +85,51 @@
 - `backend/src/auth/session.ts`
 - `backend/tests/auth/auth.test.ts`
 - `design/pr17-discussion/NOTES.md`
+
+## Round 1 修复
+
+任务输入：[PR17_CIFIX1_TASK.md](../PR17_CIFIX1_TASK.md)。在原分支 `feat/pr17-density-and-sliding-sessions` 修复；本轮只有一个修复提交，消息为 `fix: PR17 instrumentation round 1 (dialog density, font200 title squeeze, touch target)`。本机没有运行 Gradle/npm，动态验收与修复后截图由推送后的 CI 提供。
+
+### API26 日志与失败集合
+
+先读取 `~/.git-credentials` 的 GitHub token，在内存中用于 API 请求，没有输出或写入仓库。查询 run `41879322769` 的 `head_sha=35b74a1ed68335b2e8c26fd091b516f24814ab36`，再查询该 commit 的 **check-runs API**，从 API26 check 的 `details_url` 确认 job id **126747431004**，下载原始日志到 `/tmp/pr17_i26.log`（229019 bytes）。[API26 job](https://github.com/vampuke/dining-log/actions/runs/41879322769/job/126747431004)；[API35 job](https://github.com/vampuke/dining-log/actions/runs/41879322769/job/126747431138)。
+
+逐个解析并比较两份日志：两边均 **11 个同名测试失败**，API26 没有额外失败。pageActions 测试在 API26 先报 `‹ 返回`，API35 先报小票品牌行；旧 ProductVisualTest 的 detail title 在 API26 为 `312 x 92`，API35 为 `312 x 112`，均报告 widthOverflow。其余首个断言文本一致。结构化核对结果留在 `/tmp/pr17_failure_comparison.json`，job 元信息留在 `/tmp/pr17_i26_job.json`。
+
+### 五项诊断逐条复核与裁决
+
+1. **Dialog fontScale：Apply 诊断成立，但不能推广为所有 Dialog 都是 1.0。** 从 [BOM 2025.05.01 POM](https://dl.google.com/dl/android/maven2/androidx/compose/compose-bom/2025.05.01/compose-bom-2025.05.01.pom) 核对到 Compose UI/Foundation/Test **1.8.2**、Material3 **1.3.2**，读取对应 Google Maven sources。`AndroidDialog.android.kt:175` 的 Dialog 创建独立 owner；`ProvideCommonCompositionLocals` 再提供 `LocalDensity provides owner.density`；`AndroidComposeView` 的 density 来自 window context 的 resources。宿主的 CompositionLocalProvider 位于这次重新提供之前。`ReviewDialog`/`ApplyFieldsDialog`、PasswordDialog、AlertDialog 没有在窗口内容中再次提供宿主 density，API 的 `expected 2.0 / actual 1.0` 与此一致。**UpdateDialog 已在内部显式提供宿主 density**，旧 artifact 的 dialog-pair 记录也显示 1/1.3/1.31/2 四档边界确实改变，不能把 update-stage 的失败归因于相同的 scale 丢失。
+   - `Pr17UiTest.assertTextFits` 通过 `hasAnyAncestor(isDialog())` 识别窗口节点；全部 dialog 内目标用其自身 `layoutInput.density` 测量并严格断言溢出，跳过与宿主 scale 的一致性检查。宿主节点仍严格核对配置的 scale。Apply 外的 ComparisonColumns 在宿主渲染，仍执行宿主检查。设置页增加打开密码、退出确认期间的文本扫描；Update 的现有扫描自动采用节点实际 scale。证据同时记录 window、requestedFont、实际 font/density。这是测试覆盖人工 Density 的限制，不能据此报告产品系统字体缺陷，也不能宣称 Apply/Password 已覆盖人工 200% 窗口字体。
+2. **标题约束的精确新旧差异成立；“312px 就是被挤后的约束宽、已证实真裁字”不成立。** 读取 `35b74a1^` 和当前 PageHeader：旧结构为 `Row { back; GridText(weight(1f)) }`，标题本身收到剩余宽度的紧约束；PR17 使用 trailing 时变为 `ResponsiveHeading -> Row { back; Column(weight(1f)) { GridText(title) } }`，Column 内的标题收到 `minWidth=0` 的松约束，可以只报告文字自然宽。font200 回退把 trailing 移到下行，但仍让 back 占标题行宽。`headlineSmall` 实际为 **18sp**，200% 为 36sp，不能把 `TextLayoutResult.size.width=312` 直接当作 Column 的 maxWidth；第 3 项的语义重建也会制造 widthOverflow。
+   - 对有 trailing 且 fontScale>1.3 的 PageHeader，返回按钮移到标题上行；标题 `fillMaxWidth` 独占内容宽，subtitle 保留 4dp 间距，trailing 仍在下一行。普通字体分支和未使用 slot 的结构保持。新增 1.31/2 倍、279/280dp 内容宽下的返回/标题分行与标题整行宽断言，采集 `pr17-header-full-title-*-font*-*-api*.png`。**ProductVisualTest 原 font200 hasVisualOverflow 断言完全保留**，仅在换页后、截图前增加 waitForIdle；修复后是否绿与是否可读仍以 CI/截图验收。
+3. **短文本误报有源码可证的原因，不能照抄 stale density 缓存结论。** Foundation 1.8.2 `ParagraphLayoutCache.slowCreateTextLayoutResultOrNull` 用 `prevConstraints.copyMaxDimensions()` 直接构造 MultiParagraph，却配上原 Paragraph 的 `layoutSize`；原 Paragraph 通过 `LayoutUtils.finalMaxWidth` 收敛到 intrinsic width，而 MultiParagraph 的 `width` 直接等于传入 maxWidth。`TextLayoutResult.didOverflowWidth` 比较 `size.width < multiParagraph.width`，所以松约束下自然宽短文本也会失败。`TextStringSimpleNode.applySemantics` 保存的是读取当前 layoutCache 的函数，并非固定保存上一次 TextLayoutResult；没有源码或原失败日志证实“key 重建沿用上一 fontScale”。settings、receipt、editor、history、detail 的相应扫描时已关闭确认窗口或没有窗口，不能全归为 Dialog。
+   - 在**实际已测得的文字框**内，使用相同 text/style/placeholders、font resolver、density、layoutDirection、softWrap、maxLines、overflow，通过 `TextMeasurer(cacheSize=0, skipCache=true)` 得到一致的 TextLayoutResult，仍断言 `hasVisualOverflow == false`，不改 overflow 的定义、容差或文案。证据在断言前记录原约束、原尺寸/overflow 与重测后的宽高 overflow，后续若仍失败可直接定位真实裁切。
+   - `configure`、文本取样与截图先 `waitForIdle()`，再 `runBlocking { awaitIdle() }`；已核对 1.8.2 的 AndroidComposeTestRule 提供 awaitIdle，且等待包含下一绘制帧。全页扫描只处理 `isDisplayed()` 的未合并文字，长字段原有滚动/展开后的直接检查保留；宿主 scale 不一致仍失败。新增 `measuredTextLayoutsStillRejectRealWidthHeightAndMaxLinesOverflow`，同时验证松约束短文本通过，以及 nowrap 窄框、过低文字框、超出 maxLines 的文字仍报告对应 overflow。该负例测试待 CI 执行，不能用静态解析替代通过记录。
+4. **48dp 失败成立，“删 top padding 导致 Row 塌高”不是精确根因。** Material3 1.3.2 Checkbox 的 modifier 顺序是调用方 modifier → minimumInteractiveComponentSize → triStateToggleable → 2dp padding → 居中的 20dp Canvas；默认 48dp 余量在 toggleable 外侧。`SemanticsNode.findCoordinatorToGetBounds` 选择 `outerMergingSemantics`，即 toggleable 对应的坐标，因此 tag 查询的 `boundsInRoot` 可以是内部约 **24dp**，不能由外部行高推断触达语义已满足 48dp。
+   - `filter-unrated` 和 `filter-rating-range` 两个 Checkbox 本体增加 `heightIn(min=48.dp)`，tag 留在 Checkbox，内部 toggleable 获得最小高度约束；共享的 lambdas 同时覆盖横排与竖排/横屏。回调、320dp 分支和原 `>=47.5dp` 断言保持，assertPair 在断言前追加实际 bounds/heightDp 证据。
+5. **API26 核对已先执行。** check-runs 找到的 job、原始下载、11 项集合逐项对比见本节开头；没有用 API35 推测 API26，没有额外 API26 失败需要另加修复。
+
+### 每项原失败的根因、修复与证据
+
+下面是原 run 两套 API 的完整失败集；测试名省略所属类前缀，最后一项属于 ProductVisualTest，其余属于 Pr17UiTest。每项修复后动态结果均待新 CI。
+
+| 测试 | 根因复核结论与修复 | 原证据与修复后采集点 |
+| --- | --- | --- |
+| settingsProfileUpdatePasswordAndLogoutRemainReachableWithoutSessionManagement | `owner` 是宿主 subtitle 的松约束语义重建误报，不是未关闭 Dialog；按实际文字框重测，另增加设置窗口文字扫描及自身 scale 处理。 | 双 API `overflow at font=1.0: owner`；新 text window/constraints/overflow 记录及 settings-tail。 |
+| receiptTailIsMeasuredAgainstTheOriginalCardWithMatchingData | 品牌行没有固定铺满父宽，简单 Text 的语义重建误报；可见文字按实际框重测，A7 原高度断言保留。 | 双 API 品牌行 overflow；API35 原 A7 `old=213.71428, new=191.80952`；新 A7/text/receipt-tail-before/after。 |
+| applyPreviewAndComparisonColumnsKeepTheirOwnValuesAndScroll | ReviewDialog 的独立 owner 提供系统 scale；dialog 使用自身 scale，宿主 comparison 仍核对请求 scale，全文 overflow 仍检查。 | 双 API `expected 2.0 / actual 1.0`；新 apply 的 dialog/host 密度及 apply-pairs/comparison。 |
+| editorKeepsTheOuterRatingCardAndSavedRestaurantChildActions | `评分 · 选填` 是松约束 GridText 的语义重建误报；实际框重测，原外评分卡/按钮回调矩阵保留。 | 双 API 对应 label overflow；新 text/编辑评分截图。 |
+| historyPairsFullTextTimeAndConfirmationCallbacksRemainReachable | `评价` 是松约束字段标签的语义重建误报；重测，原标题/全文展开、时间切换及确认回调断言保留。 | 双 API `评价` overflow；新 text/history-actions。 |
+| detailEntityStateMatrixPreservesValuesMetadataAndAllCallbacks | 返回按钮内部 Text 的语义宽与实际文字宽不一致；重测，并修正大字体页头返回/标题排布。 | 双 API `‹ 返回` overflow；新 text/detail-head/header-full-title。 |
+| ratingEditorNullSteppersBoundariesAndFilterControlsDoNotCrossValues | Checkbox 48dp 外部余量不保证内部 toggleable 的语义 bounds；两本体约束最小 48dp。 | 双 API filter-unrated 48dp 断言；新 touch-target bounds，原 319/320、491/492 与独立数值矩阵。 |
+| pageActionsAndHeadersUseContentWidthBoundaryAndSingleCallbackFillsTheRow | API26 返回文本、API35 品牌文本均涉及松约束语义重建；重测并增加大字体页头整行布局验证。 | 原两 API 不同首个文本；新 page-pair/header/text/header-full-title，原 279/280 与单回调通栏断言。 |
+| updateStageMatrixPreservesCallbacksProgressAndScrollableBottomPadding | UpdateDialog 明确继承宿主 scale，短 `更新说明` 的误报来自语义宽重建；自身 scale 重测与 idle，原阶段回调/16dp 底部断言保留。 | 双 API `更新说明` overflow；原 dialog-pair 四档字体证实覆盖；新 text/update-stage。 |
+| listKindsBrandHeadersAndLandscapeRemainReachableWithAllFontsAndThemes | `店内菜品` 在新 Column(weight) 内按自然宽布局，却被语义 MP 用父 maxWidth 重建；重测，大字体 PageHeader 标题整行。 | 双 API 对应标题 overflow；新 text/list 全字体、主题、横屏截图。 |
+| bothTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes | 旧/新紧松约束差异触发 raw widthOverflow，原记录不能证明 312px 就是压缩后的约束；产品落实返回/标题分行、标题全宽。 | API26 `312x92`、API35 `312x112`；旧 API35 `light-detail-font200-tabs` 截图实际仍显示首页，原截图本身有换页绘制时序问题；新增截图前 idle，新两主题各页 font200 截图及**原 raw overflow 断言**。 |
+
+### 本轮本机验证与交付范围
+
+- 两个未修改的视觉守卫 `python3 -B android/tools/verify_bite_visuals.py`、`python3 -B android/tools/verify_p6_visuals.py` 均 exit 0，保留 tags/矢量/配色/后端与 contracts 保护检查通过。
+- 四个修改的 Kotlin 文件用 `/tmp/pr17-syntax-parser` 的 tree-sitter 做静态解析，均无语法错误；`git diff --check` 通过。静态解析不是 Kotlin 编译或 instrumentation 通过记录。
+- **没有本机 Gradle/npm 执行，没有伪造修复后截图或宣称四个 CI job 已绿**。原 ProductVisualTest、48dp 容差与更新 footer 的 16dp 断言保留；新增负例和截图随原 instrumentation suite 运行。新 CI 由助手监控，本轮交付为修复并推送。
+- 本轮仅改 `Pr17UiTest.kt`、`ProductVisualTest.kt`、`QuietGridComponents.kt`、`ListScreens.kt`、本 NOTES；没有改依赖/BOM、生产 Dialog、主题字号、守卫脚本/基线、PLAN/DISCUSSION 或业务会话代码。

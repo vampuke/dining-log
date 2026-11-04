@@ -129,7 +129,16 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
 @Composable fun PageHeader(title: String, onBack: (() -> Unit)? = null, subtitle: String? = null,
     trailing: (@Composable (Modifier) -> Unit)? = null) {
     Column(Modifier.fillMaxWidth().brutalBox(LocalQuietGridColors.current.paper, LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow).padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (trailing == null) {
+        if (LocalDensity.current.fontScale > 1.3f && trailing != null) {
+            // Let large titles use the whole content width, without the back button.
+            if (onBack != null) BiteTextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
+            ResponsiveHeading(title = { modifier ->
+                Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    GridText(title, Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                    if (subtitle != null) GridText(subtitle, color = LocalQuietGridColors.current.secondary)
+                }
+            }, trailing = trailing)
+        } else if (trailing == null) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (onBack != null) BiteTextButton(onClick = onBack, modifier = Modifier.testTag("back")) { Text("‹ 返回") }
                 GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)

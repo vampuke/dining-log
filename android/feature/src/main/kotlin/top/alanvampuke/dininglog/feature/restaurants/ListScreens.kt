@@ -233,13 +233,13 @@ import top.alanvampuke.dininglog.feature.theme.*
             BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val unrated: @Composable (Modifier) -> Unit = { modifier ->
                     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }, modifier = Modifier.testTag("filter-unrated"))
+                        Checkbox(filters.unrated, { onChange(filters.copy(unrated = it, minRating = null, maxRating = null)) }, modifier = Modifier.heightIn(min = 48.dp).testTag("filter-unrated"))
                         GridText("只看未评分", Modifier.weight(1f))
                     }
                 }
                 val range: @Composable (Modifier) -> Unit = { modifier ->
                     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }, modifier = Modifier.testTag("filter-rating-range"))
+                        Checkbox(filters.minRating != null || filters.maxRating != null, { onChange(filters.copy(unrated = false, minRating = if (it) 10 else null, maxRating = if (it) 50 else null)) }, modifier = Modifier.heightIn(min = 48.dp).testTag("filter-rating-range"))
                         GridText("限定评分区间", Modifier.weight(1f))
                     }
                 }
