@@ -7,7 +7,7 @@ import { requireValue, requireTimeTravelBookmark, permitsEmptyHistory, requireDo
 
 const repoRoot = process.env.GITHUB_WORKSPACE;
 const temp = process.env.RUNNER_TEMP;
-if (!repoRoot || !temp || process.env.GITHUB_REF !== 'refs/heads/master') throw new Error('Production D1 checks require the protected master release');
+if (!repoRoot || !temp || !['refs/heads/master', `refs/tags/${process.env.RELEASE_TAG}`].includes(process.env.GITHUB_REF)) throw new Error('Production D1 checks require the protected master release');
 const policy = JSON.parse(readFileSync(join(repoRoot, '.github/release-policy.json'), 'utf8'));
 const dir = join(repoRoot, 'backend/migrations');
 const migrations = readdirSync(dir).filter(file => file.endsWith('.sql')).sort();
