@@ -77,6 +77,6 @@
   "backend/tsconfig.json": "2f2bfeb48ecc662c34328a9d4f1865dc68fdfa5ffe9ca0d175d1119f0fa72a3f",
   "backend/vitest.capacity.config.ts": "a28ea6a58a95cef03a7441617aac7dccfc392ed26105e25c23df13e833192d55",
   "backend/vitest.config.ts": "0bd82bb6c3b606fd39a224668fe0b9414a0ab00effb5a75850cdf8691d2af079",
-  "backend/wrangler.toml": "762ce6b1ab952167ff21c0ea88046a3f12e007aabad35d90fba1f83810fd47b7",
+  "backend/wrangler.toml": "c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f",
   "contracts/openapi.yaml": "8fc997df621b8e9aa9c9487100892a8dcea5bad96658524905c489eadadbf02b"
 }

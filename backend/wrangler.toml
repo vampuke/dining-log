@@ -30,8 +30,8 @@ APP_VERSION_CODE = "10"
 APP_VERSION_NAME = "0.8.2"
 APP_DOWNLOAD_URL = "https://github.com/vampuke/dining-log/releases/download/v0.8.2/app-release.apk"
 APP_APK_SHA256 = "63289103521454595c99a49829209080bbb68ebd18f18914ed94d306f9c7a6a7"
-APP_RELEASE_NOTES = "修复历史卡片点按被时间切换吞掉、检查更新手动入口与失败提示、首访区折叠与统计口径等评审问题。"
-APP_RELEASED_AT = "1793713299"
+APP_RELEASE_NOTES = "详情页与设置页布局收紧（编辑/删除、新增/管理、到店操作并排，刷新并入页头）；登录会话改为 180 天滑动续期。"
+APP_RELEASED_AT = "1793857524"
 
 [[d1_databases]]
 binding = "DB"
