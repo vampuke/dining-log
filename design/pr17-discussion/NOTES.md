@@ -52,9 +52,9 @@
 
 截图与 TextLayoutResult/容器测量由 CI 运行产生，写入现有采集目录 `p4-screenshots/`，布局日志名 `pr17-layout-api26.txt` / `pr17-layout-api35.txt`；现有 `.github/scripts/android-test.sh` 在 instrumentation 运行中持续复制并由 workflow 上传，无需改变 CI 或本机伪造图片。
 
-以下证据全部 **待 CI 采集后归档到 `design/pr17-discussion/evidence/`**：上述 `pr17-*.png`/布局日志；基线 commit 的同数据、同密度、同主题、同字体整页截图；A7 对照实测结果；首页/搜索/店内/到店/历史列表改前后完整卡数对比；font200 展开全文及窄容器 overflow 记录；深浅主题目测、票边连续/条码裁切检查；长页面/真实横屏/IME 与 API26/35 系统导航余量；保留 E2E 的清缓存与重新登录、原首访/离开编辑/IME 证据；backend 和 Gradle 的 CI 报告。暂不在 evidence/ 放置占位截图或冒充测量结果。
+以下为初次实施时的待采集清单；**M1 五类列表同条件基线/实现比较与 M2 Apply 实际窗口字体矩阵已在文末 Review round 关闭并归档**。其他未在 Review round 列为完成的证据仍待审阅：上述 `pr17-*.png`/布局日志；基线 commit 的同数据、同密度、同主题、同字体整页截图；A7 对照实测结果；首页/搜索/店内/到店/历史列表改前后完整卡数对比；font200 展开全文及窄容器 overflow 记录；深浅主题目测、票边连续/条码裁切检查；长页面/真实横屏/IME 与 API26/35 系统导航余量；保留 E2E 的清缓存与重新登录、原首访/离开编辑/IME 证据；backend 和 Gradle 的 CI 报告。暂不在 evidence/ 放置占位截图或冒充测量结果。
 
-剩余限制来自用户明确的本机禁跑 Gradle/npm、证据由 CI 提供；设计实现没有静默放宽 PLAN 的验收标准。宽内容测试为逻辑宽度 fixture，不能替代真实设备横屏和目测；首屏收益与对比截图必须等待基线/实现 CI 产物，不能由本机静态守卫代替。
+本机禁跑 Gradle/npm、证据由 CI 提供的限制仍保留。宽内容测试为逻辑宽度 fixture，不能替代真实设备横屏和目测；M1 首屏收益与 M2 Apply 实际字体由 Review round 的真实 CI 产物验证，其他验收不得由本机静态守卫替代。
 
 ## 改动文件
 
@@ -155,3 +155,38 @@
 - 本轮只改 `Pr17UiTest.kt` 与本 NOTES。Round 1 的生产布局修复、Checkbox `heightIn(min=48.dp)`、`>=47.5dp` 触达断言、Dialog scale 处理、文本重测和等待机制原样保留。
 - 本机 Kotlin tree-sitter 静态解析无错误；原两个 Python 视觉守卫均通过；`git diff --check` 通过。本机没有运行 Gradle/npm；静态检查不能替代编译和 instrumentation 结果。
 - 本轮交付为一次修复提交推送到原分支；新 CI 由助手监控，修复后实测 maxWidth、截图与动态结果待新 CI 产物。若 content=496、普通字体仍实际竖排，应在 NOTES 报告产品分支问题并停止进一步猜测，不继续改生产布局。
+
+## Review round
+
+本轮对应 [PR17_REVIEWFIX_TASK.md](../PR17_REVIEWFIX_TASK.md) 和评审 M1/M2/N2/N3。只修改 instrumentation 测试和证据/记录，不改生产布局、视觉守卫或 REVIEW.md，不放宽既有 overflow、触达、尾项/浮动栏和业务断言。
+
+### M1：已完成
+
+- 完整卡矩形改为 `SemanticsNode.positionInRoot + size`，列表/宿主 clipped viewport 取交集并截到 `floating-tabs.top`。枚举全部实际可见 `record:` 卡，四边完整落在区域内才计数；原全字体/主题/横屏列表用例复用此测量，尾项可达断言保留。
+- 新增可原样注入基线的 `Pr17ListFirstScreenTest.kt`。真实 checkout `eaa8e42` 的 API26/35 两基线 job 各 1/0 通过，来源 [run 41941966360](https://github.com/vampuke/dining-log/actions/runs/41941966360)。真实 `5f676f8` 的最终采集来源 [run 41943522685](https://github.com/vampuke/dining-log/actions/runs/41943522685)，M1 以 `BASELINE_MODE=false` 实际断言 `after >= baseline`。
+- 同 20 行 fixture、360×640dp、Pixel 2 / 1080×1920 / 420dpi / density 2.625、普通字体 1.0、两主题，五类列表在每 API 的 before/after 都相等：API26 餐厅/搜索/店内/到店/历史 **4/4/4/6/2 → 4/4/4/6/2**；API35 **2/3/3/4/2 → 2/3/3/4/2**。两个 API 使用各自系统字体/insets 基线，未用代码推算数字、未宣称卡数增加。
+- 常量断言注释包含来源 eaa8e42、run 和实际数字；[M1-list-firstscreen.md](evidence/M1-list-firstscreen.md) 归档完整比较表、40 张首屏图片、四份卡矩形/可见区域/完整卡 ID 日志、完整生产 SHA 和设备参数，均纳入 git。基线 API35 餐厅 row-3 越过 floating-tabs.top，不计入完整；API26 到店计到第六张，覆盖原前三张以外的卡。
+
+### M2：已完成
+
+- Apply 每轮使用 instrumentation shell 设置系统 `font_scale` 并 recreate Activity，重新安装测试 fixture；产品 Dialog 继承方式原样不动。Activity resources 与每个被扫描的 Dialog TextLayoutResult 均断言 requested == actual。try/finally 恢复并校验系统/Activity fontScale=1.0。
+- font **1/1.3/1.31/2 × light/dark × API26/35** 共 16 轮全部通过，实际字体逐轮等于请求字体。逐段检查 name/address/review 当前/拟修改值、必填空值禁用、选择新旧侧与字段、长地址展开全文和逐屏滚至末端、保存/返回 footer 可见及各回调；Comparison 原全文展开和横滚断言也扩展到完整矩阵。保留原自身 density 重测 overflow 检查，两个 API 均无重测 overflow。
+- 真实窗口 width=1016px、density=2.625；API26 bounds=(32,32,1048,1496)，API35=(32,32,1048,1595)。不把人工宿主 320dp 当弹窗实际宽度。截图统一 `pr17-apply-*-actualFont<实际值>-<主题>-api*.png`，manifest 和布局日志同时记录 requested/actual。
+- [M2-apply-window-font.md](evidence/M2-apply-window-font.md)、[M2-apply-manifest.json](evidence/M2-apply-manifest.json)、两 API 原始布局日志和全部可回收 Apply 图归档。16 张 footer 图与 36 张展开地址分段图都来自最终成功 run；一张 API35/font1.31/dark 的中途 review-current 图由同生产 SHA 的初次采集补回，manifest 单独标出来源，不将被取消 run 当作通过记录。
+- 采集测试清理时曾重建空 Activity 后 awaitIdle，等待不到 Compose root。修复为仅安装下一轮内容后等待绘制，清理阶段只恢复/校验字体；初次实现采集被取消，最终通过依据为修复后的 run，不隐藏该失败路径。
+
+### N2 / N3
+
+- **N2 已修复**：直连 DELETE 非 204 时先读/解析 auth error，`TOKEN_EXPIRED` 抛 `AuthFailure`，交给外层 authenticated 用同一个闭包外 UUID Idempotency-Key 刷新并重试；最终仍严格断言 204。other 会话先 refresh 保持同 session id，并证明将用于撤销检查的 access 在 DELETE 前 profile=200；DELETE 后断言 401 且错误码 `SESSION_REVOKED`，refresh 的 `SESSION_REVOKED`、own profile、改密/logout/Room 清理/再登录断言保留。修改后的 E2E 文件已随本轮 CI 编译；完整 E2E 运行由推送后的全套 CI 验证，本轮定向采集没有冒充全套业务通过。
+- **N3 已修复并在两 API 验证**：每轮点击前记录 beforeSaved，在 runOnIdle 严格断言 `saved == beforeSaved + 1`，消息包含请求/实际字体和主题；不再用累计 saved>0 证明后续轮次调用成功。
+
+### N4：本轮不做
+
+N4 的校准后精确内容宽 319/320、491/492 属补充增强建议，不是本轮 M1/M2 关闭条件；任务书明确要求本轮不做。保留既有 316/324、488/496 稳定轮次、实际布局坐标测量、生产 `>=` 阈值和既有断言，精确边界增强留待后续，不扩大本轮范围。N1 的任务书基线笔误按本轮要求不修改记录文件。
+
+### 验证和交付
+
+- 最终定向采集 [run 41943522685](https://github.com/vampuke/dining-log/actions/runs/41943522685)：API26/35 均 **2/0**。独立解析两套 HTML：M1 分别 passed (5.198s)/(7.623s)，Apply 分别 passed (1m53.35s)/(2m0.12s)；每 API 8 个 requested=actual 记录、8 张 footer、18 段展开地址，重测 overflow=0。
+- 本机没有运行 Gradle/npm。两份原视觉守卫、Kotlin tree-sitter 静态解析与 git diff --check 通过；静态检查不冒充编译或全套 CI。本轮 compile/instrumentation 由临时采集 CI 执行，正式分支的 CI 配置和脚本不变；临时采集分支在交付时删除。
+- 本轮源文件清单：`Pr17UiTest.kt`、`Pr17ListFirstScreenTest.kt`、`ProductEndToEndTest.kt`、本 NOTES；新增 `evidence/M1-list-firstscreen.md`、`M2-apply-window-font.md`、`M2-apply-manifest.json`、`SHA256SUMS`，以及 M1 before/after 各两 API 的截图/日志目录、M2 两 API 的截图/日志目录。校验清单覆盖全部 204 张 PNG 和原始日志，证据纳入 git。
+- 以任务书指定 message 一次提交并推送 `feat/pr17-density-and-sliding-sessions`；推送后的完整 CI/HTML 复核及合并仍由助手继续执行，本轮没有代为合并。

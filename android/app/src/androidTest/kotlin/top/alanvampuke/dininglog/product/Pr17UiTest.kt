@@ -3,6 +3,8 @@ package top.alanvampuke.dininglog.product
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
+import android.os.ParcelFileDescriptor
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -53,6 +55,7 @@ class Pr17UiTest {
     private var height by mutableStateOf(640)
     private var exactPixels by mutableStateOf(false)
     private var pixelsPerDp = 1f
+    private var verifyDialogFont = false
     private val time = "2026-11-02T08:00:00Z"
     private val parent = RecordRef(RecordKind.RESTAURANT, "pr17-parent")
     private val longName = "街角的一家有很长名字的小馆，记录完整名称"
@@ -64,19 +67,35 @@ class Pr17UiTest {
         "dish_count" to "23", "visit_count" to "12"), time)
 
     private fun render(content: @Composable () -> Unit) {
-        compose.setContent {
-            val native = LocalDensity.current
-            // Wide content containers fit physically on the 360dp emulator while
-            // retaining their requested logical width and fontScale for constraints.
-            val fit = minOf(1f, compose.activity.resources.configuration.screenWidthDp.toFloat() / width)
-            val measuredDensity = if (exactPixels) 1f else native.density * fit
-            CompositionLocalProvider(LocalDensity provides Density(measuredDensity, scale)) {
-                SideEffect { pixelsPerDp = measuredDensity }
-                QuietGridTheme(dark) {
-                    Box(Modifier.requiredSize(width.dp, height.dp).clipToBounds()
-                        .background(LocalQuietGridColors.current.bg).testTag("pr17:viewport")) { content() }
-                }
+        compose.setContent { Fixture(content) }
+    }
+    @Composable private fun Fixture(content: @Composable () -> Unit) {
+        val native = LocalDensity.current
+        // Wide content containers fit physically on the 360dp emulator while
+        // retaining their requested logical width and fontScale for constraints.
+        val fit = minOf(1f, compose.activity.resources.configuration.screenWidthDp.toFloat() / width)
+        val measuredDensity = if (exactPixels) 1f else native.density * fit
+        CompositionLocalProvider(LocalDensity provides Density(measuredDensity, scale)) {
+            SideEffect { pixelsPerDp = measuredDensity }
+            QuietGridTheme(dark) {
+                Box(Modifier.requiredSize(width.dp, height.dp).clipToBounds()
+                    .background(LocalQuietGridColors.current.bg).testTag("pr17:viewport")) { content() }
             }
+        }
+    }
+    private fun setSystemFontAndRecreate(font: Float, content: (@Composable () -> Unit)? = null) {
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("settings put system font_scale $font"))
+            .use { it.readBytes() }
+        compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) { kotlin.math.abs(compose.activity.resources.configuration.fontScale - font) < 0.001f }
+        assertEquals("Activity resources must have the requested system font", font,
+            compose.activity.resources.configuration.fontScale, 0.001f)
+        // Cleanup intentionally leaves an empty Activity; awaitIdle requires a
+        // Compose root, so only wait after installing the next round's content.
+        if (content != null) {
+            compose.activityRule.scenario.onActivity { activity -> activity.setContent { Fixture(content) } }
+            settleLayout()
         }
     }
     private fun configure(font: Float, night: Boolean, w: Int = 360, h: Int = 640) {
@@ -112,6 +131,35 @@ class Pr17UiTest {
         assertTrue("text exposes layout", layouts.isNotEmpty())
         return layouts
     }
+    private fun captureExpandedApplyAddress(actualFont: Float) {
+        val tag = "apply-proposed:address"
+        val scroller = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)
+            and hasAnyDescendant(hasTestTag(tag)), useUnmergedTree = true)
+        fun fullBounds(): Rect {
+            val node = target(tag).fetchSemanticsNode()
+            return Rect(node.positionInRoot.x, node.positionInRoot.y,
+                node.positionInRoot.x + node.size.width, node.positionInRoot.y + node.size.height)
+        }
+        val visible = scroller.fetchSemanticsNode().boundsInRoot
+        val toStart = fullBounds().top - visible.top
+        scroller.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, toStart) }
+        settleLayout()
+        assertEquals("expanded address starts in viewport", visible.top, fullBounds().top, 1f)
+        var segment = 0
+        while (true) {
+            assertTextFits(target(tag))
+            recordEvidence("apply-address-segment=$segment requestedFont=$scale actualFont=$actualFont dark=$dark " +
+                "visible=$visible full=${fullBounds()}")
+            save("apply-address-full-$segment", true, actualFont)
+            if (fullBounds().bottom <= visible.bottom + 1f) break
+            val before = fullBounds().top
+            scroller.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, visible.height * 0.75f) }
+            settleLayout()
+            assertTrue("expanded address must keep scrolling toward its end", fullBounds().top < before)
+            segment++
+        }
+        assertTrue("expanded address end is visible", fullBounds().bottom >= visible.top)
+    }
     private fun layoutInMeasuredBounds(reported: TextLayoutResult): TextLayoutResult = with(reported.layoutInput) {
         // Compose 1.8.2's simple-String semantics rebuilds MultiParagraph at the
         // parent's maxWidth, then compares it with the smaller rendered Paragraph.
@@ -133,7 +181,7 @@ class Pr17UiTest {
                 "reportedSize=${reported.size} reportedOverflow=${reported.hasVisualOverflow} " +
                 "lines=${layout.lineCount} size=${layout.size} widthOverflow=${layout.didOverflowWidth} " +
                 "heightOverflow=${layout.didOverflowHeight} overflow=${layout.hasVisualOverflow} value=${layout.layoutInput.text}")
-            if (!inDialog) assertEquals("host text must use the configured fontScale", scale, font, 0.001f)
+            if (!inDialog || verifyDialogFont) assertEquals("requested == actual fontScale (dialog=$inDialog, dark=$dark)", scale, font, 0.001f)
             assertFalse("overflow at font=$font: ${layout.layoutInput.text}, size=${layout.size}, " +
                 "widthOverflow=${layout.didOverflowWidth}, heightOverflow=${layout.didOverflowHeight}", layout.hasVisualOverflow)
         }
@@ -152,12 +200,15 @@ class Pr17UiTest {
     private fun recordEvidence(text: String) {
         File(folder(), "pr17-layout-api${Build.VERSION.SDK_INT}.txt").appendText("$text\n")
     }
-    private fun save(name: String, dialog: Boolean = false) {
+    private fun save(name: String, dialog: Boolean = false, actualFont: Float? = null) {
         settleLayout()
         val bitmap = if (dialog) requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
             else target("pr17:viewport").captureToImage().asAndroidBitmap()
-        File(folder(), "pr17-$name-font$scale-${if (dark) "dark" else "light"}-api${Build.VERSION.SDK_INT}.png")
+        val filename = "pr17-$name-${actualFont?.let { "actualFont$it" } ?: "font$scale"}-${if (dark) "dark" else "light"}-api${Build.VERSION.SDK_INT}.png"
+        File(folder(), filename)
             .outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        if (actualFont != null) recordEvidence("screenshot=$filename requestedFont=$scale actualFont=$actualFont dark=$dark " +
+            "window=${bounds("screen:apply")} deviceDensity=$nativeDensity")
     }
 
     @Test fun measuredTextLayoutsStillRejectRealWidthHeightAndMaxLinesOverflow() {
@@ -548,40 +599,73 @@ class Pr17UiTest {
         var state by mutableStateOf(ApplyUiState(revision, current, side = "before"))
         var comparison by mutableStateOf(false)
         var saved = 0
-        render {
+        var dismissed = 0
+        val content: @Composable () -> Unit = {
             if (comparison) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).testTag("pr17:comparison")) {
                 ComparisonColumns(listOf(ConflictField("address", "基准", longAddress, "本地地址", true)), 3)
             } else ApplyFieldsDialog(state, { state = state.copy(side = it) }, { field, checked ->
                 state = state.copy(selected = if (checked) state.selected + field else state.selected - field)
-            }, { saved++ }, {})
+            }, { saved++ }, { dismissed++ })
         }
-        for (font in listOf(1f, 2f)) {
-            configure(font, false, 320)
-            compose.runOnIdle { comparison = false; state = state.copy(side = "before", selected = emptySet()) }
-            target("apply-save").assertIsNotEnabled()
-            target("apply-field:name").performScrollTo().assertIsNotEnabled()
-            target("apply-current:name").performScrollTo().assertTextEquals("当前名称")
-            target("apply-proposed:name").assertTextEquals("未填写")
-            compose.onNodeWithText("应用新值").performScrollTo().performClick()
-            target("apply-proposed:name").performScrollTo().assertTextEquals("新名称")
-            target("apply-field:name").performScrollTo().assertIsEnabled().performClick()
-            target("apply-save").assertIsEnabled().performClick(); assertTrue("apply-save must invoke its callback: saved=$saved", saved > 0)
-            target("apply-current:address").performScrollTo().assertTextEquals("当前地址")
-            target("expand:apply-proposed:address").performScrollTo().performClick()
-            target("apply-proposed:address").performScrollTo().assertTextEquals(longAddress)
-            assertTextFits(target("apply-proposed:address"))
-            target("apply-current:review").performScrollTo().assertTextEquals("未填写")
-            target("apply-proposed:review").assertTextEquals("新评价")
-            save("apply-pairs", true)
-            compose.runOnIdle { comparison = true }
-            target("compare:address:0").assertTextEquals(longAddress.take(240) + "…")
-            target("expand:compare:address:0").performClick()
-            assertTextFits(target("compare:address:0"))
-            compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
-                .performSemanticsAction(SemanticsActions.ScrollBy) { it(100_000f, 0f) }
-            target("local_input").assertIsDisplayed()
-            target("compare:address:1").assertIsDisplayed().assertTextEquals("本地地址")
-            save("comparison")
+        render(content)
+        verifyDialogFont = true
+        try {
+            for (night in listOf(false, true)) for (font in listOf(1f, 1.3f, 1.31f, 2f)) {
+                compose.runOnIdle {
+                    scale = font; dark = night; width = 320; comparison = false
+                    state = state.copy(side = "before", selected = emptySet())
+                }
+                // Recreate the real owner after changing system resources. A host
+                // LocalDensity alone does not enter Compose Dialog's window.
+                setSystemFontAndRecreate(font, content)
+                val actualFont = textLayouts(target("dialog-title")).single().layoutInput.density.fontScale
+                assertEquals("Apply requested == actual: font=$font dark=$night", font, actualFont, 0.001f)
+                recordEvidence("apply-round requestedFont=$font actualFont=$actualFont dark=$night window=${bounds("screen:apply")}")
+                target("apply-save").assertIsNotEnabled()
+                target("apply-field:name").performScrollTo().assertIsNotEnabled()
+                target("apply-current:name").performScrollTo().assertTextEquals("当前名称")
+                target("apply-proposed:name").performScrollTo().assertTextEquals("未填写")
+                assertVisibleTextFits(); save("apply-name-before", true, actualFont)
+                compose.onNodeWithText("应用新值").performScrollTo().performClick()
+                target("apply-proposed:name").performScrollTo().assertTextEquals("新名称")
+                target("apply-field:name").performScrollTo().assertIsEnabled().performClick()
+                target("apply-save").assertIsEnabled()
+                val beforeSaved = saved
+                target("apply-save").performClick()
+                compose.runOnIdle {
+                    assertEquals("apply-save round font=$font actualFont=$actualFont dark=$night", beforeSaved + 1, saved)
+                }
+                for (field in listOf("name", "address", "review")) {
+                    target("apply-current:$field").performScrollTo()
+                        .assertTextEquals(displayValue(field, current.fields[field]))
+                    assertTextFits(target("apply-current:$field"))
+                    assertVisibleTextFits(); save("apply-$field-current", true, actualFont)
+                    if (field == "address") target("expand:apply-proposed:address").performScrollTo().performClick()
+                    target("apply-proposed:$field").performScrollTo()
+                        .assertTextEquals(displayValue(field, revision.diff.single { it.field == field }.after))
+                    assertTextFits(target("apply-proposed:$field"))
+                    assertVisibleTextFits(); save("apply-$field-proposed", true, actualFont)
+                    if (field == "address") captureExpandedApplyAddress(actualFont)
+                }
+                target("apply-save").assertIsDisplayed().assertIsEnabled()
+                val returnButton = compose.onNodeWithText("返回").assertIsDisplayed()
+                assertVisibleTextFits(); save("apply-pairs-footer", true, actualFont)
+                val beforeDismissed = dismissed
+                returnButton.performClick()
+                compose.runOnIdle { assertEquals("Apply return font=$font dark=$night", beforeDismissed + 1, dismissed) }
+                compose.runOnIdle { comparison = true }
+                target("compare:address:0").assertTextEquals(longAddress.take(240) + "…")
+                target("expand:compare:address:0").performClick()
+                assertTextFits(target("compare:address:0"))
+                compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange))
+                    .performSemanticsAction(SemanticsActions.ScrollBy) { it(100_000f, 0f) }
+                target("local_input").assertIsDisplayed()
+                target("compare:address:1").assertIsDisplayed().assertTextEquals("本地地址")
+                save("comparison")
+            }
+        } finally {
+            verifyDialogFont = false
+            setSystemFontAndRecreate(1f)
         }
     }
 
@@ -725,9 +809,8 @@ class Pr17UiTest {
             target("page-title").assertIsDisplayed(); target("add").assertIsDisplayed().performClick()
             assertEquals("add", actions.last())
             assertTextFits(target("page-title"))
-            val complete = compose.onAllNodes(hasTestTag("record:pr17-row-1") or hasTestTag("record:pr17-row-2") or hasTestTag("record:pr17-row-3"))
-                .fetchSemanticsNodes().count { node -> val view = bounds("pr17:viewport"); node.boundsInRoot.top >= view.top && node.boundsInRoot.bottom <= view.bottom }
-            recordEvidence("list kind=$type font=$font dark=$night landscape=$landscape first-three-complete=$complete")
+            val firstScreen = measureListFirstScreen(compose)
+            recordEvidence("list kind=$type font=$font dark=$night landscape=$landscape $firstScreen")
             scroll("record-list", "record:pr17-row-20")
             target("record-list").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 100_000f) }
             assertTrue("list tail clears floating tabs", bounds("record:pr17-row-20").bottom <= bounds("floating-tabs").top)
