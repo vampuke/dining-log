@@ -190,3 +190,14 @@ N4 的校准后精确内容宽 319/320、491/492 属补充增强建议，不是�
 - 本机没有运行 Gradle/npm。两份原视觉守卫、Kotlin tree-sitter 静态解析与 git diff --check 通过；静态检查不冒充编译或全套 CI。本轮 compile/instrumentation 由临时采集 CI 执行，正式分支的 CI 配置和脚本不变；临时采集分支在交付时删除。
 - 本轮源文件清单：`Pr17UiTest.kt`、`Pr17ListFirstScreenTest.kt`、`ProductEndToEndTest.kt`、本 NOTES；新增 `evidence/M1-list-firstscreen.md`、`M2-apply-window-font.md`、`M2-apply-manifest.json`、`SHA256SUMS`，以及 M1 before/after 各两 API 的截图/日志目录、M2 两 API 的截图/日志目录。校验清单覆盖全部 204 张 PNG 和原始日志，证据纳入 git。
 - 以任务书指定 message 一次提交并推送 `feat/pr17-density-and-sliding-sessions`；推送后的完整 CI/HTML 复核及合并仍由助手继续执行，本轮没有代为合并。
+
+## Review round 2
+
+任务输入：[PR17_REVIEWFIX2_TASK.md](../PR17_REVIEWFIX2_TASK.md)。本轮仅补测试宿主的生命周期同步与自愈，不改生产代码、M1/M2 的采集、矩阵或任何断言。
+
+- **根因复核与证据边界：** 独立核对 [run 41944784591](https://github.com/vampuke/dining-log/actions/runs/41944784591) 的 HEAD `e59bbfb3ad75b84e935b1211e04be7cfc7ac12a1`、两套 job 日志和 API26 HTML/布局日志。API35 instrumentation 成功；API26 全套 56 项仅 Apply 失败，异常是 `InstrumentationActivityInvoker.checkActivityStageIsIn` 收到 `DESTROYED`，属于 Activity 阶段切换竞态。HTML 中 settings 用例实际 passed，Apply 仅运行 14.738s，布局日志只有 light/font=1.0 的完整一轮，因此任务书中“finally 返回后，下一 settings 用例 setContent 崩溃”的具体链路不能由这些产物证实，不能把测试声明顺序当成执行顺序。栈只保留主线程阶段检查，没有 helper/finally 的调用位置。
+- **同步修法：** 按任务书在 `setSystemFontAndRecreate` 的 `scenario.recreate()` 后增加最多 10 秒的 `RESUMED` 等待；状态读取抛异常时返回 false 并继续等待。原系统字体设置、Activity 字体校验和真实重建全部保留；finally 的 `setSystemFontAndRecreate(1f)` 自动得到同样的生命周期保护，无 content 时仍不调用依赖 Compose root 的 `awaitIdle`。
+- **render 自愈：** `compose.setContent` 前读取 scenario state（异常视为尚未 RESUMED）；非 RESUMED 时先 recreate，再用相同超时与 catch 等待 RESUMED，之后安装原 fixture。
+- **为何只有 API26：** Android O 的配置变更与重建时序更容易暴露旧实例已 DESTROYED 的窗口，API35 本次未触发；两端采用同一保护，不用固定延迟替代状态等待。已锁定的 androidx.test:core 1.6.1 源码中 `ActivityScenario.recreate()` 自身也会等待新实例 RESUMED，且 invoker 在调用 recreate 前会检查旧实例阶段，所以仅凭现有异常不能证明是 recreate 返回过早；本轮新增的是任务书要求的返回前与内容安装前的防御性检查，实际效果须由新 CI 验证。
+- **新 CI 复核与最终同步：** 指定的后置等待在 [run 41948943513](https://github.com/vampuke/dining-log/actions/runs/41948943513) 的 `9662543` 上仍得到 API26 56/1，唯一失败仍是 Apply 的同一 DESTROYED 阶段检查，API35 instrumentation 仍成功；新 HTML 中 Apply 29.329s，布局日志只完成 light/font=1.0、1.3 两轮，settings 仍 passed。`P9VisualActivity` 仅处理 `orientation|screenSize`，因此修改系统 `font_scale` 会自动重建；与此同时 helper 显式 recreate，框架先保存旧 Activity 引用再交给 invoker 检查，自动配置重建可在这两步之间销毁旧实例。异常发生在 recreate 内部，后置等待尚未执行，不能解决这一窗口。最终在写系统字体前保存当前 Activity 与字体；实际字体改变时，先用最多 10 秒、带 catch 的等待确认新 Activity 实例已 RESUMED 且 resources 已是请求字体，再执行保留的显式 recreate 和返回前 RESUMED 等待。同字体轮次不等待不存在的自动重建；原字体校验、M1/M2 全部采集/矩阵/断言不变。
+- **本机验证与交付：** 两份原 Python 视觉守卫、Kotlin tree-sitter 静态解析及 `git diff --check` 均通过；与修复前逐字比对确认所有测试方法及 `configure` 之后的采集/断言代码完全相同。本机没有运行 Gradle/npm。为保持分支中只有一个修复提交，按指定消息 amend 已有修复提交，并仅以旧修复 SHA 为 lease 更新 `feat/pr17-density-and-sliding-sessions`；随后监控最终修复 SHA 的完整 CI，API26/35 都成功才满足动态验收，不以旧定向采集或静态检查代替。

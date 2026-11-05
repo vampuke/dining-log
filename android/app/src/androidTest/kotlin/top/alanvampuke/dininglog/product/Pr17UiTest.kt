@@ -27,6 +27,7 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -67,6 +68,21 @@ class Pr17UiTest {
         "dish_count" to "23", "visit_count" to "12"), time)
 
     private fun render(content: @Composable () -> Unit) {
+        val resumed = try {
+            compose.activityRule.scenario.state == Lifecycle.State.RESUMED
+        } catch (_: Exception) {
+            false
+        }
+        if (!resumed) {
+            compose.activityRule.scenario.recreate()
+            compose.waitUntil(10_000) {
+                try {
+                    compose.activityRule.scenario.state == Lifecycle.State.RESUMED
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
         compose.setContent { Fixture(content) }
     }
     @Composable private fun Fixture(content: @Composable () -> Unit) {
@@ -84,10 +100,33 @@ class Pr17UiTest {
         }
     }
     private fun setSystemFontAndRecreate(font: Float, content: (@Composable () -> Unit)? = null) {
+        val previousActivity = compose.activity
+        val fontChanged = kotlin.math.abs(previousActivity.resources.configuration.fontScale - font) >= 0.001f
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand("settings put system font_scale $font"))
             .use { it.readBytes() }
+        // font_scale automatically recreates this owner. Finish that transition
+        // before explicit recreate can capture an Activity that is being destroyed.
+        if (fontChanged) {
+            compose.waitUntil(10_000) {
+                try {
+                    val currentActivity = compose.activity
+                    currentActivity !== previousActivity &&
+                        compose.activityRule.scenario.state == Lifecycle.State.RESUMED &&
+                        kotlin.math.abs(currentActivity.resources.configuration.fontScale - font) < 0.001f
+                } catch (_: Exception) {
+                    false
+                }
+            }
+        }
         compose.activityRule.scenario.recreate()
+        compose.waitUntil(10_000) {
+            try {
+                compose.activityRule.scenario.state == Lifecycle.State.RESUMED
+            } catch (_: Exception) {
+                false
+            }
+        }
         compose.waitUntil(10_000) { kotlin.math.abs(compose.activity.resources.configuration.fontScale - font) < 0.001f }
         assertEquals("Activity resources must have the requested system font", font,
             compose.activity.resources.configuration.fontScale, 0.001f)
