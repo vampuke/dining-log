@@ -16,7 +16,7 @@ data class EditorUiState(val input: SaveInput? = null, val loading: Boolean = fa
     val message: String? = null, val errors: Map<String, String> = emptyMap(),
     val conflict: ConflictComparison? = null)
 data class PasswordInputs(val current: String = "", val replacement: String = "", val repeated: String = "")
-data class SettingsUiState(val profile: AccountInfo? = null, val sessions: List<DeviceSession> = emptyList(),
+data class SettingsUiState(val profile: AccountInfo? = null,
     val loading: Boolean = false, val busy: Boolean = false, val message: String? = null,
     val passwordUnknown: Boolean = false, val passwordRevision: Int = 0, val passwordInputs: PasswordInputs = PasswordInputs())
 data class ApplyUiState(val source: RecordSnapshot, val current: RecordSnapshot, val side: String = "before", val selected: Set<String> = emptySet()) {
@@ -293,17 +293,11 @@ class ProductViewModel(val accountId: String, private val repository: ProductRep
     }
     fun loadSettings() { scope.launch {
         _settings.value = _settings.value.copy(loading = true, message = null)
-        try { coroutineScope {
-            val profile = async { security.profile() }; val sessions = async { security.sessions() }
-            _settings.value = _settings.value.copy(profile = profile.await(), sessions = sessions.await(), loading = false)
-        } } catch (e: CancellationException) { throw e }
+        try {
+            val profile = security.profile()
+            _settings.value = _settings.value.copy(profile = profile, loading = false)
+        } catch (e: CancellationException) { throw e }
         catch (e: Exception) { _settings.value = _settings.value.copy(loading = false, message = errorText(e)) }
-    } }
-    fun revokeSession(id: String) { scope.launch {
-        _settings.value = _settings.value.copy(busy = true)
-        try { security.revokeSession(id); _settings.value = _settings.value.copy(busy = false, message = "会话已撤销"); loadSettings() }
-        catch (e: CancellationException) { throw e }
-        catch (e: Exception) { _settings.value = _settings.value.copy(busy = false, message = errorText(e)) }
     } }
     fun editPassword(field: String, value: String) {
         val state = _settings.value

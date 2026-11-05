@@ -1,0 +1,145 @@
+{
+  "rounds": [
+    {
+      "api": 26,
+      "requestedFont": "1.0",
+      "actualFont": "1.0",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "1.3",
+      "actualFont": "1.3",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "1.31",
+      "actualFont": "1.31",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "2.0",
+      "actualFont": "2.0",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "1.0",
+      "actualFont": "1.0",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "1.3",
+      "actualFont": "1.3",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "1.31",
+      "actualFont": "1.31",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 26,
+      "requestedFont": "2.0",
+      "actualFont": "2.0",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "1.0",
+      "actualFont": "1.0",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "1.3",
+      "actualFont": "1.3",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "1.31",
+      "actualFont": "1.31",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "2.0",
+      "actualFont": "2.0",
+      "dark": "false",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "1.0",
+      "actualFont": "1.0",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "1.3",
+      "actualFont": "1.3",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "1.31",
+      "actualFont": "1.31",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    },
+    {
+      "api": 35,
+      "requestedFont": "2.0",
+      "actualFont": "2.0",
+      "dark": "true",
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41943522685
+    }
+  ],
+  "supplemental_screenshots": [
+    {
+      "file": "M2-apply-api35/pr17-apply-review-current-actualFont1.31-dark-api35.png",
+      "requestedFont": "1.31",
+      "actualFont": "1.31",
+      "dark": true,
+      "api": 35,
+      "source_sha": "5f676f8ade36f69e2d22a187a91f4841bff6d26e",
+      "run_id": 41941966360,
+      "artifact_id": 13377346712,
+      "reason": "Final run adb pull missed this intermediate screenshot; recovered the genuine screenshot at the same production SHA and actual font from the initial capture. Passing assertions and all footer/full-address screenshots are from final run 41943522685."
+    }
+  ]
+}

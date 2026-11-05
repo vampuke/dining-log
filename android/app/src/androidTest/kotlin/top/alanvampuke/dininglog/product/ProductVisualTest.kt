@@ -70,7 +70,7 @@ class ProductVisualTest {
                     revision.fields, changedFields = listOf("rating_tenths"), cachedDiff = revision.diff)), query = ListQuery(RecordKind.REVISION, ref.id), localScope = false))
                 "visits" -> listScreen(ListUiState(items = listOf(RecordSummary(RecordRef(RecordKind.VISIT, "visual-visit", ref.id), "2026-11-01", 1, snapshot.updatedAt,
                     mapOf("restaurant_name" to snapshot.title, "dining_date" to "2026-11-01", "meal" to "dinner", "note_excerpt" to "同日第二次到店"))), query = ListQuery(RecordKind.VISIT), localScope = false))
-                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", ThemeChoice.DARK, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, {})
+                "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", ThemeChoice.DARK, BuildConfig.VERSION_NAME, onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = {})
                 "conflict" -> ConflictDialog(compareConflict(input, snapshot.copy(version = 2, fields = snapshot.fields + ("rating_tenths" to "47"))), false, {}, {})
             }
         } }
@@ -169,13 +169,14 @@ class ProductVisualTest {
                         "list" -> RecordListScreen(ListUiState(items = listOf(summary), localScope = false), "", ListFilters(), {}, {}, {}, {}, {}, bottomBar = tabs)
                         "detail" -> RecordDetailScreen(DetailUiState(CachedDetail(snapshot)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
                         "history" -> RevisionDetailScreen(DetailUiState(CachedDetail(revision)), {}, {}, {}, {}, {}, {}, bottomBar = tabs)
-                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", ThemeChoice.SYSTEM, BuildConfig.VERSION_NAME, {}, {}, { _, _ -> }, {}, {}, tabs)
+                        "settings" -> SettingsScreen(SettingsUiState(), "quiet_grid", ThemeChoice.SYSTEM, BuildConfig.VERSION_NAME, onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = tabs)
                     }
                 }
             }
         }
         for (night in listOf(false, true)) for (screen in listOf("list", "detail", "history", "settings")) {
             compose.runOnIdle { dark = night; page = screen }
+            compose.waitForIdle()
             val folder = ApplicationProvider.getApplicationContext<Context>().getExternalFilesDir("p4-screenshots")!!
             folder.mkdirs()
             val bitmap = requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())

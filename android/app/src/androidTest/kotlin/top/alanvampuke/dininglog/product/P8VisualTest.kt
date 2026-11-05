@@ -79,7 +79,7 @@ class P8VisualTest {
                                 visits = CachedPage(rows.map { it.copy(ref = it.ref.copy(kind = RecordKind.VISIT, restaurantId = ref.id)) }),
                                 onNewVisit = {}, onVisits = {}, bottomBar = tabs)
                             "settings" -> SettingsScreen(SettingsUiState(), "p8_owner", ThemeChoice.SYSTEM, BuildConfig.VERSION_NAME,
-                                {}, {}, { _, _ -> }, {}, {}, tabs)
+                                onPassword = { _, _ -> }, onLogout = {}, onTheme = {}, bottomBar = tabs)
                             "update" -> UpdateDialog(UpdateInstallState(release, UpdateStage.DOWNLOADING, 512 * 1024, 1024 * 1024), {}, {}, {}, {}, {})
                         }
                     }

@@ -30,7 +30,6 @@ import top.alanvampuke.dininglog.feature.*
 import top.alanvampuke.dininglog.feature.components.GridText
 import top.alanvampuke.dininglog.feature.restaurants.*
 import top.alanvampuke.dininglog.feature.revisions.RevisionDetailScreen
-import top.alanvampuke.dininglog.feature.settings.SettingsScreen
 import top.alanvampuke.dininglog.feature.theme.*
 
 @RunWith(AndroidJUnit4::class)
@@ -201,27 +200,6 @@ class Pr16UiTest {
         }
     }
 
-    @Test fun currentSessionConfirmationSaysLogoutAndOtherSessionsStillSayRevoke() {
-        val sessions = listOf(
-            DeviceSession("current", "当前手机", "2026-11-01", "2026-11-01", "2026-12-01", true),
-            DeviceSession("other", "其他手机", "2026-11-01", "2026-11-01", "2026-12-01", false))
-        var revoked: String? = null
-        compose.setContent { QuietGridTheme(true) {
-            SettingsScreen(SettingsUiState(sessions = sessions), "pr16_owner", ThemeChoice.DARK, "fixture",
-                {}, { revoked = it }, { _, _ -> }, {}, {}, {})
-        } }
-        compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("revoke:current"))
-        compose.onNodeWithTag("revoke:current").performClick()
-        compose.onNodeWithText("退出登录？").assertIsDisplayed()
-        compose.onNodeWithText("确认退出").performClick()
-        compose.runOnIdle { assertEquals("current", revoked) }
-        compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("revoke:other"))
-        compose.onNodeWithTag("revoke:other").performClick()
-        compose.onNodeWithText("撤销此会话？").assertIsDisplayed()
-        compose.onNodeWithText("确认撤销").performClick()
-        compose.runOnIdle { assertEquals("other", revoked) }
-    }
-
     private fun scrollEditor(tag: String) {
         compose.onNodeWithTag("edit-scroll").performScrollToNode(hasTestTag(tag))
     }
@@ -252,8 +230,6 @@ class Pr16UiTest {
         private val account = AccountSession(SecureTokenStore(file, AesGcmTokenCipher(keys, "pr16-public-fixture")), AccountMemory())
         private val security = object : AccountSecurity {
             override suspend fun profile() = AccountInfo("pr16-owner", "pr16_owner", "食记用户", "2026-11-01")
-            override suspend fun sessions() = emptyList<DeviceSession>()
-            override suspend fun revokeSession(id: String) { }
             override suspend fun changePassword(current: String, replacement: String) { }
         }
         val vm = ProductViewModel("pr16-owner", repository, security, account)

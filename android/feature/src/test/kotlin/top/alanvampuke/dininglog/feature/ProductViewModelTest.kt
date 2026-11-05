@@ -41,8 +41,6 @@ class ProductViewModelTest {
     private class Security : AccountSecurity {
         var unknown = false
         override suspend fun profile() = AccountInfo("A", "alice", "Alice", "2026-11-01")
-        override suspend fun sessions() = emptyList<DeviceSession>()
-        override suspend fun revokeSession(id: String) { }
         override suspend fun changePassword(current: String, replacement: String) {
             if (unknown) throw ProductFailure("AUTH_RESULT_UNKNOWN")
         }

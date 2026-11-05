@@ -142,10 +142,11 @@ class P6UiTest {
             waitForRows(fixture, RecordKind.RESTAURANT)
             for (tab in listOf("restaurants", "settings")) {
                 compose.onNodeWithTag("tab:$tab").performClick()
-                if (tab == "settings") compose.waitUntil(5000) { fixture.vm.settings.value.sessions.size == 12 && !fixture.vm.settings.value.loading }
+                if (tab == "settings") compose.waitUntil(5000) { fixture.vm.settings.value.profile != null && !fixture.vm.settings.value.loading }
                 else waitForRows(fixture, if (tab == "restaurants") RecordKind.RESTAURANT else RecordKind.VISIT)
                 val listTag = if (tab == "settings") "settings-scroll" else "record-list"
-                compose.onNodeWithTag(listTag).performScrollToIndex(10)
+                if (tab == "settings") compose.onNodeWithTag("settings-scroll").performScrollToNode(hasTestTag("logout"))
+                else compose.onNodeWithTag(listTag).performScrollToIndex(10)
                 val entry = compose.onNodeWithTag("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
                 var refreshes = 0; var profiles = 0
                 compose.runOnIdle { refreshes = fixture.repository.refreshes.get(); profiles = fixture.security.profiles.get() }
@@ -295,8 +296,6 @@ class P6UiTest {
     private class Security : AccountSecurity {
         val profiles = AtomicInteger()
         override suspend fun profile(): AccountInfo { profiles.incrementAndGet(); return AccountInfo("p6-owner", "p6_owner", "食记用户", "2026-11-01") }
-        override suspend fun sessions() = (1..12).map { DeviceSession("p6-session-$it", "测试设备 $it", "2026-11-01", "2026-11-01", "2026-12-01", it == 1) }
-        override suspend fun revokeSession(id: String) { }
         override suspend fun changePassword(current: String, replacement: String) { }
     }
     private inner class Fixture {

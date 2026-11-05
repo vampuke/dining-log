@@ -340,9 +340,38 @@ class ProductEndToEndTest {
             compose.onNodeWithTag("tab:visits").assertDoesNotExist()
 
             phase = "sessions password logout and fresh login"
-            tap("tab:settings"); waitFor { !vm.settings.value.loading && vm.settings.value.sessions.any { it.id == other.sessionId } }
+            tap("tab:settings"); waitFor { vm.settings.value.profile != null && !vm.settings.value.loading }
             assertSecureWindow(false, "ordinary settings")
-            tap("revoke:${other.sessionId}"); tap("confirm"); waitFor { vm.settings.value.sessions.none { it.id == other.sessionId } && !vm.settings.value.loading }
+            runBlocking { withContext(Dispatchers.IO) {
+                // The long E2E may outlive the original access token. Refresh this
+                // same session, then prove the exact token used below is valid.
+                val otherBeforeDelete = gateway.refresh(other.refreshToken, UUID.randomUUID().toString())
+                assertEquals(other.sessionId, otherBeforeDelete.sessionId)
+                val otherProfile = Request.Builder().url(baseUrl + "auth/session")
+                    .header("Authorization", "Bearer ${otherBeforeDelete.accessToken}").build()
+                client.newCall(otherProfile).execute().use { assertEquals("other access is valid before DELETE", 200, it.code) }
+                val key = UUID.randomUUID().toString()
+                refresh.authenticated { token ->
+                    val request = Request.Builder().url(baseUrl + "auth/sessions/" + other.sessionId)
+                        .header("Authorization", "Bearer $token").header("Idempotency-Key", key).delete().build()
+                    client.newCall(request).execute().use { response ->
+                        val code = if (response.code == 204) null else authErrorCode(response)
+                        if (code == "TOKEN_EXPIRED") throw AuthFailure(code)
+                        assertEquals("DELETE auth error=$code", 204, response.code)
+                    }
+                }
+                val revokedAccess = Request.Builder().url(baseUrl + "auth/session")
+                    .header("Authorization", "Bearer ${otherBeforeDelete.accessToken}").build()
+                client.newCall(revokedAccess).execute().use { response ->
+                    assertEquals(401, response.code)
+                    assertEquals("SESSION_REVOKED", authErrorCode(response))
+                }
+                try {
+                    gateway.refresh(otherBeforeDelete.refreshToken, UUID.randomUUID().toString())
+                    fail("Revoked session must not refresh")
+                } catch (failure: AuthFailure) { assertEquals("SESSION_REVOKED", failure.code) }
+                assertEquals(account.session.value!!.userId, security.profile().id)
+            } }
             tap("change-password")
             compose.onNodeWithTag("screen:password").assertExists()
             assertSecureWindow(true, "change password")
@@ -389,6 +418,10 @@ class ProductEndToEndTest {
             db.close()
         }
     }
+    private fun authErrorCode(response: okhttp3.Response): String? = runCatching {
+        Json.parseToJsonElement(response.body?.string() ?: "{}").jsonObject["error"]
+            ?.jsonObject?.get("code")?.jsonPrimitive?.content
+    }.getOrNull()
     private fun assertSecureWindow(expected: Boolean, screen: String) {
         compose.waitForIdle()
         compose.activityRule.scenario.onActivity { activity ->

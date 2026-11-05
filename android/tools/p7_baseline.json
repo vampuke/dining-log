@@ -13,7 +13,6 @@
       "\"draft:${draft.id}\"",
       "\"logout\"",
       "\"password-save\"",
-      "\"revoke:${session.id}\"",
       "\"settings-scroll\"",
       "\"update-checks\"",
       "tag"

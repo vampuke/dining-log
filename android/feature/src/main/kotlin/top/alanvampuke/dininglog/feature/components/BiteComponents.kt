@@ -69,7 +69,7 @@ fun Modifier.revisedStamp(color: Color): Modifier = rotate(-6f).drawBehind {
     Column(modifier.fillMaxWidth().brutalBox(fill, c.border, c.shadow).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
 }
-@Composable fun Sticker(text: String, fill: Color, modifier: Modifier = Modifier, tilt: Float = 0f, dieCut: Boolean = false) {
+@Composable fun Sticker(text: String, fill: Color, modifier: Modifier = Modifier, tilt: Float = 0f, dieCut: Boolean = false, maxLines: Int = Int.MAX_VALUE) {
     val c = LocalQuietGridColors.current
     val outer = if (dieCut) Modifier.drawBehind {
         drawRoundRect(c.dieCut, topLeft = Offset(-3.dp.toPx(), -3.dp.toPx()),
@@ -78,7 +78,7 @@ fun Modifier.revisedStamp(color: Color): Modifier = rotate(-6f).drawBehind {
     GridText(text, modifier.rotate(tilt).then(outer).brutalBox(fill, c.stickerInk, c.shadow, 8.dp,
         offset = if (dieCut) 3.dp else 0.dp, width = 1.5.dp).padding(horizontal = 7.dp, vertical = 3.dp)
         .semantics { this[BackgroundArgb] = fill.toArgb() },
-        style = MaterialTheme.typography.labelSmall, color = c.stickerInk, maxLines = 1)
+        style = MaterialTheme.typography.labelSmall, color = c.stickerInk, maxLines = maxLines)
 }
 // Unrated is a neutral paper state. These labels are presentation of existing tenths.
 fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {

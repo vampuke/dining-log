@@ -21,8 +21,6 @@ data class DeviceSession(val id: String, val deviceName: String, val createdAt: 
     val lastSeenAt: String, val expiresAt: String, val current: Boolean)
 interface AccountSecurity {
     suspend fun profile(): AccountInfo
-    suspend fun sessions(): List<DeviceSession>
-    suspend fun revokeSession(id: String)
     suspend fun changePassword(current: String, replacement: String)
 }
 enum class ThemeChoice { SYSTEM, LIGHT, DARK }

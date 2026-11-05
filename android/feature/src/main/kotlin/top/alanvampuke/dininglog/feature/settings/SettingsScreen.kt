@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
@@ -27,12 +26,11 @@ import top.alanvampuke.dininglog.feature.components.*
 import top.alanvampuke.dininglog.feature.theme.*
 
 @Composable fun SettingsScreen(state: SettingsUiState, username: String, theme: ThemeChoice,
-    version: String, onRefresh: () -> Unit, onRevoke: (String) -> Unit, onPassword: (String, String) -> Unit,
+    version: String, onPassword: (String, String) -> Unit,
     onLogout: () -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit,
     onPasswordInput: (String, String) -> Unit = { _, _ -> }, listState: LazyListState = rememberLazyListState(),
     updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {},
     onCheckUpdate: () -> Unit = {}) {
-    var revoke by remember { mutableStateOf<DeviceSession?>(null) }
     var password by remember { mutableStateOf(false) }
     var logout by remember { mutableStateOf(false) }
     LaunchedEffect(state.passwordRevision) { if (state.passwordRevision > 0) password = false }
@@ -46,7 +44,6 @@ import top.alanvampuke.dininglog.feature.theme.*
                 val displayName = state.profile?.displayName
                 if (displayName != null && displayName != username) GridText("账号 $displayName", style = MaterialTheme.typography.titleMedium)
                 state.profile?.let { GridText("注册于 ${formatAbsoluteTime(it.createdAt)}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary) }
-                BiteTextButton(onClick = onRefresh, enabled = !state.loading) { Text(if (state.loading) "正在刷新账号…" else "刷新账号与会话") }
                 if (state.message != null) ErrorMessage(state.message, "settings-message")
             }
             val release = updateState.release
@@ -55,19 +52,6 @@ import top.alanvampuke.dininglog.feature.theme.*
                     Text("有新版本 ${release.versionName}")
                 }
             }
-            item { GridText("登录会话", style = MaterialTheme.typography.headlineSmall) }
-            items(state.sessions, key = { it.id }) { session ->
-                BitePanel {
-                    GridText("${session.deviceName}${if (session.current) " · 当前设备" else ""}", style = MaterialTheme.typography.titleMedium)
-                    GridText("建立 ${formatAbsoluteTime(session.createdAt)}\n最近刷新 ${formatAbsoluteTime(session.lastSeenAt)}\n到期 ${formatAbsoluteTime(session.expiresAt)}", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)
-                    // For the current device revoking is just logging out,
-                    // which the dialog already says; label it as such instead
-                    // of making the user wonder what "撤销会话" means here.
-                    // The stray divider under the button served no purpose.
-                    BiteTextButton(onClick = { revoke = session }, enabled = !state.busy, modifier = Modifier.testTag("revoke:${session.id}")) { Text(if (session.current) "退出登录" else "撤销会话", color = LocalQuietGridColors.current.danger) }
-                }
-            }
-            if (state.sessions.isEmpty() && !state.loading) item { GridText("尚未取得会话列表，可联网后刷新", color = LocalQuietGridColors.current.secondary) }
             item {
                 BiteButton(onClick = { password = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("change-password")) { Text("修改密码") }
             }
@@ -78,32 +62,26 @@ import top.alanvampuke.dininglog.feature.theme.*
             item {
                 GridText("关于食记", style = MaterialTheme.typography.titleMedium)
                 GridText("版本 $version\n以文字记下餐厅、菜品与每一次到店。", color = LocalQuietGridColors.current.secondary)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    GridText("启动时检查更新")
-                    Switch(checked = updateState.enabled, onCheckedChange = onUpdateToggle,
-                        modifier = Modifier.testTag("update-checks").semantics { contentDescription = "启动时检查更新" })
-                }
-                // Manual check: previously the only way to learn about a new
-                // version was the startup check or the "有新版本" button it
-                // produced, so turning the switch off left no way to ask.
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                    BiteTextButton(onClick = onCheckUpdate, enabled = !updateState.checking, modifier = Modifier.testTag("check-update")) {
+                ResponsiveHeading(title = { modifier ->
+                    Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GridText("启动时检查更新", Modifier.weight(1f))
+                        Switch(checked = updateState.enabled, onCheckedChange = onUpdateToggle,
+                            modifier = Modifier.testTag("update-checks").semantics { contentDescription = "启动时检查更新" })
+                    }
+                }, trailing = { modifier ->
+                    BiteTextButton(onClick = onCheckUpdate, enabled = !updateState.checking, modifier = modifier.testTag("check-update")) {
                         Text(if (updateState.checking) "正在检查…" else "检查更新")
                     }
-                }
+                })
                 if (updateState.failed) ErrorMessage("检查失败，请重试", "update-check-error")
                 else if (!updateState.checking && updateState.upToDate && updateState.release == null)
                     GridText("已是最新版本", Modifier.testTag("update-up-to-date"), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
             }
             item {
-                BiteTextButton(onClick = { logout = true }, modifier = Modifier.testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
+                BiteTextButton(onClick = { logout = true }, modifier = Modifier.fillMaxWidth().testTag("logout")) { Text("退出登录", color = LocalQuietGridColors.current.danger) }
             }
         }
     }
-    val revoking = revoke
-    if (revoking != null) ConfirmAction(if (revoking.current) "退出登录？" else "撤销此会话？",
-        if (revoking.current) "这是当前设备。退出后会清理本机缓存。" else "该设备的旧 access 与 refresh 将不可用。",
-        if (revoking.current) "确认退出" else "确认撤销", { revoke = null; onRevoke(revoking.id) }, { revoke = null })
     if (logout) ConfirmAction("退出登录？", "将清理此账号的本机缓存。服务器已保存记录仍属于账号。", "确认退出", { logout = false; onLogout() }, { logout = false })
     if (password) PasswordDialog(state, onPassword, onPasswordInput) { if (!state.busy) password = false }
 }

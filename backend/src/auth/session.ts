@@ -4,6 +4,8 @@ import { signAccessToken, verifyAccessToken } from './jwt';
 import { base64UrlEncode } from './encoding';
 import { AuthError, digest, guard, iso, jwtConfig, nowSeconds, revoked } from './config';
 
+export const SESSION_TTL_SECONDS = 15552000;
+
 export interface UserRow extends PasswordRecord {
   id: string; username: string; display_name: string; auth_version: number; password_changed_at: number;
   version: number; created_at: number; updated_at: number; deleted_at: number | null;
@@ -50,7 +52,7 @@ export function insertRefresh(db: D1Database, token: NewRefresh): D1PreparedStat
   return db.prepare('INSERT INTO refresh_tokens (id,user_id,session_id,token_hash,parent_token_id,created_at,expires_at) VALUES (?,?,?,?,?,?,?)').bind(token.id, token.userId, token.sessionId, token.hash, token.parent, token.now, token.expiresAt);
 }
 export async function issueSession(env: Bindings, user: UserRow, device: string, failureKey?: string) {
-  const now = nowSeconds(), sessionId = crypto.randomUUID(), expiresAt = now + 2592000;
+  const now = nowSeconds(), sessionId = crypto.randomUUID(), expiresAt = now + SESSION_TTL_SECONDS;
   const refresh = await newRefresh(user.id, sessionId, now, expiresAt);
   const result: AuthResult = { user: publicUser(user), token_type: 'Bearer', access_token: await signAccessToken({ sub: user.id, sid: sessionId, av: user.auth_version }, jwtConfig(env)), expires_in: 600,
     refresh_token: refresh.token, refresh_expires_at: iso(refresh.expiresAt), session_expires_at: iso(expiresAt), session_id: sessionId };
