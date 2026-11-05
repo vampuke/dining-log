@@ -76,9 +76,12 @@ test('release accepts only a full SHA, stable version tag, own repository and ma
     assert.throws(() => validateInputs(sha, tag, repo, ref));
   }
   assert.throws(() => validateInputs(sha, 'v0.5.0', 'fork/dining-log', ref));
-  for (const branch of ['refs/heads/feature', 'refs/pull/5/merge', 'refs/tags/v0.5.0']) {
+  for (const branch of ['refs/heads/feature', 'refs/pull/5/merge']) {
     assert.throws(() => validateInputs(sha, 'v0.5.0', repo, branch));
   }
+  // A tag ref is accepted only when it names the requested release tag.
+  assert.doesNotThrow(() => validateInputs(sha, 'v0.5.0', repo, 'refs/tags/v0.5.0'));
+  assert.throws(() => validateInputs(sha, 'v0.5.0', repo, 'refs/tags/v0.6.0'));
 });
 
 test('source version is read from the reviewed file and cannot differ from tag', () => {

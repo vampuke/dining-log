@@ -21,7 +21,9 @@ concurrency:
 
 jobs:
   release:
-    if: github.ref == 'refs/heads/master'
+    # Dispatch may target master or the release tag; the checkout tag and the
+    # validation step pin the run to exactly one reviewed commit either way.
+    if: github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: production
@@ -35,7 +37,11 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.commit_sha }}
+          # Fetch by tag, not by raw SHA: GitHub refuses `git fetch origin <sha>`
+          # ("not our ref") for dispatch runs, even for the current master tip.
+          # The tag must point at RELEASE_COMMIT; the validation step below
+          # asserts HEAD == RELEASE_COMMIT so a mismatched tag cannot pass.
+          ref: ${{ inputs.release_tag }}
           fetch-depth: 0
           persist-credentials: false
       - name: Validate checkout before executing any candidate scripts
@@ -43,7 +49,10 @@ jobs:
         run: |
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = vampuke/dining-log
-          test "$GITHUB_REF" = refs/heads/master
+          # Accept a master dispatch or a tag dispatch that names RELEASE_TAG.
+          if [ "$GITHUB_REF" != "refs/heads/master" ] && [ "$GITHUB_REF" != "refs/tags/${RELEASE_TAG}" ]; then
+            echo "Dispatch ref must be refs/heads/master or refs/tags/${RELEASE_TAG}" >&2; exit 1
+          fi
           [[ "$RELEASE_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]]
           [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
           test "$(git rev-parse HEAD)" = "${RELEASE_COMMIT,,}"

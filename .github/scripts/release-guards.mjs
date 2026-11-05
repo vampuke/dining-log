@@ -6,7 +6,7 @@ export function validateInputs(commit, tag, repo, ref) {
   requireValue(typeof commit === 'string' && commit.length === 40 && /^[0-9a-fA-F]{40}$/.test(commit), 'commit_sha must be 40 hexadecimal characters');
   requireValue(typeof tag === 'string' && tag.trim() === tag && /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(tag), 'release_tag must be vX.Y.Z');
   requireValue(repo === 'vampuke/dining-log', 'Unexpected repository');
-  requireValue(ref === 'refs/heads/master', 'Dispatch release from master');
+  requireValue(ref === 'refs/heads/master' || ref === `refs/tags/${tag}`, 'Dispatch release from master or the release tag');
   return commit.toLowerCase();
 }
 
