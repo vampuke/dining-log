@@ -20,7 +20,11 @@ async function api(path, absentOK = false) {
 }
 async function requireUnusedTag() {
   requireValue(await api(`/releases/tags/${encodeURIComponent(tag)}`, true) === null, 'Release already exists; refusing to overwrite');
-  requireValue(await api(`/git/ref/tags/${encodeURIComponent(tag)}`, true) === null, 'Tag already exists; refusing to replace it');
+  // The dispatch may pass a pre-existing tag ref (checkout by tag avoids
+  // GitHub's "not our ref" SHA fetch refusal). That is safe only when the tag
+  // points exactly at the reviewed commit; otherwise refuse to overwrite.
+  const ref = await api(`/git/ref/tags/${encodeURIComponent(tag)}`, true);
+  if (ref !== null) requireValue(ref.object?.sha === commit, 'Tag already exists; refusing to replace it');
 }
 
 try {
