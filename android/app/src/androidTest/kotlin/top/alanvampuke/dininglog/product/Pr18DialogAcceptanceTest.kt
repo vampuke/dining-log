@@ -63,7 +63,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
     private fun tap(tag: String) {
         evidence.target(tag).performScrollTo()
         evidence.minimumTarget(tag)
-        evidence.target(tag).assertIsDisplayed().performClick()
+        evidence.target(tag).assertIsDisplayed().pr18Click(evidence, tag)
     }
 
     private fun mergedButton(tag: String): SemanticsNodeInteraction {
@@ -222,7 +222,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.visibleTextFits()
                 assertTrue("password keeps production screenshot protection", secure)
                 val before = saves
-                evidence.target("password-save").assertIsEnabled().performClick()
+                evidence.target("password-save").assertIsEnabled().pr18Click(evidence, "password-save")
                 compose.runOnIdle { evidence.record("password-save callbackDelta=${saves - before}"); assertEquals(before + 1, saves) }
                 evidence.target("screen:password").assertDoesNotExist()
                 protectedFrame.requireValid()
@@ -244,10 +244,10 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.target("confirm-merge").assertIsNotEnabled()
                 evidence.minimumTarget("confirm-merge")
                 val beforeDisabled = saves
-                evidence.target("confirm-merge").performClick()
+                evidence.target("confirm-merge").pr18Click(evidence, "disabled-confirm-merge")
                 assertEquals("disabled merge callback delta is zero", beforeDisabled, saves)
                 val local = compose.onNodeWithText("使用未提交值").performScrollTo()
-                evidence.minimumTarget(local, "使用未提交值"); local.performClick()
+                evidence.minimumTarget(local, "使用未提交值"); local.pr18Click(evidence, "使用未提交值")
                 evidence.target("confirm-merge").assertIsEnabled()
                 val expander = evidence.target("expand:compare:address:1")
                 mergedButton("expand:compare:address:1").assertTextEquals("展开全文")
@@ -290,7 +290,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.save("conflict-expanded-local", dialog = true)
                 evidence.visibleTextFits()
                 val before = saves
-                evidence.target("confirm-merge").performClick()
+                evidence.target("confirm-merge").pr18Click(evidence, "confirm-merge")
                 evidence.record("conflict-save callbackDelta=${saves - before} choices=$chosen")
                 assertEquals(before + 1, saves); assertEquals(ConflictChoice.LOCAL, chosen["rating_tenths"])
                 evidence.target("screen:conflict").assertDoesNotExist()
@@ -317,18 +317,18 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.target("apply-save").assertIsNotEnabled()
                 val beforeSide = sides
                 val side = compose.onNodeWithText("应用新值").performScrollTo()
-                evidence.minimumTarget(side, "应用新值"); side.performClick()
+                evidence.minimumTarget(side, "应用新值"); side.pr18Click(evidence, "应用新值")
                 evidence.record("apply-side callbackDelta=${sides - beforeSide} side=${state.side}")
                 assertEquals(beforeSide + 1, sides); assertEquals("after", state.side)
                 evidence.target("apply-field:rating_tenths").performScrollTo()
                 evidence.minimumTarget("apply-field:rating_tenths")
                 val beforeField = fields
-                evidence.target("apply-field:rating_tenths").performClick()
+                evidence.target("apply-field:rating_tenths").pr18Click(evidence, "apply-field:rating_tenths")
                 evidence.record("apply-field callbackDelta=${fields - beforeField} selected=${state.selected}")
                 assertEquals(beforeField + 1, fields); assertEquals(setOf("rating_tenths"), state.selected)
                 evidence.target("apply-current:rating_tenths").assertTextEquals("★ 3.9")
                 evidence.target("apply-proposed:rating_tenths").assertTextEquals("★ 4.0")
-                evidence.target("expand:apply-proposed:address").performScrollTo().performClick()
+                evidence.target("expand:apply-proposed:address").performScrollTo().pr18Click(evidence, "expand:apply-proposed:address")
                 evidence.target("apply-proposed:address").performScrollTo().assertTextEquals(address)
                 evidence.textFits(evidence.target("apply-proposed:address"))
                 val scroller = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
@@ -342,7 +342,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.minimumTarget("apply-save")
                 evidence.visibleTextFits()
                 val before = saves
-                evidence.target("apply-save").assertIsEnabled().performClick()
+                evidence.target("apply-save").assertIsEnabled().pr18Click(evidence, "apply-save")
                 evidence.record("apply-save callbackDelta=${saves - before}")
                 assertEquals(before + 1, saves); evidence.target("screen:apply").assertDoesNotExist()
             } catch (failure: Throwable) { evidence.diagnose("apply", failure); throw failure }
@@ -362,9 +362,9 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.textFits(title)
                 evidence.minimumTarget("confirm")
                 evidence.save("confirmation-$accept", dialog = true)
-                if (accept) evidence.target("confirm").performClick() else {
+                if (accept) evidence.target("confirm").pr18Click(evidence, "confirm") else {
                     val cancel = compose.onNodeWithText("取消")
-                    evidence.minimumTarget(cancel, "取消"); cancel.performClick()
+                    evidence.minimumTarget(cancel, "取消"); cancel.pr18Click(evidence, "取消")
                 }
                 evidence.record("confirmation accepted=$accept confirmCallbackDelta=$confirmed dismissCallbackDelta=$dismissed")
                 assertEquals(if (accept) 1 else 0, confirmed); assertEquals(if (accept) 0 else 1, dismissed)
@@ -376,7 +376,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
             dialog("screen:operation", null)
             evidence.minimumTarget("retry-operation")
             evidence.save("operation-retry", dialog = true)
-            evidence.target("retry-operation").performClick()
+            evidence.target("retry-operation").pr18Click(evidence, "retry-operation")
             evidence.record("operation retryCallbackDelta=$retried")
             assertEquals(1, retried)
             evidence.target("screen:operation").assertDoesNotExist()

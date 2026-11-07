@@ -58,7 +58,7 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
     private fun dismiss() {
         evidence.target("update-close").performScrollTo()
         evidence.minimumTarget("update-close")
-        evidence.target("update-close").performClick()
+        evidence.target("update-close").pr18Click(evidence, "update-close")
         evidence.target("screen:update").assertDoesNotExist()
     }
     private fun assertNoPopup(next: Pr18Runtime, case: String) {
@@ -68,7 +68,7 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         assertEquals("$case startup popup count", 0, count)
     }
     private fun settings() {
-        evidence.target("tab:settings").performClick()
+        evidence.target("tab:settings").pr18Click(evidence, "tab:settings")
         compose.waitUntil(15_000) { compose.onAllNodesWithTag("settings-scroll", true).fetchSemanticsNodes().isNotEmpty() }
     }
 
@@ -204,7 +204,7 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         next.versions.enqueue(release)
         evidence.target("update-now").performScrollTo()
         evidence.minimumTarget("update-now")
-        evidence.target("update-now").performClick()
+        evidence.target("update-now").pr18Click(evidence, "update-now")
         compose.waitUntil(15_000) { next.manager.state.value.stage == UpdateStage.NEED_PERMISSION }
         evidence.record("explicit-download state=${next.manager.state.value} starts=${next.updateContext.downloads.get()} " +
             "connections=${next.transport.requests.get()} permissions=${next.permissionRequests.size}")

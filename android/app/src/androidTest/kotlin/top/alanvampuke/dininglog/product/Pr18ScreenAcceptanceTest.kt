@@ -104,7 +104,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
         val ref = vm.editor.value.input!!.ref
         val before = next.repository.writes.size
         evidence.minimumTarget("save")
-        evidence.target("save").assertIsEnabled().performClick()
+        evidence.target("save").assertIsEnabled().pr18Click(evidence, "save")
         compose.waitUntil(15_000) { next.repository.writes.size > before && vm.detail.value.cached.snapshot?.ref == ref &&
             !vm.detail.value.refreshing && !vm.editor.value.saving &&
             compose.onAllNodesWithTag(if (kind == RecordKind.REVISION) "history-scroll" else "detail-scroll", true).fetchSemanticsNodes().isNotEmpty() }
@@ -232,19 +232,19 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.tap("history-scroll", "reapply")
                 compose.waitUntil(15_000) { vm.apply.value != null }
                 evidence.target("apply-save").assertIsNotEnabled()
-                evidence.target("apply-field:rating_tenths").performScrollTo().performClick()
+                evidence.target("apply-field:rating_tenths").performScrollTo().pr18Click(evidence, "apply-field:rating_tenths")
                 val beforeApply = next.repository.writes.size
-                evidence.minimumTarget("apply-save"); evidence.target("apply-save").performClick()
+                evidence.minimumTarget("apply-save"); evidence.target("apply-save").pr18Click(evidence, "apply-save")
                 compose.waitUntil(15_000) { vm.apply.value == null && next.repository.writes.size > beforeApply }
                 evidence.record("apply writeCallbackDelta=${next.repository.writes.size - beforeApply}")
                 assertEquals(beforeApply + 1, next.repository.writes.size)
-                evidence.target("tab:settings").performClick()
+                evidence.target("tab:settings").pr18Click(evidence, "tab:settings")
                 compose.waitUntil(15_000) { vm.settings.value.profile != null && !vm.settings.value.loading }
                 frame(next, "screen:settings", "flow-settings")
                 evidence.tap("settings-scroll", "logout")
                 evidence.visibleTextFits(); evidence.save("flow-logout-confirm", dialog = true)
                 val savedSession = next.account.session.value
-                compose.onNodeWithText("取消").performClick()
+                compose.onNodeWithText("取消").pr18Click(evidence, "取消")
                 assertEquals("cancel logout keeps the session", savedSession, next.account.session.value)
             } catch (failure: Throwable) { evidence.diagnose("complete-flow", failure); throw failure }
         }
@@ -263,20 +263,24 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.tap("detail-scroll", "edit"); editor(vm, RecordKind.RESTAURANT)
                 input("field:name", "窄屏输入测试")
                 compose.waitUntil(15_000) { evidence.keyboardBounds()?.height()?.let { it > 0 } == true }
-                val keyboard = evidence.keyboardBounds()!!
-                val save = evidence.bounds("save", window = true)
-                val viewport = evidence.bounds("pr18:viewport", window = true)
+                val keyboards = evidence.keyboardRectangles()
+                assertTrue("actual IME rectangles are available", keyboards.isNotEmpty())
+                val save = evidence.screenBounds("save")
+                val viewport = evidence.screenBounds("pr18:viewport")
                 val before = next.repository.writes.size
-                evidence.record("landscape-IME keyboard=$keyboard save=$save viewport=$viewport viewportWidthDp=${viewport.width / evidence.density}")
+                evidence.record("landscape-IME keyboardsScreen=$keyboards saveScreen=$save viewportScreen=$viewport viewportWidthDp=${viewport.width / evidence.density}")
                 evidence.save("landscape-ime", dialog = true)
                 evidence.minimumTarget("save")
                 assertEquals("narrow 360dp input flow", 360f, viewport.width / evidence.density, .5f)
-                assertTrue("save clears actual IME", save.bottom <= keyboard.top + .5f * evidence.density)
+                assertTrue("save clears actual IME", pr18ClearsIme(Pr18Rect(save.left, save.top, save.right, save.bottom),
+                    keyboards.map { Pr18Rect(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) },
+                    .5f * evidence.density))
                 assertTrue("save is within visible viewport", save.top >= viewport.top)
-                evidence.target("save").performTouchInput { click() }
+                val touch = evidence.touch(evidence.target("save"), "landscape-ime-save")
                 compose.waitUntil(15_000) { next.repository.writes.size > before }
                 evidence.record("landscape-IME saveCallbackDelta=${next.repository.writes.size - before}")
                 assertEquals(before + 1, next.repository.writes.size)
+                touch.requireCallbackDelta(before, next.repository.writes.size)
                 evidence.hideKeyboard(); evidence.portrait()
             } catch (failure: Throwable) { evidence.diagnose("narrow-landscape-ime", failure); throw failure }
         }
@@ -289,7 +293,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
             try {
                 for (reverse in listOf(false, true)) {
                     evidence.landscape(reverse); next.render(evidence)
-                    evidence.target("tab:restaurants").performClick(); list(vm, RecordKind.RESTAURANT)
+                    evidence.target("tab:restaurants").pr18Click(evidence, "tab:restaurants"); list(vm, RecordKind.RESTAURANT)
                     compose.onNodeWithTag("record-list").performScrollToIndex(0)
                     frame(next, "screen:restaurant:list", "landscape-restaurants-reverse$reverse", true)
                     evidence.scroll("record-list", "record:pr18-row-20")
@@ -312,7 +316,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                     frame(next, "screen:revision:list", "landscape-history-reverse$reverse", true)
                     evidence.scroll("record-list", "history-time:${next.repository.revision.id}")
                     evidence.minimumTarget("history-time:${next.repository.revision.id}")
-                    evidence.target("tab:restaurants").performClick(); list(vm, RecordKind.RESTAURANT)
+                    evidence.target("tab:restaurants").pr18Click(evidence, "tab:restaurants"); list(vm, RecordKind.RESTAURANT)
                     evidence.scroll("record-list", "search")
                     evidence.target("search").performTextReplacement("兰巴赫")
                     compose.waitUntil(15_000) { vm.list.value.query.query == "兰巴赫" && !vm.list.value.isRefreshing }
@@ -331,7 +335,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
     @Test fun f7ProductionLoginRegistrationRecoveryAndAcknowledgementAt100And200Percent() {
         for (font in listOf(1f, 2f)) for (page in listOf("登录", "注册账号", "恢复账号")) {
             val (next, _) = launch(font, authenticated = false, adaptive = true)
-            if (page != "登录") compose.onNodeWithText(page).performScrollTo().performClick()
+            if (page != "登录") compose.onNodeWithText(page).performScrollTo().pr18Click(evidence, page)
             val fields = listOf("auth-username" to "pr18_user") +
                 (if (page == "恢复账号") listOf("auth-recovery" to "pr18-public-recovery-fixture") else emptyList()) +
                 listOf("auth-password" to "Pr18 fixture passphrase")
@@ -347,7 +351,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
             val protectedFrame = evidence.probeProtected("auth-${page}-form")
             val before = next.auth.logins.get() + next.auth.registrations.get() + next.auth.recoveries.get()
             evidence.target("auth-submit").performScrollTo()
-            evidence.minimumTarget("auth-submit"); evidence.target("auth-submit").assertIsEnabled().performClick()
+            evidence.minimumTarget("auth-submit"); evidence.target("auth-submit").assertIsEnabled().pr18Click(evidence, "auth-submit")
             compose.waitUntil(15_000) { next.account.session.value != null }
             val after = next.auth.logins.get() + next.auth.registrations.get() + next.auth.recoveries.get()
             evidence.record("auth page=$page submitCallbackDelta=${after - before} sessionInstalled=${next.account.session.value != null}")
@@ -357,7 +361,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 val acknowledge = compose.onNodeWithText("我已安全保存").performScrollTo()
                 evidence.minimumTarget(acknowledge, "我已安全保存")
                 evidence.visibleTextFits()
-                acknowledge.performClick()
+                acknowledge.pr18Click(evidence, "我已安全保存")
             }
             compose.waitUntil(15_000) { compose.onAllNodesWithTag("product-navigation", true).fetchSemanticsNodes().isNotEmpty() }
             next.assertPalette(evidence, style, dark)
