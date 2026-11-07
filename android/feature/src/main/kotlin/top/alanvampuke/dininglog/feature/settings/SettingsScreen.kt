@@ -30,9 +30,13 @@ import top.alanvampuke.dininglog.feature.theme.*
     onLogout: () -> Unit, onTheme: (ThemeChoice) -> Unit, bottomBar: @Composable () -> Unit,
     onPasswordInput: (String, String) -> Unit = { _, _ -> }, listState: LazyListState = rememberLazyListState(),
     updateState: AppUpdateState = AppUpdateState(), onUpdateToggle: (Boolean) -> Unit = {}, onOpenUpdate: (AppRelease) -> Unit = {},
-    onCheckUpdate: () -> Unit = {}) {
+    onCheckUpdate: () -> Unit = {}, style: ThemeStyle = ThemeStyle.QUIET_GRID, onStyle: (ThemeStyle) -> Unit = {}) {
     var password by remember { mutableStateOf(false) }
     var logout by remember { mutableStateOf(false) }
+    val inkPaper = LocalThemeStyle.current.isInkPaper
+    // Ink & Paper groups with quiet 11sp grey headers instead of bold titles.
+    val sectionStyle = if (inkPaper) MaterialTheme.typography.labelSmall else MaterialTheme.typography.titleMedium
+    val sectionColor = if (inkPaper) LocalQuietGridColors.current.secondary else LocalQuietGridColors.current.ink
     LaunchedEffect(state.passwordRevision) { if (state.passwordRevision > 0) password = false }
     ScreenFrame("screen:settings", bottomBar, floatingBottomBar = true) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("settings-scroll"), state = listState, contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -56,11 +60,16 @@ import top.alanvampuke.dininglog.feature.theme.*
                 BiteButton(onClick = { password = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("change-password")) { Text("修改密码") }
             }
             item {
-                GridText("显示主题", style = MaterialTheme.typography.titleMedium)
+                GridText("显示主题", style = sectionStyle, color = sectionColor)
                 ChoiceChips(listOf("SYSTEM" to "跟随系统", "LIGHT" to "浅色", "DARK" to "深色"), theme.name, { if (it != null) onTheme(ThemeChoice.valueOf(it)) })
             }
             item {
-                GridText("关于食记", style = MaterialTheme.typography.titleMedium)
+                GridText("主题风格", style = sectionStyle, color = sectionColor)
+                ChoiceChips(listOf(ThemeStyle.INK_PAPER.name to "纸墨", ThemeStyle.QUIET_GRID.name to "经典"), style.name,
+                    { if (it != null) onStyle(ThemeStyle.valueOf(it)) })
+            }
+            item {
+                GridText("关于食记", style = sectionStyle, color = sectionColor)
                 GridText("版本 $version\n以文字记下餐厅、菜品与每一次到店。", color = LocalQuietGridColors.current.secondary)
                 ResponsiveHeading(title = { modifier ->
                     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

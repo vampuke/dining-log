@@ -7,6 +7,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -19,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -28,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -93,9 +98,10 @@ val ImeBottomPx = SemanticsPropertyKey<Int>("ImeBottomPx")
 fun listViewportPadding(padding: PaddingValues) = PaddingValues(
     start = padding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
     top = padding.calculateTopPadding(), end = padding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr))
+@Composable
 fun listContentPadding(padding: PaddingValues) = PaddingValues(
-    start = QuietGridDimensions.edge, top = QuietGridDimensions.edge, end = QuietGridDimensions.edge,
-    bottom = QuietGridDimensions.edge + padding.calculateBottomPadding())
+    start = LocalGridDimensions.current.edge, top = LocalGridDimensions.current.edge, end = LocalGridDimensions.current.edge,
+    bottom = LocalGridDimensions.current.edge + padding.calculateBottomPadding())
 // Measure at the call site's content width, after its existing padding.
 @Composable internal fun ResponsiveActions(
     first: (@Composable (Modifier) -> Unit)?, second: (@Composable (Modifier) -> Unit)?,
@@ -169,6 +175,17 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
 @Composable fun Score(value: String?, prominent: Boolean = false, meter: Boolean = false, modifier: Modifier = Modifier) {
     val c = LocalQuietGridColors.current
     val tenths = value?.toIntOrNull()
+    // Ink & Paper: a plain mono number — persimmon at 8.0+, ink below,
+    // a quiet grey "—" when unrated. No tilt, no die-cut, no filled chip.
+    if (LocalThemeStyle.current.isInkPaper) {
+        Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            GridText(if (tenths == null) "—" else Rating.fromTenths(tenths).display,
+                style = if (prominent) InkPaperText.detailRating else InkPaperText.listRating,
+                color = when { tenths == null -> c.secondary; tenths >= 80 -> c.accent; else -> c.ink })
+            if (meter) RatingMeter(value)
+        }
+        return
+    }
     val fill = verdictFill(tenths)
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         GridText(displayValue("rating_tenths", value), Modifier.rotate(-3f)
@@ -208,16 +225,18 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
             // Canvas draws in DrawScope, which is not composable, so the theme lookup
             // has to be hoisted out of the lambda.
             val c = LocalQuietGridColors.current
+            val inkPaper = LocalThemeStyle.current.isInkPaper
             Canvas(Modifier.fillMaxWidth().height(14.dp).testTag(tag).semantics {
                 contentDescription = "未评分"
                 if (enabled) setProgress { selected ->
                     onChange((selected * 10).roundToInt().coerceIn(10, 50).toString()); true
                 }
             }) {
+                val stroke = if (inkPaper) 1.dp.toPx() else 2.5.dp.toPx()
                 drawRoundRect(c.bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
-                drawRoundRect(c.border, topLeft = Offset(1.25.dp.toPx(), 1.25.dp.toPx()),
-                    size = Size(size.width - 2.5.dp.toPx(), size.height - 2.5.dp.toPx()),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(2.5.dp.toPx()))
+                drawRoundRect(c.border, topLeft = Offset(stroke / 2, stroke / 2),
+                    size = Size(size.width - stroke, size.height - stroke),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(stroke))
             }
         } else Slider(value = (value.toIntOrNull() ?: 40) / 10f, onValueChange = { onChange((it * 10).roundToInt().coerceIn(10, 50).toString()) },
             enabled = enabled, valueRange = 1f..5f, steps = 39, modifier = Modifier.fillMaxWidth().testTag(tag).semantics {
@@ -227,17 +246,20 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
                     true
                 }
             }, thumb = {
-                Box(Modifier.size(28.dp).brutalBox(LocalQuietGridColors.current.popRed,
+                if (LocalThemeStyle.current.isInkPaper) Box(Modifier.size(28.dp).background(LocalQuietGridColors.current.popRed, CircleShape))
+                else Box(Modifier.size(28.dp).brutalBox(LocalQuietGridColors.current.popRed,
                     LocalQuietGridColors.current.border, LocalQuietGridColors.current.shadow, 6.dp, 2.dp))
             }, track = { slider ->
                 val c = LocalQuietGridColors.current
+                val inkPaper = LocalThemeStyle.current.isInkPaper
                 Canvas(Modifier.fillMaxWidth().height(14.dp)) {
+                    val stroke = if (inkPaper) 1.dp.toPx() else 2.5.dp.toPx()
                     drawRoundRect(c.bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
                     val fraction = (slider.value - 1f) / 4f
                     drawRoundRect(c.butter, size = Size(size.width * fraction, size.height), cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()))
-                    drawRoundRect(c.border, topLeft = Offset(1.25.dp.toPx(), 1.25.dp.toPx()),
-                        size = Size(size.width - 2.5.dp.toPx(), size.height - 2.5.dp.toPx()),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(2.5.dp.toPx()))
+                    drawRoundRect(c.border, topLeft = Offset(stroke / 2, stroke / 2),
+                        size = Size(size.width - stroke, size.height - stroke),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(7.dp.toPx()), style = Stroke(stroke))
                 }
             })
         // The steppers previously defaulted from 40 as well, so they implied a rating
@@ -285,6 +307,14 @@ fun fieldPlaceholder(field: String): String = when (field) {
 }
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun ChoiceChips(options: List<Pair<String?, String>>, selected: String?, onSelect: (String?) -> Unit, enabled: Boolean = true) {
+    // Ink & Paper: text segments — unselected grey text, selected an ink
+    // capsule with paper text — instead of bordered filter chips.
+    if (LocalThemeStyle.current.isInkPaper) {
+        FlowRow(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            options.forEach { (code, label) -> SegmentItem(label, selected == code, enabled) { onSelect(code) } }
+        }
+        return
+    }
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         options.forEach { (code, label) -> FilterChip(selected = selected == code, onClick = { onSelect(code) }, enabled = enabled, modifier = Modifier.heightIn(min = 48.dp), label = { Text(label) },
             border = FilterChipDefaults.filterChipBorder(enabled, selected == code, borderColor = LocalQuietGridColors.current.border,
@@ -295,9 +325,18 @@ fun fieldPlaceholder(field: String): String = when (field) {
                 disabledLabelColor = LocalQuietGridColors.current.secondary, disabledSelectedContainerColor = LocalQuietGridColors.current.paper)) }
     }
 }
+@Composable fun SegmentItem(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val c = LocalQuietGridColors.current
+    Box(Modifier.heightIn(min = 48.dp).clip(CircleShape)
+        .background(if (selected) c.ink else Color.Transparent)
+        .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+        .padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        Text(label, color = if (selected) c.bg else c.secondary, style = MaterialTheme.typography.labelLarge)
+    }
+}
 @Composable fun SaveBar(enabled: Boolean, saving: Boolean, onSave: () -> Unit, message: String? = null) {
     Surface(color = LocalQuietGridColors.current.surface, tonalElevation = 0.dp) {
-        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(LocalGridDimensions.current.edge), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (message != null) Column(Modifier.heightIn(max = 112.dp).verticalScroll(rememberScrollState())) {
                 ErrorMessage(message, "save-message")
             }

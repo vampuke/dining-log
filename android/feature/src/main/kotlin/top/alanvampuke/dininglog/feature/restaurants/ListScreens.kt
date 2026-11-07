@@ -33,6 +33,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     bottomBar: @Composable () -> Unit = {}, listState: LazyListState = rememberLazyListState()) {
     val kind = state.query.kind
     val isSearch = searchText.isNotBlank()
+    val inkPaper = LocalThemeStyle.current.isInkPaper
     val title = titleOverride ?: if (state.query.deleted == DeletedFilter.ONLY) if (kind == RecordKind.REVISION) "隐藏的修改历史" else "回收站" else when (kind) {
         RecordKind.RESTAURANT -> if (isSearch) "搜索结果" else "我的餐厅"
         RecordKind.DISH -> "店内菜品"; RecordKind.VISIT -> "到店时间线"; RecordKind.REVISION -> "修改历史"
@@ -42,11 +43,17 @@ import top.alanvampuke.dininglog.feature.theme.*
     var menu by remember { mutableStateOf(false) }
     ScreenFrame(tag, bottomBar, floatingBottomBar = true) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("record-list"), state = listState,
-            contentPadding = PaddingValues(start = QuietGridDimensions.edge, top = 8.dp, end = QuietGridDimensions.edge, bottom = 8.dp + padding.calculateBottomPadding()), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            contentPadding = PaddingValues(start = LocalGridDimensions.current.edge, top = 8.dp, end = LocalGridDimensions.current.edge, bottom = 8.dp + padding.calculateBottomPadding()),
+            verticalArrangement = if (inkPaper) Arrangement.spacedBy(0.dp) else Arrangement.spacedBy(7.dp)) {
             item {
                 if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && state.query.deleted != DeletedFilter.ONLY) {
                     ResponsiveHeading(title = { modifier ->
-                        Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Ink & Paper drops the tilted burger and the "BITE!" wordmark:
+                        // just the section name with a small loaded count.
+                        if (inkPaper) Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                            GridText("${state.items.size} 家", style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                        } else Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Image(painterResource(if (LocalQuietGridColors.current == QuietGridDark) R.drawable.bite_v1_burger_dark else R.drawable.bite_v1_burger), null, Modifier.size(38.dp).rotate(-3f))
                             Column(Modifier.weight(1f)) {
                                 GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
@@ -84,8 +91,10 @@ import top.alanvampuke.dininglog.feature.theme.*
                         // the right label and the threshold on the chip itself.
                         val topLabel = if (kind == RecordKind.DISH) "惊艳 ★4.6+" else "封神必吃 ★4.6+"
                         val lowLabel = if (kind == RecordKind.DISH) "踩雷 ★3.1−" else "踩雷预警 ★3.1−"
-                        listOf("全部" to ListFilters(), topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
-                            lowLabel to filters.copy(minRating = null, maxRating = 31, unrated = false)).forEach { (label, next) ->
+                        val quick = listOf("全部" to ListFilters(), topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
+                            lowLabel to filters.copy(minRating = null, maxRating = 31, unrated = false))
+                        if (inkPaper) quick.forEach { (label, next) -> SegmentItem(label, filters == next, true) { onFilters(next) } }
+                        else quick.forEach { (label, next) ->
                             FilterChip(selected = filters == next, onClick = { onFilters(next) }, label = { Text(label, style = MaterialTheme.typography.labelSmall) },
                                 modifier = Modifier.heightIn(min = 48.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, LocalQuietGridColors.current.border),
                                 colors = FilterChipDefaults.filterChipColors(containerColor = LocalQuietGridColors.current.surface,
@@ -141,10 +150,16 @@ import top.alanvampuke.dininglog.feature.theme.*
     val c = LocalQuietGridColors.current
     val rated = records.mapNotNull { it.fields["rating_tenths"]?.toIntOrNull() }
     val counts = records.map { it.fields["dish_count"]?.toIntOrNull() }
+    val avg = if (rated.isEmpty()) "未评分" else String.format(java.util.Locale.ROOT, "%.1f", rated.average() / 10)
+    val dishes = if (counts.any { it == null }) "未提供" else "${counts.filterNotNull().sum()} 道"
+    // Ink & Paper: one quiet line instead of the three-cell stats box.
     // These aggregates cover only the loaded results, including any filters.
-    val stats = listOf("已加载餐厅" to "${records.size} 家", "已加载均分" to
-        (if (rated.isEmpty()) "未评分" else String.format(java.util.Locale.ROOT, "%.1f", rated.average() / 10)),
-        "已加载菜品" to (if (counts.any { it == null }) "未提供" else "${counts.filterNotNull().sum()} 道"))
+    if (LocalThemeStyle.current.isInkPaper) {
+        GridText("已加载 ${records.size} 家 · 均分 $avg · 菜品 $dishes", Modifier.fillMaxWidth().testTag("loaded-stats"),
+            style = QuietGridText.metadata, color = c.secondary)
+        return
+    }
+    val stats = listOf("已加载餐厅" to "${records.size} 家", "已加载均分" to avg, "已加载菜品" to dishes)
     Row(Modifier.fillMaxWidth().testTag("loaded-stats").brutalBox(c.surface, c.border, c.shadow, 10.dp).padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         stats.forEachIndexed { index, (label, value) ->
             if (index > 0) Box(Modifier.width(2.dp).height(28.dp).background(c.border))
@@ -160,9 +175,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     val large = LocalDensity.current.fontScale > 1.3f
     val history = record.ref.kind == RecordKind.REVISION
     val outside = if (history) Modifier.revisionRail(c.border).padding(start = 16.dp) else Modifier
-    Column(Modifier.fillMaxWidth().then(outside).rotate(tilt).brutalBox(c.surface, c.border, c.shadow)
-        .heightIn(min = 48.dp).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(7.dp),
-        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    val body: @Composable () -> Unit = {
         if (large) {
             if (number != null) Sticker("%02d".format(number), c.butter)
             RowText(record)
@@ -179,12 +192,27 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
         if (record.matches.isNotEmpty() && record.ref.kind == RecordKind.RESTAURANT) GridText(record.matches.joinToString(" · ") { it.label }, Modifier.testTag("matches:${record.ref.id}"), style = MaterialTheme.typography.bodySmall, color = c.accentInk)
     }
+    // Ink & Paper: a flat row with a 1px divider — no tilt, no bordered card.
+    if (LocalThemeStyle.current.isInkPaper) {
+        Column(Modifier.fillMaxWidth().then(outside).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            body()
+            HorizontalDivider(color = c.border, thickness = 1.dp)
+        }
+        return
+    }
+    Column(Modifier.fillMaxWidth().then(outside).rotate(tilt).brutalBox(c.surface, c.border, c.shadow)
+        .heightIn(min = 48.dp).clickable { onRecord(record) }.testTag("record:${record.ref.id}").padding(7.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        body()
+    }
 }
 @Composable private fun RowText(record: RecordSummary) {
     var absolute by rememberSaveable(record.ref.id) { mutableStateOf(false) }
     val large = LocalDensity.current.fontScale > 1.3f
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"), style = MaterialTheme.typography.titleMedium,
+        GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"),
+            style = if (LocalThemeStyle.current.isInkPaper) InkPaperText.recordTitle else MaterialTheme.typography.titleMedium,
             maxLines = if (large) Int.MAX_VALUE else 1, overflow = TextOverflow.Ellipsis)
         if (record.ref.kind == RecordKind.RESTAURANT && record.version > 1)
             GridText("已修订", Modifier.revisedStamp(LocalQuietGridColors.current.danger).padding(3.dp),

@@ -24,7 +24,13 @@ interface AccountSecurity {
     suspend fun changePassword(current: String, replacement: String)
 }
 enum class ThemeChoice { SYSTEM, LIGHT, DARK }
+// InkPaper ("纸墨") is the default style; QuietGrid is the classic style.
+// The style is orthogonal to ThemeChoice (light/dark): each style has a
+// light and a dark palette, resolved by the theme entry point.
+enum class ThemeStyle { INK_PAPER, QUIET_GRID }
 interface ThemePreferences {
     val theme: Flow<ThemeChoice>
     suspend fun setTheme(choice: ThemeChoice)
+    val style: Flow<ThemeStyle>
+    suspend fun setStyle(style: ThemeStyle)
 }
