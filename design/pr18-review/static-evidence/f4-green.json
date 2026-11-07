@@ -1,0 +1,8 @@
+{
+  "name": "f4-green",
+  "command": "python3 -B android/tools/test_pr18_theme_regressions.py ReachableRatingTest",
+  "exit_code": 0,
+  "output": "test_f4_score_39_40_50_and_unrated (__main__.ReachableRatingTest.test_f4_score_39_40_50_and_unrated) ... MEASURE Score actual high-score threshold=40 tenths\nok\ntest_f4_verdict_fill_39_40_50_and_unrated (__main__.ReachableRatingTest.test_f4_verdict_fill_39_40_50_and_unrated) ... ok\ntest_f4_verdict_sticker_39_40_50_and_unrated (__main__.ReachableRatingTest.test_f4_verdict_sticker_39_40_50_and_unrated) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.200s\n\nOK\nMEASURE verdictFill actual high-score threshold=40 tenths\nMEASURE VerdictSticker actual high-score threshold=40 tenths\n",
+  "executed_at_utc": "2026-11-07 09:25:28 UTC",
+  "execution_head": "ed9f8112352767006ad312d6e7ded6ec0644fea4"
+}

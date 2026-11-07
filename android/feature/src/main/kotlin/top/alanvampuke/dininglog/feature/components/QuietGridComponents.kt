@@ -175,13 +175,13 @@ fun listContentPadding(padding: PaddingValues) = PaddingValues(
 @Composable fun Score(value: String?, prominent: Boolean = false, meter: Boolean = false, modifier: Modifier = Modifier) {
     val c = LocalQuietGridColors.current
     val tenths = value?.toIntOrNull()
-    // Ink & Paper: a plain mono number — persimmon at 8.0+, ink below,
+    // Ink & Paper: a plain mono number — persimmon at 4.0/5.0, ink below,
     // a quiet grey "—" when unrated. No tilt, no die-cut, no filled chip.
     if (LocalThemeStyle.current.isInkPaper) {
         Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
             GridText(if (tenths == null) "—" else Rating.fromTenths(tenths).display,
                 style = if (prominent) InkPaperText.detailRating else InkPaperText.listRating,
-                color = when { tenths == null -> c.secondary; tenths >= 80 -> c.accent; else -> c.ink })
+                color = when { tenths == null -> c.secondary; tenths >= 40 -> c.accent; else -> c.ink })
             if (meter) RatingMeter(value)
         }
         return

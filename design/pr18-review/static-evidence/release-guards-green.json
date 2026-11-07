@@ -1,0 +1,8 @@
+{
+  "name": "release-guards-green",
+  "command": "node --test .github/scripts/release-guards.test.mjs",
+  "exit_code": 0,
+  "output": "✔ workflow validates real Git ancestry before it can execute candidate code (2919.191937ms)\n✔ release accepts only a full SHA, stable version tag, own repository and master dispatch (1.748121ms)\n✔ source version is read from the reviewed file and cannot differ from tag (5.587331ms)\n✔ both device APIs and backend/Android checks are mandatory; skipped is a failure (0.97872ms)\n✔ stable releases must increase numerically, including minor and major boundaries (0.704499ms)\n✔ empty bootstrap history cannot hide failed permissions, network or malformed checkpoints (0.912182ms)\n✔ noninteractive Wrangler cannot silently replace an origin or conflicting DNS record (0.860225ms)\nℹ tests 7\nℹ suites 0\nℹ pass 7\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 3553.237288\n",
+  "executed_at_utc": "2026-11-07 09:27:02 UTC",
+  "execution_head": "ed9f8112352767006ad312d6e7ded6ec0644fea4"
+}

@@ -74,7 +74,13 @@ import top.alanvampuke.dininglog.feature.theme.*
                 ResponsiveHeading(title = { modifier ->
                     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         GridText("启动时检查更新", Modifier.weight(1f))
+                        // Functional thumb/border colors are separate from decorative paper rules.
                         Switch(checked = updateState.enabled, onCheckedChange = onUpdateToggle,
+                            colors = if (inkPaper) SwitchDefaults.colors(
+                                uncheckedThumbColor = LocalQuietGridColors.current.secondary,
+                                uncheckedBorderColor = LocalQuietGridColors.current.secondary,
+                                uncheckedTrackColor = LocalQuietGridColors.current.surface,
+                            ) else SwitchDefaults.colors(),
                             modifier = Modifier.testTag("update-checks").semantics { contentDescription = "启动时检查更新" })
                     }
                 }, trailing = { modifier ->

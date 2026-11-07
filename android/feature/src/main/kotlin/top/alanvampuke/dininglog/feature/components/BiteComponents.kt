@@ -105,8 +105,8 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 }
 @Composable fun verdictFill(tenths: Int?): Color {
     val c = LocalQuietGridColors.current
-    // Ink & Paper stops banding scores by colour: persimmon at 8.0+, ink below.
-    if (LocalThemeStyle.current.isInkPaper) return when { tenths == null -> c.paper; tenths >= 80 -> c.accent; else -> c.ink }
+    // Ink & Paper stops banding scores by colour: persimmon at 4.0/5.0, ink below.
+    if (LocalThemeStyle.current.isInkPaper) return when { tenths == null -> c.paper; tenths >= 40 -> c.accent; else -> c.ink }
     return when { tenths == null -> c.paper; tenths >= 46 -> c.butter; tenths >= 40 -> c.mint; tenths >= 32 -> c.peach; else -> c.popRed }
 }
 @Composable fun VerdictSticker(value: String?, dish: Boolean = false) {
@@ -114,7 +114,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
     val c = LocalQuietGridColors.current
     if (tenths == null) GridText("未评分", style = MaterialTheme.typography.labelSmall, color = c.secondary)
     else if (LocalThemeStyle.current.isInkPaper) GridText(verdictLabel(tenths, dish), style = MaterialTheme.typography.labelSmall,
-        color = if (tenths >= 80) c.accent else c.secondary)
+        color = if (tenths >= 40) c.accent else c.secondary)
     else Sticker(verdictLabel(tenths, dish), verdictFill(tenths))
 }
 @Composable fun ReceiptEdge(top: Boolean) {
