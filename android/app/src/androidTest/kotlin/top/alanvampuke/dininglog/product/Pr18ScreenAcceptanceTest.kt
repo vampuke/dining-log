@@ -19,7 +19,7 @@ import org.junit.runners.Parameterized
 import top.alanvampuke.dininglog.P9VisualActivity
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.feature.ProductViewModel
-import top.alanvampuke.dininglog.feature.NavigationEntryId
+import top.alanvampuke.dininglog.feature.components.NavigationEntryId
 import top.alanvampuke.dininglog.feature.components.BackgroundArgb
 import top.alanvampuke.dininglog.feature.components.ForegroundArgb
 
