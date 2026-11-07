@@ -1,6 +1,7 @@
 package top.alanvampuke.dininglog.product
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
@@ -31,6 +32,52 @@ internal class Pr18CaptureReceipt(private val failures: List<Throwable>) {
             throw first
         }
     }
+}
+
+// Row-sized storage bounds allocation while checking every real Activity pixel.
+// Use the same content thresholds as the strict own-window probe below.
+internal fun pr18ValidateActivityBitmap(bitmap: Bitmap, width: Int, height: Int,
+    background: Int, surface: Int, ink: Int, record: (String) -> Unit) {
+    assertTrue("normal capture has positive actual geometry", width > 0 && height > 0)
+    assertEquals("normal capture geometry width", width, bitmap.width)
+    assertEquals("normal capture geometry height", height, bitmap.height)
+    val row = IntArray(width)
+    var opaque = 0L; var black = 0L; var transparent = 0L; var white = 0L
+    var backgroundPixels = 0L; var surfacePixels = 0L; var inkPixels = 0L
+    for (y in 0 until height) {
+        bitmap.getPixels(row, 0, width, 0, y, width, 1)
+        for (pixel in row) {
+            if (pixel ushr 24 == 255) opaque++
+            if (pixel == 0xFF000000.toInt()) black++
+            if (pixel ushr 24 == 0) transparent++
+            if (pixel == 0xFFFFFFFF.toInt()) white++
+            if (pixel == background) backgroundPixels++
+            if (pixel == surface) surfacePixels++
+            if (pixel == ink) inkPixels++
+        }
+    }
+    val count = width.toLong() * height
+    record("activity-pixels=${count} opaque=$opaque black=$black transparent=$transparent white=$white " +
+        "expectedBackground=$background backgroundPixels=$backgroundPixels expectedSurface=$surface surfacePixels=$surfacePixels " +
+        "expectedInk=$ink inkPixels=$inkPixels dimensions=${width}x$height")
+    assertTrue("normal capture rejects blank/transparent/white placeholders", black + transparent < count * .9 && white != count)
+    assertTrue("real Activity palette background/surface painted", backgroundPixels + surfacePixels > 250)
+    assertTrue("real Activity palette occupies content", backgroundPixels + surfacePixels >= count / 20)
+    assertTrue("real Activity palette ink painted", inkPixels > 10)
+    assertTrue("real Activity opaque content", opaque > 250)
+}
+
+internal fun pr18VerifyActivityPng(file: File, width: Int, height: Int): String {
+    val bytes = file.readBytes()
+    check(bytes.size > 8 && bytes.take(8) == listOf(137, 80, 78, 71, 13, 10, 26, 10).map { it.toByte() }) {
+        "Normal Activity capture did not produce a real nonempty PNG"
+    }
+    val decoded = requireNotNull(BitmapFactory.decodeByteArray(bytes, 0, bytes.size)) { "Normal PNG cannot be decoded" }
+    try {
+        assertEquals("written PNG geometry width", width, decoded.width)
+        assertEquals("written PNG geometry height", height, decoded.height)
+    } finally { decoded.recycle() }
+    return MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 }
 
 internal fun pr18OwnWindowCapture(

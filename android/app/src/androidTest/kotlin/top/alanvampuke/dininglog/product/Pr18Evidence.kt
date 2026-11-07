@@ -54,6 +54,7 @@ import java.io.File
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import org.junit.Assert.*
 import top.alanvampuke.dininglog.P9VisualActivity
 import top.alanvampuke.dininglog.core.ThemeStyle
@@ -409,6 +410,7 @@ internal class Pr18Evidence(
     // ScrollBy moves actual layout; OnClick is never invoked through semantics.
     // Compose 1.8.2 minimal ScrollTo does not account for same-window overlays.
     private fun expose(node: SemanticsNodeInteraction, name: String, list: String?,
+        horizontal: Boolean = false,
         point: (SemanticsNode) -> Offset = { pr18FullBounds(it).center }): TouchGeometry {
         val deadline = System.nanoTime() + 15_000_000_000L
         var stable: TouchGeometry? = null
@@ -417,6 +419,36 @@ internal class Pr18Evidence(
             val semantics = node.fetchSemanticsNode()
             val g = withOverlays(semantics, touchGeometry(semantics, point))
             logTouchGeometry(name, g)
+            if (horizontal) {
+                val xScroller = generateSequence(semantics.parent) { it.parent }.firstOrNull {
+                    it.config.contains(SemanticsProperties.HorizontalScrollAxisRange) && it.config.contains(SemanticsActions.ScrollBy)
+                } ?: error("Nested touch $name: no horizontal scroll ancestor")
+                check(xScroller.root === semantics.root) { "Horizontal ancestor belongs to a different root" }
+                // Its Y bounds can be entirely clipped before the outer vertical
+                // scroll moves. Measure the actual horizontal viewport in X.
+                val xBounds = pr18FullBounds(xScroller)
+                val left = maxOf(xBounds.left, g.visible.left)
+                val right = minOf(xBounds.right, g.visible.right)
+                check(right > left) { "Nested touch $name: no horizontal viewport" }
+                val half = minOf(g.full.width / 2, (right - left) / 2)
+                val dx = g.point.x - g.point.x.coerceIn(left + half, right - half)
+                if (dx != 0f) {
+                    val range = xScroller.config[SemanticsProperties.HorizontalScrollAxisRange]
+                    val before = compose.runOnIdle { range.value() }
+                    var delta = if (range.reverseScrolling) -dx else dx
+                    if (xScroller.layoutInfo.layoutDirection == androidx.compose.ui.unit.LayoutDirection.Rtl) delta = -delta
+                    record("expose-scroll name=$name horizontalAncestor=${xScroller.id} full=$xBounds " +
+                        "clipped=${xScroller.boundsInRoot} viewportX=$left..$right value=$before max=${range.maxValue()} deltaX=$delta")
+                    compose.onNode(SemanticsMatcher("measured horizontal ancestor ${xScroller.id}") { it.id == xScroller.id }, true)
+                        .performSemanticsAction(SemanticsActions.ScrollBy) { check(it(delta, 0f)) { "Horizontal ScrollBy rejected $name" } }
+                    compose.waitForIdle()
+                    check(compose.runOnIdle { range.value() } != before || pr18FullBounds(node.fetchSemanticsNode()) != g.full) {
+                        "Unreachable touch $name at true horizontal scroll limit: value=$before max=${range.maxValue()}"
+                    }
+                    stable = null
+                    continue
+                }
+            }
             val exposed = g.full.contains(g.point) && g.clipped.contains(g.point) && g.visible.contains(g.point) &&
                 g.overlays.none { it.second.contains(g.point) }
             if (exposed && stable == g) return g
@@ -462,8 +494,9 @@ internal class Pr18Evidence(
     }
 
     fun touch(node: SemanticsNodeInteraction, name: String, list: String? = null,
+        horizontal: Boolean = false,
         point: (SemanticsNode) -> Offset = { pr18FullBounds(it).center }) {
-        val geometry = expose(node, name, list, point)
+        val geometry = expose(node, name, list, horizontal, point)
         touchReceipt(node, name)
         val current = withOverlays(node.fetchSemanticsNode(), touchGeometry(node.fetchSemanticsNode(), point))
         check(current == geometry) { "Touch geometry changed before injection: $name" }
@@ -620,12 +653,37 @@ internal class Pr18Evidence(
         }
         if (dialog) probeWindows(name, protected = false, includeDialogs = true).requireValid()
         else {
-            val bitmap = target("pr18:viewport").captureToImage().asAndroidBitmap()
+            val viewport = target("pr18:viewport")
+            val node = viewport.fetchSemanticsNode()
+            val view = (node.root as ViewRootForTest).view
+            val window = ownerWindow(view)
+            val bounds = node.boundsInRoot
+            compose.runOnIdle {
+                check(window === compose.activity.window && view.isAttachedToWindow && view.rootView === window.decorView.rootView) {
+                    "Normal Activity capture root/owner mismatch"
+                }
+            }
+            val bitmap = viewport.captureToImage().asAndroidBitmap()
+            val settled = viewport.fetchSemanticsNode()
+            assertTrue("normal capture retains the same owner root", node.root === settled.root)
+            assertEquals("normal capture retains actual geometry", bounds, settled.boundsInRoot)
+            val capturedColors = when (renderedStyle) {
+                ThemeStyle.INK_PAPER -> if (renderedDark) InkPaperDark else InkPaperLight
+                ThemeStyle.QUIET_GRID -> if (renderedDark) QuietGridDark else QuietGridLight
+            }
+            pr18ValidateActivityBitmap(bitmap, bounds.right.roundToInt() - bounds.left.roundToInt(),
+                bounds.bottom.roundToInt() - bounds.top.roundToInt(), capturedColors.bg.toArgb(),
+                capturedColors.surface.toArgb(), capturedColors.ink.toArgb(), ::record)
             val file = captureFile(name, 0)
             file.outputStream().use {
                 assertTrue("screenshot PNG written", bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
-            record("screenshot=${file.name} pixels=${bitmap.width}x${bitmap.height}")
+            val hash = pr18VerifyActivityPng(file, bitmap.width, bitmap.height)
+            compose.runOnIdle {
+                assertEquals("normal capture owner remains unprotected", 0,
+                    window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
+            }
+            record("screenshot=${file.name} pixels=${bitmap.width}x${bitmap.height} path=${file.absolutePath} bytes=${file.length()} sha256=$hash")
         }
     }
 

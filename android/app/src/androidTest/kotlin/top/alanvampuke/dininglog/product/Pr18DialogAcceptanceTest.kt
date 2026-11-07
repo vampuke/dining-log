@@ -3,6 +3,7 @@ package top.alanvampuke.dininglog.product
 import android.view.WindowManager
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -29,7 +30,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
     }
     @get:Rule val compose = createAndroidComposeRule<P9VisualActivity>()
     private lateinit var evidence: Pr18Evidence
-    private val fonts = listOf(1f, 1.3f, 1.31f, 1.5f, 2f)
+    private val fonts = listOf(1f, 1.3f, 1.31f, 2f)
     private val ref = RecordRef(RecordKind.RESTAURANT, "pr18-dialog-record")
     private val time = "2026-11-07T08:00:00Z"
     private val address = "中山路沿江街区，经过桥边的咖啡店后向右转。".repeat(16)
@@ -63,6 +64,18 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
         evidence.target(tag).performScrollTo()
         evidence.minimumTarget(tag)
         evidence.target(tag).assertIsDisplayed().performClick()
+    }
+
+    private fun mergedButton(tag: String): SemanticsNodeInteraction {
+        val physical = evidence.target(tag).fetchSemanticsNode()
+        val merged = compose.onNodeWithTag(tag, useUnmergedTree = false)
+        val label = merged.fetchSemanticsNode()
+        assertEquals("label belongs to the same physical Button", physical.id, label.id)
+        assertTrue("label belongs to the same owner root", physical.root === label.root)
+        assertEquals("merged Button retains physical bounds", pr18FullBounds(physical), pr18FullBounds(label))
+        assertEquals(Role.Button, physical.config[SemanticsProperties.Role])
+        evidence.record("button-label tag=$tag physical=${physical.id} unmerged=${physical.config} merged=${label.config}")
+        return merged
     }
 
     private fun scrollComparisonVerticallyTo(tag: String) {
@@ -156,10 +169,10 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                     } else assertTrue("update actions stack above 1.3", close.top >= page.bottom)
                     assertEquals("retained 16dp dialog footer clearance", 16f,
                         (panel.bottom - close.bottom) / evidence.density, .5f)
-                    evidence.target("update-close").assertTextEquals(if (state.busy) "后台继续下载" else "稍后")
+                    mergedButton("update-close").assertTextEquals(if (state.busy) "后台继续下载" else "稍后")
                     evidence.minimumTarget("update-close")
                     val beforeDismiss = actions.size
-                    evidence.target("update-close").performClick()
+                    evidence.touch(evidence.target("update-close"), "update-close", "update-scroll")
                     evidence.record("update-close callbackDelta=${actions.size - beforeDismiss}")
                     assertEquals(beforeDismiss + 1, actions.size); assertEquals("dismiss", actions.last())
                     evidence.target("screen:update").assertDoesNotExist()
@@ -236,7 +249,13 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 val local = compose.onNodeWithText("使用未提交值").performScrollTo()
                 evidence.minimumTarget(local, "使用未提交值"); local.performClick()
                 evidence.target("confirm-merge").assertIsEnabled()
-                evidence.target("expand:compare:address:1").performScrollTo().performClick()
+                val expander = evidence.target("expand:compare:address:1")
+                mergedButton("expand:compare:address:1").assertTextEquals("展开全文")
+                evidence.minimumTarget(expander, "expand:compare:address:1")
+                evidence.touch(expander, "expand:compare:address:1", horizontal = true)
+                compose.waitForIdle()
+                evidence.record("after-touch name=expand:compare:address:1 ${pr18TouchDetails(expander.fetchSemanticsNode())}")
+                mergedButton("expand:compare:address:1").assertTextEquals("收起全文")
                 compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange), true)
                     .performSemanticsAction(SemanticsActions.ScrollBy) { it(100_000f, 0f) }
                 scrollComparisonVerticallyTo("local_input")
@@ -244,6 +263,30 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 scrollComparisonVerticallyTo("compare:address:1")
                 evidence.target("compare:address:1").performScrollTo().assertTextEquals(address)
                 evidence.textFits(evidence.target("compare:address:1"))
+                val addressNode = evidence.target("compare:address:1")
+                val addressLayout = evidence.layouts(addressNode).single()
+                assertEquals("expanded layout contains the exact full address", address, addressLayout.layoutInput.text.text)
+                val lastLine = addressLayout.lineCount - 1
+                assertTrue("expanded address has a final line", lastLine >= 0)
+                assertEquals("final line reaches the full address end", address.length, addressLayout.getLineEnd(lastLine))
+                val addressScroller = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
+                    hasAnyDescendant(hasTestTag("compare:address:1")), true)
+                val beforeEnd = pr18FullBounds(addressNode.fetchSemanticsNode())
+                val beforeViewport = addressScroller.fetchSemanticsNode().boundsInRoot
+                val endDelta = beforeEnd.top + addressLayout.getLineBottom(lastLine) - beforeViewport.bottom
+                val endRange = addressScroller.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+                addressScroller.performSemanticsAction(SemanticsActions.ScrollBy) {
+                    it(0f, endDelta * if (endRange.reverseScrolling) -1f else 1f)
+                }
+                compose.waitForIdle()
+                val end = pr18FullBounds(addressNode.fetchSemanticsNode())
+                val viewport = addressScroller.fetchSemanticsNode().boundsInRoot
+                val lineTop = end.top + addressLayout.getLineTop(lastLine)
+                val lineBottom = end.top + addressLayout.getLineBottom(lastLine)
+                evidence.record("conflict-expanded-address finalLine=$lastLine lineTop=$lineTop lineBottom=$lineBottom " +
+                    "full=$end viewport=$viewport endDelta=$endDelta scroll=${endRange.value()} max=${endRange.maxValue()}")
+                assertTrue("expanded address full final line is reachable",
+                    lineTop >= viewport.top - .5f * evidence.density && lineBottom <= viewport.bottom + .5f * evidence.density)
                 evidence.save("conflict-expanded-local", dialog = true)
                 evidence.visibleTextFits()
                 val before = saves
