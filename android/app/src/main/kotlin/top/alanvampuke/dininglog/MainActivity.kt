@@ -33,6 +33,9 @@ import top.alanvampuke.dininglog.core.auth.*
 import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.data.auth.*
 import top.alanvampuke.dininglog.feature.auth.AuthRoot
+import top.alanvampuke.dininglog.feature.theme.InkPaperDark
+import top.alanvampuke.dininglog.feature.theme.InkPaperLight
+import top.alanvampuke.dininglog.feature.theme.QuietGridColors
 import top.alanvampuke.dininglog.feature.theme.QuietGridTheme
 import top.alanvampuke.dininglog.feature.theme.QuietGridDark
 import top.alanvampuke.dininglog.feature.theme.QuietGridLight
@@ -65,19 +68,36 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
         setContent {
             val choice by preferences.theme.collectAsStateWithLifecycle(ThemeChoice.SYSTEM)
+            val style by preferences.style.collectAsStateWithLifecycle(ThemeStyle.INK_PAPER)
             val updateState by updates.state.collectAsStateWithLifecycle()
             val installState by inAppUpdates.state.collectAsStateWithLifecycle()
             var showUpdate by remember { mutableStateOf(false) }
+            var launchUpdateShown by remember { mutableStateOf(false) }
             LaunchedEffect(installState.stage) {
                 if (installState.stage == UpdateStage.READY) {
                     showUpdate = true
                     inAppUpdates.install(this@MainActivity, ::installPermissionLaunch)
                 }
             }
+            // Launch update popup: the checker already runs once at startup
+            // when the toggle is on. Surface a background result once as the
+            // update dialog, instead of only leaving the "有新版本" row in
+            // Settings. A manual result never triggers this — its dialog is
+            // opened from Settings — and dismissing it does not re-show it
+            // for this launch. With the toggle off there is no result at all.
+            LaunchedEffect(updateState.release, updateState.manual, updateState.enabled) {
+                val release = updateState.release
+                if (!launchUpdateShown && release != null && updateState.enabled && !updateState.manual) {
+                    launchUpdateShown = true
+                    inAppUpdates.open(release)
+                    showUpdate = true
+                }
+            }
             val dark = when (choice) { ThemeChoice.SYSTEM -> isSystemInDarkTheme(); ThemeChoice.DARK -> true; ThemeChoice.LIGHT -> false }
+            val colors = if (style == ThemeStyle.INK_PAPER) (if (dark) InkPaperDark else InkPaperLight) else (if (dark) QuietGridDark else QuietGridLight)
             val scope = rememberCoroutineScope()
-            SideEffect { applySystemBarTheme(window, dark) }
-            QuietGridTheme(dark) {
+            SideEffect { applySystemBarTheme(window, dark, colors) }
+            QuietGridTheme(dark, style) {
                 if (showUpdate) UpdateDialog(installState, inAppUpdates::startDownload, inAppUpdates::cancel,
                     onInstall = { inAppUpdates.install(this@MainActivity, ::installPermissionLaunch) },
                     onDownloadPage = {
@@ -115,6 +135,7 @@ class MainActivity : ComponentActivity() {
                             version = BuildConfig.VERSION_NAME + if (BuildConfig.DEBUG) " 调试版" else "",
                             updateState = updateState, onUpdateToggle = { enabled -> scope.launch { updates.setEnabled(enabled) } },
                             onCheckUpdate = { scope.launch { updates.checkNow() } },
+                            style = style, onStyle = { next -> scope.launch { preferences.setStyle(next) } },
                             onOpenUpdate = { release -> inAppUpdates.open(release); showUpdate = true })
                     })
             }
@@ -123,12 +144,12 @@ class MainActivity : ComponentActivity() {
 }
 
 @Suppress("DEPRECATION")
-fun applySystemBarTheme(window: Window, dark: Boolean) {
+fun applySystemBarTheme(window: Window, dark: Boolean, colors: QuietGridColors = if (dark) QuietGridDark else QuietGridLight) {
     // API 26 otherwise keeps the light scrim chosen before an in-app theme
     // switch. Let the approved Compose background paint both system bars.
     window.statusBarColor = android.graphics.Color.TRANSPARENT
     window.navigationBarColor = android.graphics.Color.TRANSPARENT
-    window.setBackgroundDrawable(ColorDrawable((if (dark) QuietGridDark else QuietGridLight).bg.toArgb()))
+    window.setBackgroundDrawable(ColorDrawable(colors.bg.toArgb()))
     if (Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
     WindowInsetsControllerCompat(window, window.decorView).apply {
         isAppearanceLightStatusBars = !dark

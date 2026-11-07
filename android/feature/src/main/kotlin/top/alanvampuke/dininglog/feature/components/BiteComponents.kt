@@ -37,13 +37,19 @@ import androidx.compose.ui.unit.dp
 import top.alanvampuke.dininglog.feature.theme.*
 
 // Draw the solid offset first. No blurred elevation shadows anywhere in the skin.
+// Ink & Paper drops the offset shadow and the stroke entirely: a flat fill
+// with square corners. QuietGrid keeps the exact current rendering.
+@Composable
 fun Modifier.brutalBox(fill: Color, stroke: Color, shadow: Color, radius: Dp = 14.dp,
-    offset: Dp = 4.dp, width: Dp = 2.5.dp): Modifier = drawBehind {
-    val r = radius.toPx(); val d = offset.toPx(); val w = width.toPx()
-    drawRoundRect(shadow, topLeft = Offset(d, d), size = size, cornerRadius = CornerRadius(r))
-    drawRoundRect(fill, size = size, cornerRadius = CornerRadius(r))
-    drawRoundRect(stroke, topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w),
-        cornerRadius = CornerRadius((r - w / 2).coerceAtLeast(0f)), style = Stroke(w))
+    offset: Dp = 4.dp, width: Dp = 2.5.dp): Modifier {
+    if (LocalThemeStyle.current.isInkPaper) return drawBehind { drawRect(fill, size = size) }
+    return drawBehind {
+        val r = radius.toPx(); val d = offset.toPx(); val w = width.toPx()
+        drawRoundRect(shadow, topLeft = Offset(d, d), size = size, cornerRadius = CornerRadius(r))
+        drawRoundRect(fill, size = size, cornerRadius = CornerRadius(r))
+        drawRoundRect(stroke, topLeft = Offset(w / 2, w / 2), size = Size(size.width - w, size.height - w),
+            cornerRadius = CornerRadius((r - w / 2).coerceAtLeast(0f)), style = Stroke(w))
+    }
 }
 fun Modifier.paperDots(color: Color, spacing: Dp = 16.dp): Modifier = drawBehind {
     val step = spacing.toPx()
@@ -58,10 +64,14 @@ fun Modifier.revisionRail(color: Color): Modifier = drawBehind {
     drawLine(color, Offset(3.dp.toPx(), 0f), Offset(3.dp.toPx(), size.height), 2.dp.toPx())
     drawCircle(color, 4.dp.toPx(), Offset(3.dp.toPx(), 20.dp.toPx()))
 }
-fun Modifier.revisedStamp(color: Color): Modifier = rotate(-6f).drawBehind {
-    val w = 1.5.dp.toPx()
-    drawRoundRect(color, topLeft = Offset(w, w), size = Size(size.width - 2 * w, size.height - 2 * w),
-        cornerRadius = CornerRadius(3.dp.toPx()), style = Stroke(w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 3.dp.toPx()))))
+@Composable
+fun Modifier.revisedStamp(color: Color): Modifier {
+    if (LocalThemeStyle.current.isInkPaper) return this
+    return rotate(-6f).drawBehind {
+        val w = 1.5.dp.toPx()
+        drawRoundRect(color, topLeft = Offset(w, w), size = Size(size.width - 2 * w, size.height - 2 * w),
+            cornerRadius = CornerRadius(3.dp.toPx()), style = Stroke(w, pathEffect = PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 3.dp.toPx()))))
+    }
 }
 @Composable fun BitePanel(modifier: Modifier = Modifier, fill: Color = LocalQuietGridColors.current.surface,
     content: @Composable ColumnScope.() -> Unit) {
@@ -71,6 +81,11 @@ fun Modifier.revisedStamp(color: Color): Modifier = rotate(-6f).drawBehind {
 }
 @Composable fun Sticker(text: String, fill: Color, modifier: Modifier = Modifier, tilt: Float = 0f, dieCut: Boolean = false, maxLines: Int = Int.MAX_VALUE) {
     val c = LocalQuietGridColors.current
+    // Ink & Paper has no sticker chips: plain small secondary text instead.
+    if (LocalThemeStyle.current.isInkPaper) {
+        GridText(text, modifier, style = MaterialTheme.typography.labelSmall, color = c.secondary, maxLines = maxLines)
+        return
+    }
     val outer = if (dieCut) Modifier.drawBehind {
         drawRoundRect(c.dieCut, topLeft = Offset(-3.dp.toPx(), -3.dp.toPx()),
             size = Size(size.width + 6.dp.toPx(), size.height + 6.dp.toPx()), cornerRadius = CornerRadius(11.dp.toPx()))
@@ -90,16 +105,28 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 }
 @Composable fun verdictFill(tenths: Int?): Color {
     val c = LocalQuietGridColors.current
+    // Ink & Paper stops banding scores by colour: persimmon at 8.0+, ink below.
+    if (LocalThemeStyle.current.isInkPaper) return when { tenths == null -> c.paper; tenths >= 80 -> c.accent; else -> c.ink }
     return when { tenths == null -> c.paper; tenths >= 46 -> c.butter; tenths >= 40 -> c.mint; tenths >= 32 -> c.peach; else -> c.popRed }
 }
 @Composable fun VerdictSticker(value: String?, dish: Boolean = false) {
     val tenths = value?.toIntOrNull()
     val c = LocalQuietGridColors.current
     if (tenths == null) GridText("未评分", style = MaterialTheme.typography.labelSmall, color = c.secondary)
+    else if (LocalThemeStyle.current.isInkPaper) GridText(verdictLabel(tenths, dish), style = MaterialTheme.typography.labelSmall,
+        color = if (tenths >= 80) c.accent else c.secondary)
     else Sticker(verdictLabel(tenths, dish), verdictFill(tenths))
 }
 @Composable fun ReceiptEdge(top: Boolean) {
     val c = LocalQuietGridColors.current
+    // Ink & Paper keeps the ticket idea but swaps the zigzag edge for a dashed rule.
+    if (LocalThemeStyle.current.isInkPaper) {
+        Canvas(Modifier.fillMaxWidth().height(10.dp)) {
+            drawLine(c.border, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 1.dp.toPx(),
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
+        }
+        return
+    }
     Canvas(Modifier.fillMaxWidth().height(10.dp)) {
         val step = 16.dp.toPx(); val depth = 8.dp.toPx()
         val path = Path().apply {
@@ -130,6 +157,14 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 @Composable fun BiteButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: ButtonColors? = null, contentPadding: PaddingValues = ButtonDefaults.ContentPadding, content: @Composable RowScope.() -> Unit) {
     val c = LocalQuietGridColors.current
+    // Ink & Paper: a flat persimmon capsule, no border, no press shift.
+    if (LocalThemeStyle.current.isInkPaper) {
+        Button(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, contentPadding = contentPadding,
+            shape = RoundedCornerShape(50), elevation = ButtonDefaults.buttonElevation(0.dp, 0.dp, 0.dp, 0.dp, 0.dp),
+            colors = colors?.copy(contentColor = c.onAccent, disabledContainerColor = c.paper, disabledContentColor = c.secondary) ?: ButtonDefaults.buttonColors(containerColor = c.cta, contentColor = c.onAccent,
+                disabledContainerColor = c.paper, disabledContentColor = c.secondary), content = content)
+        return
+    }
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val animate = rememberNavigationAnimationsEnabled()
@@ -145,6 +180,12 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 @Composable fun BiteTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     content: @Composable RowScope.() -> Unit) {
     val c = LocalQuietGridColors.current
+    // Ink & Paper: a plain text link, no bordered chip.
+    if (LocalThemeStyle.current.isInkPaper) {
+        TextButton(onClick, modifier.heightIn(min = 48.dp), enabled,
+            colors = ButtonDefaults.textButtonColors(contentColor = c.accentInk, disabledContentColor = c.secondary), content = content)
+        return
+    }
     TextButton(onClick, modifier.heightIn(min = 48.dp).border(1.5.dp, c.border, RoundedCornerShape(10.dp)), enabled,
         colors = ButtonDefaults.textButtonColors(contentColor = c.accentInk, disabledContentColor = c.secondary), content = content)
 }
@@ -164,6 +205,13 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
     val supportingSlot: (@Composable () -> Unit)? = supportingText?.let { content ->
         { Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) { content() } }
     }
+    // Ink & Paper: an underline-only field (1px rule, ink when focused)
+    // instead of the boxed 2dp outline.
+    val fieldBorder = if (LocalThemeStyle.current.isInkPaper) Modifier.drawBehind {
+        val y = size.height - 0.5.dp.toPx()
+        drawLine(if (isError) c.danger else if (focused) c.ink else c.border,
+            Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+    } else Modifier.border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp))
     // Always keep the label above the box. Material's collapsed empty label hides placeholders.
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null) Box(Modifier.fillMaxWidth().clearAndSetSemantics {}, propagateMinConstraints = true) {
@@ -171,7 +219,7 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
         }
         OutlinedTextField(value, onValueChange,
             modifier.fillMaxWidth().semantics { if (accessibleLabel != null) contentDescription = accessibleLabel }
-                .border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
+                .then(fieldBorder),
             enabled = enabled, interactionSource = source, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
             placeholder = {
                 Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) {

@@ -72,7 +72,7 @@ fun AuthRoot(account: AccountSession, gateway: AuthGateway, onRestore: suspend (
     }
     Surface(color = LocalQuietGridColors.current.bg, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
-            .paperDots(LocalQuietGridColors.current.dots).verticalScroll(rememberScrollState()).padding(QuietGridDimensions.edge), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            .paperDots(LocalQuietGridColors.current.dots).verticalScroll(rememberScrollState()).padding(LocalGridDimensions.current.edge), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             BitePanel(fill = LocalQuietGridColors.current.paper) {
                 GridText("BITE! 食记", style = MaterialTheme.typography.headlineLarge)
                 GridText("私人探店手账 · 账号", style = QuietGridText.date, color = LocalQuietGridColors.current.secondary)

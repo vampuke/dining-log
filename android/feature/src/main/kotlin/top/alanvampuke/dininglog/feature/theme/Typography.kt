@@ -51,3 +51,36 @@ object QuietGridText {
     val originalDetailRating = style(29f, 31.9f, FontWeight.Black, true)
     val detailRating = style(36f, 39.6f, FontWeight.Black, true)
 }
+// Ink & Paper: quieter weights (Black -> SemiBold/Bold), roomier body leading,
+// and a smaller, lighter big score (32sp Bold instead of 36sp Black).
+val InkPaperTypography = Typography(
+    displayLarge = style(36f, 39.6f, FontWeight.Bold, true),
+    displayMedium = style(28f, 42f, mono = true),
+    displaySmall = style(27f, 37.8f, mono = true),
+    headlineLarge = style(26f, 35.1f, FontWeight.SemiBold),
+    headlineMedium = style(25f, 33.75f, FontWeight.SemiBold),
+    headlineSmall = style(18f, 25f, FontWeight.SemiBold),
+    titleLarge = style(17f, 23.8f, FontWeight.SemiBold),
+    titleMedium = style(15f, 23f, FontWeight.SemiBold),
+    titleSmall = style(13f, 19.5f, FontWeight.SemiBold),
+    bodyLarge = style(15f, 24f),
+    bodyMedium = style(14f, 22.4f),
+    bodySmall = style(13f, 20.8f),
+    labelLarge = style(14f, 22f, FontWeight.Bold),
+    labelMedium = style(12f, 18f, FontWeight.Medium),
+    labelSmall = style(11f, 16.5f, FontWeight.Medium),
+)
+object InkPaperText {
+    val scoreUnit = style(9f, 13.5f, FontWeight.Medium)
+    val previewScoreUnit = style(10f, 15f, FontWeight.Medium)
+    val caption = style(11f, 16.5f)
+    val date = style(11f, 16.5f, mono = true)
+    val metadata = style(12f, 18f)
+    val input = style(14f, 21f, FontWeight.Medium)
+    val paragraph = style(14f, 23f)
+    val dishRating = style(16f, 19.2f, mono = true)
+    val listRating = style(16f, 22f, FontWeight.SemiBold, true)
+    val originalDetailRating = style(29f, 31.9f, FontWeight.Bold, true)
+    val detailRating = style(32f, 35.2f, FontWeight.Bold, true)
+    val recordTitle = style(17f, 22.1f, FontWeight.SemiBold)
+}
