@@ -9,6 +9,7 @@ import android.os.PersistableBundle
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.createSavedStateHandle
@@ -48,26 +49,25 @@ internal fun MainActivityContent(
     val style by preferences.style.collectAsStateWithLifecycle(ThemeStyle.INK_PAPER)
     val updateState by updates.state.collectAsStateWithLifecycle()
     val installState by inAppUpdates.state.collectAsStateWithLifecycle()
-    var showUpdate by remember { mutableStateOf(false) }
-    var launchUpdateShown by remember { mutableStateOf(false) }
+    var showUpdate by rememberSaveable { mutableStateOf(false) }
+    var launchUpdateAcknowledged by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(installState.stage) {
         if (installState.stage == UpdateStage.READY) {
             showUpdate = true
             inAppUpdates.install(activity, requestInstallPermission)
         }
     }
-    // Launch update popup: the checker already runs once at startup
-    // when the toggle is on. Surface a background result once as the
-    // update dialog, instead of only leaving the "有新版本" row in
-    // Settings. A manual result never triggers this — its dialog is
-    // opened from Settings — and dismissing it does not re-show it
-    // for this launch. With the toggle off there is no result at all.
-    LaunchedEffect(updateState.release, updateState.manual, updateState.enabled) {
-        val release = updateState.release
-        if (!launchUpdateShown && release != null && updateState.enabled && !updateState.manual) {
-            launchUpdateShown = true
-            inAppUpdates.open(release, automatic = true)
-            showUpdate = true
+    // Only the first persisted preference's startup offer may interrupt this
+    // launch. Consume it even if a later manual check or opt-out suppresses it.
+    // Saved acknowledgement and visibility survive Activity configuration changes.
+    LaunchedEffect(updateState.startupRelease, updateState.manual, updateState.enabled) {
+        val release = updateState.startupRelease
+        if (!launchUpdateAcknowledged && release != null) {
+            launchUpdateAcknowledged = true
+            if (updateState.enabled && !updateState.manual) {
+                inAppUpdates.open(release, automatic = true)
+                showUpdate = true
+            }
         }
     }
     val dark = when (choice) { ThemeChoice.SYSTEM -> isSystemInDarkTheme(); ThemeChoice.DARK -> true; ThemeChoice.LIGHT -> false }
