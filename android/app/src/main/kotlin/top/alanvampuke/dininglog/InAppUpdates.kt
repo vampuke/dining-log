@@ -43,18 +43,19 @@ class InAppUpdates internal constructor(
     init { sweepUpdateOrphans(directory) }
     private fun apk(release: AppRelease) = File(directory, "app-${release.versionCode}.apk")
 
-    fun open(release: AppRelease) = open(release, automatic = false)
+    fun open(release: AppRelease) { open(release, automatic = false) }
 
-    internal fun open(release: AppRelease, automatic: Boolean) {
+    internal fun open(release: AppRelease, automatic: Boolean): Boolean {
         synchronized(ownershipLock) {
             val selected = state.value
-            if (selected.busy || selected.release == release || (automatic && selected.release != null)) return
+            if (selected.busy || selected.release == release || (automatic && selected.release != null)) return false
             if (!release.valid || !isNewerVersion(release.versionCode, BuildConfig.VERSION_CODE) ||
-                !isAllowedUpdateUrl(release.url, ApiConfiguration.BASE_URL)) return
+                !isAllowedUpdateUrl(release.url, ApiConfiguration.BASE_URL)) return false
             invalidateInstallation()
             cancelled = false
             sweepUpdateOrphans(directory, release.versionCode)
             mutableState.value = UpdateInstallState(release)
+            return true
         }
     }
     fun startDownload() {
