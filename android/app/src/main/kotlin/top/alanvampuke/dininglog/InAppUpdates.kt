@@ -36,6 +36,7 @@ class InAppUpdates internal constructor(
     // Retain an outstanding Settings request even if its selection is canceled.
     // Its eventual callback belongs to that generation, never a later release.
     private var permissionGeneration: Long? = null
+    private var permissionContinuationGeneration: Long? = null
     @Volatile private var cancelled = false
     @Volatile private var connection: UpdateConnection? = null
     private val directory = File(context.cacheDir, "updates")
@@ -99,6 +100,7 @@ class InAppUpdates internal constructor(
     // Called under ownershipLock; Core's busy remains a download-only UI flag.
     private fun invalidateInstallation() {
         generation++
+        permissionContinuationGeneration = null
         installJob?.cancel()
         installJob = null
     }
@@ -202,8 +204,28 @@ class InAppUpdates internal constructor(
         synchronized(ownershipLock) {
             val owner = if (afterPermission) {
                 val pending = permissionGeneration ?: return
+                if (pending != generation || state.value.stage != UpdateStage.NEED_PERMISSION) {
+                    permissionGeneration = null
+                    return
+                }
+                val activeJob = installJob?.takeUnless { it.isCompleted }
+                if (activeJob != null) {
+                    // A synchronous Settings return can reenter its requesting job.
+                    // Retain the token and queue only one continuation after completion.
+                    if (permissionContinuationGeneration == pending) return
+                    permissionContinuationGeneration = pending
+                    activeJob.invokeOnCompletion {
+                        synchronized(ownershipLock) {
+                            if (permissionContinuationGeneration != pending) return@invokeOnCompletion
+                            permissionContinuationGeneration = null
+                            if (generation == pending && permissionGeneration == pending) {
+                                install(activity, requestPermission, afterPermission = true)
+                            }
+                        }
+                    }
+                    return
+                }
                 permissionGeneration = null
-                if (pending != generation || state.value.stage != UpdateStage.NEED_PERMISSION) return
                 pending
             } else generation
             val release = state.value.release ?: return
