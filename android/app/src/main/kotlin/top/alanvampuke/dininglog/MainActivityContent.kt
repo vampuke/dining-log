@@ -64,8 +64,7 @@ internal fun MainActivityContent(
         val release = updateState.startupRelease
         if (!launchUpdateAcknowledged && release != null) {
             launchUpdateAcknowledged = true
-            if (updateState.enabled && !updateState.manual) {
-                inAppUpdates.open(release, automatic = true)
+            if (updateState.enabled && !updateState.manual && inAppUpdates.open(release, automatic = true)) {
                 showUpdate = true
             }
         }
