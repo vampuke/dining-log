@@ -12,11 +12,14 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -24,12 +27,16 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.takeOrElse
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
@@ -191,6 +198,7 @@ fun verdictLabel(tenths: Int?, dish: Boolean = false): String = when {
 }
 // Slot foreground is explicit so GridText and Material Text share label/placeholder roles.
 val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun BiteTextField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier,
     enabled: Boolean = true, label: (@Composable () -> Unit)? = null, accessibleLabel: String? = null,
     placeholder: (@Composable () -> Unit)? = null,
@@ -205,21 +213,65 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
     val supportingSlot: (@Composable () -> Unit)? = supportingText?.let { content ->
         { Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) { content() } }
     }
-    // Ink & Paper: an underline-only field (1px rule, ink when focused)
-    // instead of the boxed 2dp outline.
-    val fieldBorder = if (LocalThemeStyle.current.isInkPaper) Modifier.drawBehind {
-        val y = size.height - 0.5.dp.toPx()
-        drawLine(if (isError) c.danger else if (focused) c.ink else c.border,
-            Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
-    } else Modifier.border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp))
+    val fieldColors = OutlinedTextFieldDefaults.colors(focusedTextColor = c.ink, unfocusedTextColor = c.ink,
+        disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = c.surface,
+        unfocusedContainerColor = c.surface, disabledContainerColor = c.surface, errorContainerColor = c.surface,
+        focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent, errorBorderColor = Color.Transparent,
+        focusedLabelColor = c.ink, unfocusedLabelColor = c.secondary, disabledLabelColor = c.secondary,
+        errorLabelColor = c.danger, cursorColor = c.ink, errorCursorColor = c.danger,
+        focusedPlaceholderColor = c.tertiary, unfocusedPlaceholderColor = c.tertiary,
+        disabledPlaceholderColor = c.tertiary, errorPlaceholderColor = c.tertiary,
+        focusedLeadingIconColor = c.secondary, unfocusedLeadingIconColor = c.secondary,
+        disabledLeadingIconColor = c.secondary, errorLeadingIconColor = c.danger,
+        focusedSupportingTextColor = c.secondary, unfocusedSupportingTextColor = c.secondary,
+        disabledSupportingTextColor = c.secondary, errorSupportingTextColor = c.danger)
+    val fieldModifier = modifier.fillMaxWidth().semantics { if (accessibleLabel != null) contentDescription = accessibleLabel }
     // Always keep the label above the box. Material's collapsed empty label hides placeholders.
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (label != null) Box(Modifier.fillMaxWidth().clearAndSetSemantics {}, propagateMinConstraints = true) {
             CompositionLocalProvider(LocalContentColor provides labelColor, LocalFieldForeground provides labelColor) { label() }
         }
-        OutlinedTextField(value, onValueChange,
-            modifier.fillMaxWidth().semantics { if (accessibleLabel != null) contentDescription = accessibleLabel }
-                .then(fieldBorder),
+        if (LocalThemeStyle.current.isInkPaper) {
+            val ruleColor = if (isError) c.danger else if (focused) c.ink else c.border
+            val textColor = textStyle.color.takeOrElse {
+                when { !enabled -> fieldColors.disabledTextColor; isError -> fieldColors.errorTextColor;
+                    focused -> fieldColors.focusedTextColor; else -> fieldColors.unfocusedTextColor }
+            }
+            val defaultError = stringResource(androidx.compose.ui.R.string.default_error_message)
+            // Match the pinned Material wrapper; only its container painting changes.
+            CompositionLocalProvider(LocalTextSelectionColors provides fieldColors.textSelectionColors) {
+                BasicTextField(value, onValueChange,
+                    fieldModifier.then(if (isError) Modifier.semantics { error(defaultError) } else Modifier)
+                        .defaultMinSize(OutlinedTextFieldDefaults.MinWidth, OutlinedTextFieldDefaults.MinHeight),
+                    enabled = enabled, interactionSource = source, textStyle = textStyle.merge(TextStyle(color = textColor)),
+                    cursorBrush = SolidColor(if (isError) fieldColors.errorCursorColor else fieldColors.cursorColor),
+                    singleLine = singleLine, minLines = minLines, visualTransformation = visualTransformation,
+                    keyboardOptions = keyboardOptions,
+                    decorationBox = { innerTextField ->
+                        OutlinedTextFieldDefaults.DecorationBox(value, innerTextField, enabled, singleLine,
+                            visualTransformation, source, isError = isError, supportingText = supportingSlot,
+                            leadingIcon = leadingIcon, colors = fieldColors,
+                            placeholder = {
+                                Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) {
+                                    CompositionLocalProvider(LocalContentColor provides c.tertiary, LocalFieldForeground provides c.tertiary) {
+                                        if (placeholder != null) placeholder() else Text("", style = textStyle)
+                                    }
+                                }
+                            },
+                            container = {
+                                // Material measures this box without support/error text.
+                                OutlinedTextFieldDefaults.Container(enabled, isError, source,
+                                    modifier = Modifier.drawWithContent {
+                                        drawContent()
+                                        val y = size.height - 0.5.dp.toPx()
+                                        drawLine(ruleColor, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+                                    }, colors = fieldColors, shape = RoundedCornerShape(10.dp))
+                            })
+                    })
+            }
+        } else OutlinedTextField(value, onValueChange,
+            fieldModifier.border(2.dp, if (isError) c.danger else c.border, RoundedCornerShape(10.dp)),
             enabled = enabled, interactionSource = source, textStyle = textStyle, singleLine = singleLine, minLines = minLines,
             placeholder = {
                 Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) {
@@ -233,18 +285,6 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
             },
             isError = isError, supportingText = supportingSlot, visualTransformation = visualTransformation,
             keyboardOptions = keyboardOptions, leadingIcon = leadingIcon, shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = c.ink, unfocusedTextColor = c.ink,
-                disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = c.surface,
-                unfocusedContainerColor = c.surface, disabledContainerColor = c.surface, errorContainerColor = c.surface,
-                focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
-                disabledBorderColor = Color.Transparent, errorBorderColor = Color.Transparent,
-                focusedLabelColor = c.ink, unfocusedLabelColor = c.secondary, disabledLabelColor = c.secondary,
-                errorLabelColor = c.danger, cursorColor = c.ink, errorCursorColor = c.danger,
-                focusedPlaceholderColor = c.tertiary, unfocusedPlaceholderColor = c.tertiary,
-                disabledPlaceholderColor = c.tertiary, errorPlaceholderColor = c.tertiary,
-                focusedLeadingIconColor = c.secondary, unfocusedLeadingIconColor = c.secondary,
-                disabledLeadingIconColor = c.secondary, errorLeadingIconColor = c.danger,
-                focusedSupportingTextColor = c.secondary, unfocusedSupportingTextColor = c.secondary,
-                disabledSupportingTextColor = c.secondary, errorSupportingTextColor = c.danger))
+            colors = fieldColors)
     }
 }
