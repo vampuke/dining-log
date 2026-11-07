@@ -13,6 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -28,7 +29,12 @@ import top.alanvampuke.dininglog.core.*
 // exactly this class, using AndroidJUnitRunner 1.6.2's supported "class" argument.
 @RunWith(AndroidJUnit4::class)
 class Pr18ReviewRegressionTest {
-    @get:Rule val compose = createAndroidComposeRule<P9VisualActivity>()
+    // Compose 1.8.2's unconfined default can resume window SideEffects on an
+    // I/O emitter. Queue composition work for the rule's UI-thread clock.
+    @OptIn(ExperimentalTestApi::class, ExperimentalCoroutinesApi::class)
+    @get:Rule val compose = createAndroidComposeRule<P9VisualActivity>(
+        effectContext = StandardTestDispatcher(),
+    )
     private lateinit var evidence: Pr18Evidence
     private var runtime: Pr18Runtime? = null
     private val a = pr18Release(name = "手动选择 A")
