@@ -1,0 +1,72 @@
+{
+  "module": "validation",
+  "base_sha": "45c7f65823042deb76171732dcb2a000f8620e65",
+  "head_sha": "8b8decf7c39ed67858ef99c760e1ca75e273f013",
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "VAL-01",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Theme.kt",
+      "line": 21,
+      "claim": "The new default InkPaper rendering path has no instrumentation coverage.",
+      "evidence": "All instrumentation theme calls omit style and therefore render QUIET_GRID. No androidTest source references ThemeStyle, INK_PAPER, or MainActivity. ProductVisualTest, P8VisualTest, Pr17UiTest, authentication tests, and product E2E tests use synthetic activities. The complete diff changes no instrumentation test; the sole added test verifies DataStore persistence.",
+      "impact": "Successful existing UI jobs cannot establish the required InkPaper light/dark/large-font acceptance or actual startup and style-switch behavior.",
+      "recommendation": "Preserve legacy assertions and add explicit INK_PAPER and QUIET_GRID cases covering list, detail, settings, authentication, input states, and dialogs on API 26/35. Add MainActivity startup and persisted style/theme switching tests. Assert rendered colors, measured text layouts, callbacks, tags, and 48dp targets.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    },
+    {
+      "id": "VAL-02",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt",
+      "line": 53,
+      "claim": "InkPaper fails the existing text-contrast requirement while the CI contrast guard reports success.",
+      "evidence": "Executed WCAG luminance calculations give InkPaperDark onAccent/cta (#FFFFFF/#E0653A) = 3.4471:1 and InkPaperLight tertiary/surface (#8A8175/#FFFFFF) = 3.8338:1. BiteButton uses onAccent/cta for enabled button labels; BiteTextField uses tertiary/surface for enabled placeholders. Baseline ratios are 13.3755:1 and 7.2528:1 respectively. verify_bite_visuals.py:35-36 selects only QuietGrid palettes; its retained CI entry point passed.",
+      "impact": "Normal-size save, authentication, and update button labels and light-mode placeholders fall below 4.5:1, without failing CI.",
+      "recommendation": "Correct these rendered color pairs and extend the verifier to both InkPaper palettes using actual component bindings. Retain all QuietGrid, vector, tag, and protected-hash assertions.",
+      "introduced_in_pr": true,
+      "verification": "executed"
+    },
+    {
+      "id": "VAL-03",
+      "severity": "MAJOR",
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt",
+      "line": 88,
+      "claim": "The new automatic launch-popup orchestration lacks activity-level acceptance tests.",
+      "evidence": "Existing UpdatesTest cases validate AppUpdateChecker state, and P6UpdateUiTest validates manual Settings callbacks. Neither executes this LaunchedEffect or its interaction with InAppUpdates and AuthRoot. No instrumentation test launches MainActivity. The new launchUpdateShown flag is ordinary remember state, while AppUpdateChecker is a singleton, making dismissal across activity recreation a concrete unverified lifecycle case.",
+      "impact": "The promised launch-only, once-only popup, opt-out behavior, manual-check separation, and absence of automatic downloads remain unverified.",
+      "recommendation": "Add MainActivity tests with controlled update responses: enabled/newer shows once; disabled, failed, equal, and older responses show nothing; manual checks retain their existing flow; dismissal survives recomposition and recreation; changing the toggle after startup follows launch-only semantics; no download starts without an explicit action. Exercise authenticated and login startup.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    }
+  ],
+  "acceptance": [
+    "Before merge, pass the existing full connectedDebugAndroidTest suite on API 26 and API 35 without weakening legacy assertions, and execute explicit style × light/dark × font cases at 1.0, 1.3, 1.31, and 2.0.",
+    "Cover restaurant/search/dish/visit/history lists, detail and editing, settings, login/register/recovery, enabled/disabled/error/multiline fields, and update/password/conflict/apply/confirmation dialogs. Measure overflow, scrolling, callbacks, existing tags, and 48dp targets.",
+    "For large-font acceptance, change real system font_scale and verify Activity resources plus each dialog's TextLayoutResult density. Injected LocalDensity and screenshot filenames alone are insufficient. Existing real-system-font apply-dialog tests must remain.",
+    "Verify MainActivity starts with InkPaper for absent style preferences, restores the selected style, and switches both styles independently of SYSTEM/LIGHT/DARK, including system-night changes and recreation.",
+    "Require both styles' rendered text pairs to meet 4.5:1 and retain existing contrast, native-resource, vector, APK, and immutable-file guards.",
+    "Base CI run 41976060279 is a successful master push for the immutable base with all four required jobs successful. PR run 42351574722 has successful backend/android jobs, but API 26/35 were still in progress at the live check.",
+    "Release 0.8.3 requires a separately reviewed versionName 0.8.3, increasing versionCode, changelog, and matching version-test expectations. This head remains 0.8.2/versionCode 10; that is unchanged baseline state, not a PR regression.",
+    "Release selection must use successful regular master push CI for the final release SHA with backend/android/API26/API35 success. Preserve checkout/tag/ancestry checks, fixed signing certificate, APK identity and checksum checks, signed installation/upgrade checks on both APIs, immutable migrations, production integrity/health/smoke, and publication ordering."
+  ],
+  "validation_executed": [
+    "Read the complete immutable 15-file diff, changed files, all instrumentation tests, relevant activities/dialogs/preferences/update definitions, CI workflows, APK/release scripts, policies, and guard consumers.",
+    "node --test .github/scripts/release-guards.test.mjs: 7 passed.",
+    "python3 -B -m unittest discover -s .github/scripts -p 'test_*.py': 18 passed using synthetic release-install and APK-metadata fixtures; no real device or APK installation.",
+    "python3 -B android/tools/verify_p6_visuals.py: passed retained QuietGrid contrast, native-resource, vector, tag, and protected-file checks.",
+    "Independent contrast calculations executed against current and baseline-bound palette values; InkPaper failures recorded in VAL-02.",
+    "Verified all 80 protected backend/contracts hashes and both release migration hashes. Compared 34 tracked workflow/guard/instrumentation files against base: all unchanged.",
+    "Authenticated the supplied android-build archive by its recorded SHA-256 a2ee178f6390356b2ac060754348cf8d897015ada11cc92f1742b1cbc9fc6c42. Inspected 11 JUnit reports: 90 tests, zero failures/errors/skips, including the new style-persistence test. These are CI results, not locally executed Android tests.",
+    "Read live GitHub run/job metadata for PR run 42351574722 and base run 41976060279. Confirmed PR merge commit 6a21fe4208dc3bff42364127a0e18adf73500390 has the same source tree as the reviewed head; CI checkout logs were not inspected.",
+    "Static scan of added lines found no credential/private-key literals, shell execution, or new network/storage/permission declarations.",
+    "git diff --check passed; repository status remained clean. No repository files were written."
+  ],
+  "not_verified": [
+    "Completion and results of the PR's API26/API35 instrumentation jobs.",
+    "InkPaper runtime screenshots, actual large-font rendering, style switching, and MainActivity launch-popup behavior.",
+    "The design file referenced by the PR body, goals/dining-log-ux-fix-prs/files/dining-log-new-style/dining-log-new-style.md, was unavailable in the repository and supplied review directory.",
+    "Real signed APK build, signature, installation, upgrade, production validation, and release 0.8.3. No builds, emulators, dependency installation, workflow dispatches, or production actions were performed."
+  ]
+}

@@ -1,0 +1,90 @@
+PASS Light ink/bg 18.5419:1
+PASS Light ink/surface 18.8831:1
+PASS Light ink/paper 17.1974:1
+PASS Light ink/dots 12.3299:1
+PASS Light secondary/bg 8.4847:1
+PASS Light secondary/surface 8.6408:1
+PASS Light secondary/paper 7.8694:1
+PASS Light secondary/dots 5.6421:1
+PASS Light tertiary/bg 7.1218:1
+PASS Light tertiary/surface 7.2528:1
+PASS Light tertiary/paper 6.6054:1
+PASS Light tertiary/dots 4.7358:1
+PASS Light danger/bg 7.3449:1
+PASS Light danger/surface 7.4800:1
+PASS Light danger/paper 6.8123:1
+PASS Light danger/dots 4.8842:1
+PASS Light accentInk/bg 18.5419:1
+PASS Light accentInk/surface 18.8831:1
+PASS Light accentInk/paper 17.1974:1
+PASS Light accentInk/dots 12.3299:1
+PASS Light onAccent/cta 13.3755:1
+PASS Light accentInk/accentSoft 13.3755:1
+PASS Light stickerInk/butter 13.3755:1
+PASS Light stickerInk/popRed 6.1528:1
+PASS Light stickerInk/mint 10.0116:1
+PASS Light stickerInk/klein 5.4257:1
+PASS Light stickerInk/peach 9.1970:1
+PASS Light stickerInk/bubble 7.3017:1
+PASS Dark ink/bg 16.7009:1
+PASS Dark ink/surface 14.3296:1
+PASS Dark ink/paper 12.5367:1
+PASS Dark ink/dots 11.7415:1
+PASS Dark secondary/bg 11.6067:1
+PASS Dark secondary/surface 9.9586:1
+PASS Dark secondary/paper 8.7126:1
+PASS Dark secondary/dots 8.1600:1
+PASS Dark tertiary/bg 9.0041:1
+PASS Dark tertiary/surface 7.7256:1
+PASS Dark tertiary/paper 6.7590:1
+PASS Dark tertiary/dots 6.3303:1
+PASS Dark danger/bg 8.7999:1
+PASS Dark danger/surface 7.5505:1
+PASS Dark danger/paper 6.6058:1
+PASS Dark danger/dots 6.1867:1
+PASS Dark accentInk/bg 16.7009:1
+PASS Dark accentInk/surface 14.3296:1
+PASS Dark accentInk/paper 12.5367:1
+PASS Dark accentInk/dots 11.7415:1
+PASS Dark onAccent/cta 13.3755:1
+PASS Dark accentInk/accentSoft 11.1899:1
+PASS Dark stickerInk/butter 13.3755:1
+PASS Dark stickerInk/popRed 6.1528:1
+PASS Dark stickerInk/mint 10.0116:1
+PASS Dark stickerInk/klein 5.4257:1
+PASS Dark stickerInk/peach 9.1970:1
+PASS Dark stickerInk/bubble 7.3017:1
+PASS contrast failures=0, native night colors, visible dark strokes/shadows, launcher bindings, vectors, tags, backend/contracts unchanged
+PASS InkPaperLight BiteButton normal onAccent/cta 5.4615:1 >= 4.5:1
+PASS InkPaperLight BiteButton focused onAccent/cta 4.6182:1 >= 4.5:1
+PASS InkPaperLight BiteButton pressed onAccent/cta 4.6182:1 >= 4.5:1
+FAIL InkPaperLight BiteTextField.placeholder focused tertiary/surface 3.8338:1 >= 4.5:1
+FAIL InkPaperLight BiteTextField.placeholder unfocused tertiary/surface 3.8338:1 >= 4.5:1
+FAIL InkPaperLight BiteTextField.placeholder error tertiary/surface 3.8338:1 >= 4.5:1
+PASS InkPaperLight RatingEditor.reachableHighScore required-40-tenths accent/paper 4.6816:1 >= 4.5:1
+FAIL InkPaperLight Settings.updateSwitch.thumb enabled-unchecked borderStrong/surface 1.5737:1 >= 3:1
+FAIL InkPaperLight Settings.updateSwitch.thumb enabled-unchecked borderStrong/bg 1.4708:1 >= 3:1
+FAIL InkPaperLight Settings.updateSwitch.border enabled-unchecked borderStrong/surface 1.5737:1 >= 3:1
+FAIL InkPaperLight Settings.updateSwitch.border enabled-unchecked borderStrong/bg 1.4708:1 >= 3:1
+FAIL InkPaperDark BiteButton normal onAccent/cta 3.4471:1 >= 4.5:1
+FAIL InkPaperDark BiteButton focused onAccent/cta 3.0456:1 >= 4.5:1
+FAIL InkPaperDark BiteButton pressed onAccent/cta 3.0456:1 >= 4.5:1
+FAIL InkPaperDark BiteTextField.placeholder focused tertiary/surface 4.3891:1 >= 4.5:1
+FAIL InkPaperDark BiteTextField.placeholder unfocused tertiary/surface 4.3891:1 >= 4.5:1
+FAIL InkPaperDark BiteTextField.placeholder error tertiary/surface 4.3891:1 >= 4.5:1
+FAIL InkPaperDark RatingEditor.reachableHighScore required-40-tenths accent/paper 4.2290:1 >= 4.5:1
+FAIL InkPaperDark Settings.updateSwitch.thumb enabled-unchecked borderStrong/surface 1.6112:1 >= 3:1
+FAIL InkPaperDark Settings.updateSwitch.thumb enabled-unchecked borderStrong/bg 1.7678:1 >= 3:1
+FAIL InkPaperDark Settings.updateSwitch.border enabled-unchecked borderStrong/surface 1.6112:1 >= 3:1
+FAIL InkPaperDark Settings.updateSwitch.border enabled-unchecked borderStrong/bg 1.7678:1 >= 3:1
+Traceback (most recent call last):
+  File "/tmp/dining-pr18-fix-0.8.3/android/tools/verify_p6_visuals.py", line 8, in <module>
+    from verify_bite_visuals import *  # noqa: F401,F403
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/dining-pr18-fix-0.8.3/android/tools/verify_bite_visuals.py", line 122, in <module>
+    measurements['ink_paper'] = check_ink_paper()
+                                ^^^^^^^^^^^^^^^^^
+  File "/tmp/dining-pr18-fix-0.8.3/android/tools/pr18_visual_roles.py", line 185, in check_ink_paper
+    assert not failures, f'InkPaper actual component contrast failures={len(failures)}'
+           ^^^^^^^^^^^^
+AssertionError: InkPaper actual component contrast failures=18

@@ -1,0 +1,302 @@
+{
+  "phase": "test-only checkpoint; stop for parent Android RED",
+  "branch": "fix/pr18-review-0.8.3",
+  "original_pr_head": "8b8decf7c39ed67858ef99c760e1ca75e273f013",
+  "immutable_master_base": "45c7f65823042deb76171732dcb2a000f8620e65",
+  "checkpoint_sha": "Use the containing Git commit SHA returned by the implementer.",
+  "lightweight_execution": "lightweight/results.json",
+  "source_measurements": "lightweight/component-roles.json",
+  "review_hashes": "review-hashes.json",
+  "source_fingerprints": [
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ComponentTest.kt",
+      "sha256": "cfd86bf33e6618d6bb0a230cd321f09b73722b57ff0c989bb25fc16de6fa6940"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt",
+      "sha256": "875acd2e8f10e664dcba07033176a2ed05cb7c9d250a709024aa515c35605fac"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt",
+      "sha256": "64c11bee183b664fa81d5d3460e8171a47bdf5e25d11f01ebda31378d2376c09"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Fixtures.kt",
+      "sha256": "6c93f04c524eb5760800793beaf7a1b581c6d948e09f0a685bf81c3832d2d011"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18InstallTransactionTest.kt",
+      "sha256": "4fe28c595559123ba9d75f82a62d2394c79f488723235858dd8db6923966e3f4"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PreferencesOrchestrationTest.kt",
+      "sha256": "0c1c0d871d0c168acafc09818d6eefe30109955ed220df186b94b198557c44cd"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ScreenAcceptanceTest.kt",
+      "sha256": "6b2d15e41bb0c35fbaac9231ab34582853405cc6db47948e60e3866890ff78e7"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18StartupTest.kt",
+      "sha256": "0ac0a8159cc53192f360ddebacf9b8085cdccb4ceaabd9278e1425a1804580a9"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt",
+      "sha256": "8b200e696c2d9144d9245486cb5ae139890e24102dcf20dd33981791f2d8a0d9"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt",
+      "sha256": "0cfd952d00d812ab17a01d05db01171446484d6516e441f8ae6273786f4a94f0"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivityContent.kt",
+      "sha256": "7b08ffbd644e8820dc28c43d9568fba196260e0ec4362e0a449605986a580518"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/UpdateIo.kt",
+      "sha256": "1370ef6c3e04ce9aac40a2dec0178c6491f0a122c7dd4c4e3dd410abf222dec1"
+    },
+    {
+      "path": "android/data/src/debug/kotlin/top/alanvampuke/dininglog/data/Pr18PreferenceFile.kt",
+      "sha256": "737d57e2e609a34d8fdad25685c16ace3764aad3886d791cbbff81a585b916f0"
+    },
+    {
+      "path": "android/tools/pr18_visual_roles.py",
+      "sha256": "4be399cf82effd730a5c22ff81d49cf0a9c8b0e3b2c703ebfd355f37d60f8281"
+    },
+    {
+      "path": "android/tools/test_pr18_theme_regressions.py",
+      "sha256": "bfacf095e718c4e5ef0b8798386bfc20fad889b69c7960a082e50f88080f7b37"
+    },
+    {
+      "path": "android/tools/verify_bite_visuals.py",
+      "sha256": "4bc4a7d23959f4164bd4513428ef6cf38d0fe7a201acbdf4059546c4410d24f7"
+    }
+  ],
+  "android": {
+    "status": "not compiled or executed locally; no Android RED observed yet",
+    "suite": ":app:connectedDebugAndroidTest (entire existing suite)",
+    "ci_script": ".github/scripts/android-test.sh (unchanged; requires GITHUB_ACTIONS=true)",
+    "ci_job": "android-auth-instrumentation",
+    "expected_api_matrix": [
+      26,
+      35
+    ],
+    "expected_style_matrix": [
+      "INK_PAPER/light",
+      "INK_PAPER/dark",
+      "QUIET_GRID/light",
+      "QUIET_GRID/dark"
+    ],
+    "expected_actual_system_font_scales": [
+      1.0,
+      1.3,
+      1.31,
+      2.0
+    ],
+    "expected_literal_background_argb": {
+      "INK_PAPER/light": "0xFFFAF7F0",
+      "INK_PAPER/dark": "0xFF1C1915",
+      "QUIET_GRID/light": "0xFFFFFDF5",
+      "QUIET_GRID/dark": "0xFF14120E"
+    },
+    "narrow_viewport_dp": 360,
+    "landscape_display_rotations": [
+      90,
+      270
+    ],
+    "minimum_measured_target_dp": 48,
+    "pixel_rounding_allowance_dp": 0.5,
+    "planned_source_inventory": [
+      {
+        "class": "Pr18ComponentTest",
+        "source": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ComponentTest.kt",
+        "methods": [
+          "f3InputRuleIsPaintedAboveTheContainerBeforeSupportingTextForEveryFieldState",
+          "f1RenderedButtonAndPlaceholderUseAccessibleForegroundsAndPreserveCallbacks",
+          "f2ActualSettingsUncheckedSwitchThumbAndBorderContrastWithTrackAndSurface",
+          "f4ScoreVerdictAndFillEmphasize40And50WithNeutral39AndNull",
+          "explicitUnratedTrackRequiresAnActionAndSteppersKeepOneTenthAndBounds",
+          "pinnedTextRemeasurementStillRejectsWidthHeightAndMaxLinesClipping",
+          "actualTargetMeasurementRejectsA24dpControlEvenWithAutomaticTouchExpansion"
+        ],
+        "planned_style_cases": 4,
+        "execution": "pending parent CI"
+      },
+      {
+        "class": "Pr18DialogAcceptanceTest",
+        "source": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt",
+        "methods": [
+          "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+          "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity",
+          "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+          "f7ApplyCurrentProposedFieldsAndFooterUseActualFontAndMeasuredTargets",
+          "f7ConfirmationAndOperationDialogActionsKeepCallbacksAndRealFonts"
+        ],
+        "planned_style_cases": 4,
+        "execution": "pending parent CI"
+      },
+      {
+        "class": "Pr18InstallTransactionTest",
+        "source": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18InstallTransactionTest.kt",
+        "methods": [
+          "f6DelayedAutomaticBDoesNotReplaceReadyAOrPreventInstall",
+          "f6DelayedAutomaticBDoesNotReplacePermissionTransactionAOnReturn",
+          "f6DelayedAutomaticBDoesNotSweepInstallingAOrReceiveAsynchronousFailureFromA",
+          "f6RepeatedInstallTapsOwnOneJobAndOnePermissionRequest",
+          "f6RepeatedPermissionReturnInRecreatedOwnerOwnsOneJobAndInstallerIntent",
+          "f6ExplicitCancelAndManualBSelectionCannotReceiveStaleAInstallerCompletion",
+          "cancelRetryAndExplicitManualSelectionRemainUsableWithoutAutomaticDownload"
+        ],
+        "planned_style_cases": 1,
+        "execution": "pending parent CI"
+      },
+      {
+        "class": "Pr18PreferencesOrchestrationTest",
+        "source": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PreferencesOrchestrationTest.kt",
+        "methods": [
+          "f8AbsentStyleRendersInkPaperAndPersistedClassicRestoresAfterRecreationAndReopeningDataStore",
+          "f8BothStyleAndSystemLightDarkChoicesStayOrthogonalThroughSystemNightAndRecreation",
+          "f5FreshLaunchOwnersCanCheckAgainWithoutDownloadingAfterThePreviousLaunchDismissed"
+        ],
+        "planned_style_cases": 1,
+        "execution": "pending parent CI"
+      },
+      {
+        "class": "Pr18ScreenAcceptanceTest",
+        "source": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ScreenAcceptanceTest.kt",
+        "methods": [
+          "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent",
+          "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches",
+          "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches",
+          "f7ProductionLoginRegistrationRecoveryAndAcknowledgementAt100And200Percent"
+        ],
+        "planned_style_cases": 4,
+        "execution": "pending parent CI"
+      },
+      {
+        "class": "Pr18StartupTest",
+        "source": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18StartupTest.kt",
+        "methods": [
+          "f8NewerEnabledStartupOnLoginShowsOnePopupWithZeroDownloads",
+          "f5DismissRotateAndRecreateRetainsTheLaunchAcknowledgement",
+          "f5DismissActualSystemFontChangeRetainsTheLaunchAcknowledgementOnLogin",
+          "f5DismissThemeStyleRecompositionDoesNotShowAgain",
+          "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup",
+          "f8DisabledStartupIssuesNoRequestAndShowsNoPopup",
+          "f8FailedStartupShowsNoPopup",
+          "f8EqualStartupShowsNoPopup",
+          "f8OlderStartupShowsNoPopup",
+          "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload",
+          "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload"
+        ],
+        "planned_style_cases": 4,
+        "execution": "pending parent CI"
+      }
+    ],
+    "expected_red": [
+      {
+        "finding": "F1",
+        "class": "Pr18ComponentTest",
+        "method": "f1RenderedButtonAndPlaceholderUseAccessibleForegroundsAndPreserveCallbacks",
+        "observed": false
+      },
+      {
+        "finding": "F2",
+        "class": "Pr18ComponentTest",
+        "method": "f2ActualSettingsUncheckedSwitchThumbAndBorderContrastWithTrackAndSurface",
+        "observed": false
+      },
+      {
+        "finding": "F3",
+        "class": "Pr18ComponentTest",
+        "method": "f3InputRuleIsPaintedAboveTheContainerBeforeSupportingTextForEveryFieldState",
+        "observed": false
+      },
+      {
+        "finding": "F4",
+        "class": "Pr18ComponentTest",
+        "method": "f4ScoreVerdictAndFillEmphasize40And50WithNeutral39AndNull",
+        "observed": false
+      },
+      {
+        "finding": "F5",
+        "class": "Pr18StartupTest",
+        "method": "f5DismissRotateAndRecreateRetainsTheLaunchAcknowledgement",
+        "observed": false
+      },
+      {
+        "finding": "F5",
+        "class": "Pr18StartupTest",
+        "method": "f5DismissActualSystemFontChangeRetainsTheLaunchAcknowledgementOnLogin",
+        "observed": false
+      },
+      {
+        "finding": "F5",
+        "class": "Pr18StartupTest",
+        "method": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup",
+        "observed": false
+      },
+      {
+        "finding": "F6",
+        "class": "Pr18InstallTransactionTest",
+        "method": "f6DelayedAutomaticBDoesNotReplaceReadyAOrPreventInstall",
+        "observed": false
+      },
+      {
+        "finding": "F6",
+        "class": "Pr18InstallTransactionTest",
+        "method": "f6DelayedAutomaticBDoesNotReplacePermissionTransactionAOnReturn",
+        "observed": false
+      },
+      {
+        "finding": "F6",
+        "class": "Pr18InstallTransactionTest",
+        "method": "f6DelayedAutomaticBDoesNotSweepInstallingAOrReceiveAsynchronousFailureFromA",
+        "observed": false
+      },
+      {
+        "finding": "F6",
+        "class": "Pr18InstallTransactionTest",
+        "method": "f6RepeatedInstallTapsOwnOneJobAndOnePermissionRequest",
+        "observed": false
+      },
+      {
+        "finding": "F6",
+        "class": "Pr18InstallTransactionTest",
+        "method": "f6RepeatedPermissionReturnInRecreatedOwnerOwnsOneJobAndInstallerIntent",
+        "observed": false
+      },
+      {
+        "finding": "F6",
+        "class": "Pr18InstallTransactionTest",
+        "method": "f6ExplicitCancelAndManualBSelectionCannotReceiveStaleAInstallerCompletion",
+        "observed": false
+      }
+    ],
+    "app_external_directory": "/sdcard/Android/data/top.alanvampuke.dininglog.debug/files/p4-screenshots",
+    "existing_retained_output": "android/app/build/outputs/p4-screenshots/",
+    "existing_ci_artifacts": [
+      "android-auth-api-26",
+      "android-auth-api-35"
+    ],
+    "expected_logs": [
+      "pr18-measurements-api26.txt",
+      "pr18-measurements-api35.txt",
+      "android-runtime.log"
+    ],
+    "expected_screenshot_pattern": "pr18-<case>-<style>-<mode>-actualFont<scale>-api<level>.png",
+    "actual_artifacts_committed_here": [],
+    "actual_run_results": null
+  },
+  "limits": [
+    "No behavior fixes or version bump are in this checkpoint.",
+    "Android compilation/harness errors are not behavioral RED.",
+    "Preference restarts reopen actual DataStore files with fresh collaborators; no OS process kill is claimed.",
+    "Shared production composition is exercised through the existing non-exported P9 host; Hilt MainActivity injection is not claimed.",
+    "Service scheduling, responses and installer timing are controlled; URL/version/SHA paths and fixture files remain real.",
+    "Secure password/auth screenshot regions may be black; actual resource/TextLayoutResult font and security evidence is retained.",
+    "Some methods stop at first RED; later scenario artifacts are pending, not passed.",
+    "Existing successful PR CI run 42351574722 is classic-only evidence."
+  ]
+}

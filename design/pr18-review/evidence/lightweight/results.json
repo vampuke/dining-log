@@ -1,0 +1,75 @@
+{
+  "phase": "tests-first checkpoint",
+  "executed_at_utc": "2026-11-07 08:58:40 UTC",
+  "checks": [
+    {
+      "name": "theme-regressions",
+      "command": "python3 -B android/tools/test_pr18_theme_regressions.py",
+      "exit_code": 1,
+      "log": "theme-regressions.json",
+      "log_sha256": "dc2e14463db5756e47995116a501b92638a272f2be8a748227ffa84fde932323",
+      "encoding": "JSON output field; decode to recover exact UTF-8 stdout/stderr including trailing spaces",
+      "output_sha256": "bddab108ab5df9c4d2722e0ba0c0a42e377b5613a93b2bc041bccb54d4891e8d"
+    },
+    {
+      "name": "bite-verifier",
+      "command": "python3 -B android/tools/verify_bite_visuals.py",
+      "exit_code": 1,
+      "log": "bite-verifier.log",
+      "log_sha256": "f1b4218bf80601828ec88faa07df3d5141273302237cfcdce0254a83416bf584"
+    },
+    {
+      "name": "p6-verifier",
+      "command": "python3 -B android/tools/verify_p6_visuals.py",
+      "exit_code": 1,
+      "log": "p6-verifier.log",
+      "log_sha256": "9451ef95e2906c8ceba6c3018a8e1d6a6c5c44884879ad7566103ad0e29161a7"
+    },
+    {
+      "name": "release-guards",
+      "command": "node --test .github/scripts/release-guards.test.mjs",
+      "exit_code": 0,
+      "log": "release-guards.log",
+      "log_sha256": "af20e5131e9b89fcb5b6031498d727e2f5014c22f0ffdb1c6f5cc29865c6ce16"
+    },
+    {
+      "name": "python-release-guards",
+      "command": "python3 -B -m unittest discover -s .github/scripts -p 'test_*.py'",
+      "exit_code": 0,
+      "log": "python-release-guards.log",
+      "log_sha256": "af8d0a1281b8d3b3bdbeec933cec73db8077050dec2663bd8d9aaf3286fbb0b0"
+    },
+    {
+      "name": "diff-check",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "log": "diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "audit-checkpoint",
+      "command": "python3 -B design/pr18-review/evidence/audit-checkpoint.py",
+      "exit_code": 0,
+      "log": "audit-checkpoint.log",
+      "log_sha256": "0142dad58813e01e40b0c172dc291e1a30d6232f2828f966a66c4b180db9e163"
+    },
+    {
+      "name": "index-check-before-log-encoding",
+      "command": "git diff --cached --check",
+      "exit_code": 2,
+      "log": "index-check-before-log-encoding.json",
+      "encoding": "JSON output field",
+      "log_sha256": "2260a389c2c048a5c7fd3c40f657ee9a2cb7f5f4a4636d4f66506cf80d89333b",
+      "disposition": "Artifact formatting only; raw unittest output preserved exactly in theme-regressions.json."
+    },
+    {
+      "name": "staged-diff-check",
+      "command": "git diff --cached --check",
+      "exit_code": 0,
+      "log": "staged-diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "execution_head_before_checkpoint_commit": "8b8decf7c39ed67858ef99c760e1ca75e273f013",
+  "execution_tree": "Working tree with the test-only checkpoint additions and behavior-neutral seams; see the containing checkpoint commit and source fingerprints."
+}

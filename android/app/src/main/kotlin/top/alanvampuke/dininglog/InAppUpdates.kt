@@ -5,11 +5,9 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.content.Context
-import androidx.core.content.FileProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.IOException
-import java.net.HttpURLConnection
 import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,17 +17,31 @@ import top.alanvampuke.dininglog.core.*
 import top.alanvampuke.dininglog.data.ApiConfiguration
 
 @Singleton
-class InAppUpdates @Inject constructor(@ApplicationContext private val context: Context, private val versions: AppVersionGateway) {
+class InAppUpdates internal constructor(
+    private val context: Context,
+    private val versions: AppVersionGateway,
+    private val transport: UpdateTransport,
+    private val installPlatform: UpdateInstallPlatform,
+    private val installScope: CoroutineScope,
+) {
+    @Inject constructor(@ApplicationContext context: Context, versions: AppVersionGateway) : this(
+        context, versions, HttpUpdateTransport, AndroidUpdateInstallPlatform(context),
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+    )
     private val mutableState = MutableStateFlow(UpdateInstallState())
     val state = mutableState.asStateFlow()
-    private val installScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     @Volatile private var cancelled = false
-    @Volatile private var connection: HttpURLConnection? = null
+    @Volatile private var connection: UpdateConnection? = null
     private val directory = File(context.cacheDir, "updates")
     init { sweepUpdateOrphans(directory) }
     private fun apk(release: AppRelease) = File(directory, "app-${release.versionCode}.apk")
 
-    fun open(release: AppRelease) {
+    fun open(release: AppRelease) = open(release, automatic = false)
+
+    // Provenance is explicit for regression coverage. Selection behavior is
+    // deliberately unchanged in the tests-first checkpoint.
+    @Suppress("UNUSED_PARAMETER")
+    internal fun open(release: AppRelease, automatic: Boolean) {
         if (mutableState.value.busy || mutableState.value.release == release) return
         if (!release.valid || !isNewerVersion(release.versionCode, BuildConfig.VERSION_CODE) ||
             !isAllowedUpdateUrl(release.url, ApiConfiguration.BASE_URL)) return
@@ -79,11 +91,8 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
             while (true) {
                 currentCoroutineContext().ensureActive()
                 if (cancelled) throw CancellationException()
-                val request = URL(address).openConnection() as HttpURLConnection
+                val request = transport.open(address)
                 connection = request
-                request.instanceFollowRedirects = false
-                request.connectTimeout = 15_000; request.readTimeout = 15_000
-                request.setRequestProperty("Accept", "application/vnd.android.package-archive")
                 val code = request.responseCode
                 if (code in setOf(301, 302, 303, 307, 308)) {
                     val location = request.getHeaderField("Location") ?: throw IOException("下载地址无效")
@@ -134,19 +143,16 @@ class InAppUpdates @Inject constructor(@ApplicationContext private val context: 
         installScope.launch {
             try {
                 // Recheck the file even on return from Settings; never hand an unchecked package to the installer.
-                val valid = withContext(Dispatchers.IO) { verifyApkSha256(apk(release), release.sha256) }
+                val valid = withContext(Dispatchers.IO) { installPlatform.verify(apk(release), release.sha256) }
                 if (!valid) { apk(release).delete(); mutableState.value = state.value.copy(packageVerified = false); fail("安装包校验失败，请重试或打开下载页"); return@launch }
                 if (activity.isFinishing || activity.isDestroyed) { fail("安装未启动，请重新打开更新或下载页"); return@launch }
-                if (!activity.packageManager.canRequestPackageInstalls()) {
+                if (!installPlatform.canRequestPackageInstalls(activity)) {
                     if (afterPermission) { fail("未允许安装未知应用，可开启权限后重试或打开下载页"); return@launch }
                     mutableState.value = state.value.copy(stage = UpdateStage.NEED_PERMISSION, message = "请允许食记安装未知应用，返回后继续安装")
                     requestPermission(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
                     return@launch
                 }
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk(release))
-                val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/vnd.android.package-archive")
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                activity.startActivity(intent)
+                installPlatform.startInstaller(activity, apk(release))
                 mutableState.value = state.value.copy(message = "请在系统安装器中确认安装；也可打开下载页")
             } catch (_: Exception) { fail("无法打开安装器或权限设置，请打开下载页") }
         }

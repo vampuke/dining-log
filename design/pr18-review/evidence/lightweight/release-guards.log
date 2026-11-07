@@ -1,0 +1,15 @@
+✔ workflow validates real Git ancestry before it can execute candidate code (2488.197406ms)
+✔ release accepts only a full SHA, stable version tag, own repository and master dispatch (0.843552ms)
+✔ source version is read from the reviewed file and cannot differ from tag (8.245452ms)
+✔ both device APIs and backend/Android checks are mandatory; skipped is a failure (0.603777ms)
+✔ stable releases must increase numerically, including minor and major boundaries (0.412333ms)
+✔ empty bootstrap history cannot hide failed permissions, network or malformed checkpoints (0.520016ms)
+✔ noninteractive Wrangler cannot silently replace an origin or conflicting DNS record (0.268859ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3220.33475

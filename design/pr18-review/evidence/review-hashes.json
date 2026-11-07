@@ -1,0 +1,22 @@
+[
+  {
+    "original": "/tmp/dining-release-20261107/review-theme.json",
+    "copy": "reviews/review-theme.json",
+    "sha256": "ef350b97b01f1b4c27dab1e048e94d9d3ab7c284594eab0448ebccfadbda7627"
+  },
+  {
+    "original": "/tmp/dining-release-20261107/review-updates.json",
+    "copy": "reviews/review-updates.json",
+    "sha256": "bcc0eb8fa26ed7a9f2fb8148f7078e48d1cc98ebb4ecfc12083e0a525b6785f1"
+  },
+  {
+    "original": "/tmp/dining-release-20261107/review-integration.json",
+    "copy": "reviews/review-integration.json",
+    "sha256": "4b24a29b286b46f80e1ad04ff59295c2b94c9fb86c0d9c4a833f209060143c6b"
+  },
+  {
+    "original": "/tmp/dining-release-20261107/review-validation.json",
+    "copy": "reviews/review-validation.json",
+    "sha256": "a36f92f6496893b68752b1b8eae86a67ccff16c53c9a0afaa2aea0f9c21eef67"
+  }
+]
