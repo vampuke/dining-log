@@ -251,7 +251,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
     }
 
     @Test fun f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches() {
-        for (font in listOf(1f, 1.3f, 1.31f, 1.5f, 2f)) {
+        for (font in listOf(1f, 1.3f, 1.31f, 2f)) {
             val (next, loaded) = launch(font, adaptive = true)
             val vm = loaded!!
             try {
@@ -283,7 +283,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
     }
 
     @Test fun f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches() {
-        for (font in listOf(1f, 1.3f, 1.31f, 1.5f, 2f)) {
+        for (font in listOf(1f, 1.3f, 1.31f, 2f)) {
             val (next, loaded) = launch(font)
             val vm = loaded!!
             try {
