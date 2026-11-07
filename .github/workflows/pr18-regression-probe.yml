@@ -1,6 +1,9 @@
 name: PR18 Regression Probe
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - verify/pr18-review-regressions
 permissions:
   contents: read
 concurrency:
