@@ -1,0 +1,337 @@
+{
+  "finding": "F7-R2-001",
+  "baseline_sha": "357ebecdb7e6010e10fffe2e5a48a29463bd10dd",
+  "review_path": "/tmp/dining-release-20261107/f7-independent-review-r2.json",
+  "review_sha256": "b32e80a5fc528a283d072b0bc72b21262c84f4404335652b57c90451c65492c4",
+  "artifact_run": 42372736617,
+  "scope": "Original prior-run PNG histogram/source-predicate checks; candidate Android compilation and runtime were not executed.",
+  "first_verification": {
+    "before_source_edit": true,
+    "actual_original_pngs": 8,
+    "sha256_signature_and_dimensions_verified": true,
+    "primary_ink_pixels_each": 0,
+    "expected_acceptance_assertion_exit": 1
+  },
+  "rendered_palette_foreground_roles": [
+    "ink",
+    "secondary",
+    "tertiary",
+    "accent",
+    "danger",
+    "onAccent",
+    "stickerInk"
+  ],
+  "excludes_background_and_surface_from_foreground": true,
+  "retained_scalar_conditions": [
+    [
+      "normal capture has positive actual geometry",
+      "width > 0 && height > 0"
+    ],
+    [
+      "normal capture rejects blank/transparent/white placeholders",
+      "black + transparent < count * .9 && white != count"
+    ],
+    [
+      "real Activity palette background/surface painted",
+      "backgroundPixels + surfacePixels > 250"
+    ],
+    [
+      "real Activity palette occupies content",
+      "backgroundPixels + surfacePixels >= count / 20"
+    ],
+    [
+      "real Activity opaque content",
+      "opaque > 250"
+    ]
+  ],
+  "current_foreground_threshold": "foregroundPixels > 10",
+  "original_counterexamples": [
+    {
+      "filename": "pr18-field-empty-ink_paper-light-actualFont1.0-api26.png",
+      "sha256": "a37ba22ae53b10fbcf1a674113a40be1f9c2a1433779b5b3334d86d986de929a",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-field-empty-ink_paper-light-actualFont1.0-api26.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 2134,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 962,
+        "tertiary": 1172,
+        "accent": 0,
+        "danger": 0,
+        "onAccent": 120815,
+        "stickerInk": 0
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-rating-40-ink_paper-light-actualFont1.0-api26.png",
+      "sha256": "cfde6740a83e44a9d6edd97133439d246d2cf2d539e4f30c6711649442e5d6cf",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-rating-40-ink_paper-light-actualFont1.0-api26.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 16838,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 0,
+        "tertiary": 0,
+        "accent": 16838,
+        "danger": 0,
+        "onAccent": 0,
+        "stickerInk": 0
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-rating-unrated-ink_paper-light-actualFont1.0-api26.png",
+      "sha256": "249285b61d5480db1f4c69e9636ee6ee13a62109f0660bdb272e1e7333868f75",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-rating-unrated-ink_paper-light-actualFont1.0-api26.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 467,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 467,
+        "tertiary": 0,
+        "accent": 0,
+        "danger": 0,
+        "onAccent": 0,
+        "stickerInk": 0
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-rating-40-ink_paper-dark-actualFont1.0-api26.png",
+      "sha256": "6cc97b08f0455ec77f5c823d96a69b1d5a2f4e5e41be293c918737adc7de0c71",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-rating-40-ink_paper-dark-actualFont1.0-api26.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 16838,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 0,
+        "tertiary": 0,
+        "accent": 16838,
+        "danger": 0,
+        "onAccent": 1569714,
+        "stickerInk": 1569714
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-field-empty-ink_paper-light-actualFont1.0-api35.png",
+      "sha256": "62892d89c505bf958b913aa1b2c5a198c7b783617acb9c3d52753ce53de7446d",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-field-empty-ink_paper-light-actualFont1.0-api35.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 2108,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 903,
+        "tertiary": 1205,
+        "accent": 0,
+        "danger": 0,
+        "onAccent": 120588,
+        "stickerInk": 0
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-rating-40-ink_paper-light-actualFont1.0-api35.png",
+      "sha256": "c090c2ada4b2fa569e725f85028a4fcffc57f9ee3871c5237afb2086748713a5",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-rating-40-ink_paper-light-actualFont1.0-api35.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 17003,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 0,
+        "tertiary": 0,
+        "accent": 17003,
+        "danger": 0,
+        "onAccent": 0,
+        "stickerInk": 0
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-rating-unrated-ink_paper-light-actualFont1.0-api35.png",
+      "sha256": "d23af8e8db018f4d358fdf559853c9f7d2534db51a9ff72e3ffe6cba3212b548",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-rating-unrated-ink_paper-light-actualFont1.0-api35.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 576,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 576,
+        "tertiary": 0,
+        "accent": 0,
+        "danger": 0,
+        "onAccent": 0,
+        "stickerInk": 0
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    },
+    {
+      "filename": "pr18-rating-40-ink_paper-dark-actualFont1.0-api35.png",
+      "sha256": "ad254e1c05aca2fd00423651504de5673257699fa93f3b7560e4eb7135d1e1a2",
+      "dimensions": [
+        945,
+        1680
+      ],
+      "original_zip_member": "outputs/p4-screenshots/p4-screenshots/pr18-rating-40-ink_paper-dark-actualFont1.0-api35.png",
+      "original_zip_bytes_equal": true,
+      "primary_ink_pixels": 0,
+      "foreground_pixels": 17003,
+      "foreground_role_pixels": {
+        "ink": 0,
+        "secondary": 0,
+        "tertiary": 0,
+        "accent": 17003,
+        "danger": 0,
+        "onAccent": 1569333,
+        "stickerInk": 1569333
+      },
+      "baseline_primary_ink_predicate": false,
+      "current_foreground_predicate": true
+    }
+  ],
+  "full_matrix_verification": {
+    "method": "Every actual original PNG decoded with Pillow and counted by RGBA histogram; scalar assertTrue expressions read from both Kotlin versions and evaluated on those measured counts.",
+    "original_zip_bytes_equal_for_all_files": true,
+    "nonempty_png_signatures_and_decoded_dimensions_verified_for_all_files": true,
+    "dimensions": [
+      945,
+      1680
+    ],
+    "field_cases": [
+      "empty",
+      "search",
+      "password",
+      "populated",
+      "disabled",
+      "multiline",
+      "supporting",
+      "supporting-error",
+      "focused-error"
+    ],
+    "field_fonts": [
+      1.0,
+      1.3,
+      1.31,
+      2.0
+    ],
+    "rating_states": [
+      "39",
+      "40",
+      "50",
+      "unrated"
+    ],
+    "rating_font": 1.0,
+    "styles": [
+      "INK_PAPER",
+      "QUIET_GRID"
+    ],
+    "dark": [
+      false,
+      true
+    ],
+    "apis": [
+      {
+        "api": 26,
+        "field_pngs": 144,
+        "rating_pngs": 16,
+        "baseline_scalar_rejected": 70,
+        "current_scalar_accepted": 160,
+        "original_zip_sha256": "1e4868df82d54cf0703b98657cd7319f6fb4653197d47bf2d2999008b8998b29"
+      },
+      {
+        "api": 35,
+        "field_pngs": 144,
+        "rating_pngs": 16,
+        "baseline_scalar_rejected": 70,
+        "current_scalar_accepted": 160,
+        "original_zip_sha256": "d3c2695c0da660207db7202c5582dad6934707a57f06f48c919f6c39e14485f8"
+      }
+    ]
+  },
+  "negative_controls": {
+    "in_memory_only": true,
+    "replacement_pngs_written": false,
+    "checked": 26,
+    "rejected": 26,
+    "all_four_palettes": [
+      "black",
+      "transparent",
+      "all-white",
+      "background-only",
+      "surface-only",
+      "background-plus-surface"
+    ],
+    "both_ink_paper_palettes": [
+      "background-plus-decorative-border"
+    ]
+  },
+  "source_retention": {
+    "named_test_files": 17,
+    "named_methods": 93,
+    "named_test_sources_byte_identical": true,
+    "all_original_fonts_callbacks_and_assertions_byte_identical": true,
+    "protected_own_window_capture_byte_identical": true,
+    "protected_own_window_capture_body_sha256": "049cced10e9224f4bf247261d5a95f47482ddb6db108897f79fd2c6510c5d07d",
+    "capture_receipt_byte_identical": true,
+    "normal_png_signature_decode_dimensions_hash_helper_byte_identical": true,
+    "owner_geometry_provenance_and_secure_assertions_byte_identical": true,
+    "production_ci_and_font_assets_unchanged": true,
+    "changed_kotlin_paths": [
+      "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt",
+      "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18WindowCapture.kt"
+    ]
+  },
+  "verification_history": [
+    "Initial matrix/negative-control run completed all 320 PNG and 26 rejection checks, then its product-only test selector found 16 files instead of the expected 17.",
+    "Corrected final retention selector covers product and auth test directories; verified all 17 named-test files and 93 original methods byte-identical."
+  ],
+  "existing_theme_test": {
+    "command": "python -B android/tools/test_pr18_theme_regressions.py",
+    "tests": 7,
+    "failures": 0,
+    "exit_code": 0
+  },
+  "runtime_or_build_executed": false
+}

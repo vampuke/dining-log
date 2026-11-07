@@ -35,15 +35,18 @@ internal class Pr18CaptureReceipt(private val failures: List<Throwable>) {
 }
 
 // Row-sized storage bounds allocation while checking every real Activity pixel.
-// Use the same content thresholds as the strict own-window probe below.
+// Normal component frames can paint secondary/accent text without primary ink.
+// Callers retain their exact state/color gates; background alone is not content.
 internal fun pr18ValidateActivityBitmap(bitmap: Bitmap, width: Int, height: Int,
-    background: Int, surface: Int, ink: Int, record: (String) -> Unit) {
+    background: Int, surface: Int, foregrounds: Set<Int>, record: (String) -> Unit) {
     assertTrue("normal capture has positive actual geometry", width > 0 && height > 0)
     assertEquals("normal capture geometry width", width, bitmap.width)
     assertEquals("normal capture geometry height", height, bitmap.height)
+    val expectedForegrounds = foregrounds - setOf(background, surface)
+    assertTrue("normal capture expects a distinct palette foreground", expectedForegrounds.isNotEmpty())
     val row = IntArray(width)
     var opaque = 0L; var black = 0L; var transparent = 0L; var white = 0L
-    var backgroundPixels = 0L; var surfacePixels = 0L; var inkPixels = 0L
+    var backgroundPixels = 0L; var surfacePixels = 0L; var foregroundPixels = 0L
     for (y in 0 until height) {
         bitmap.getPixels(row, 0, width, 0, y, width, 1)
         for (pixel in row) {
@@ -53,17 +56,17 @@ internal fun pr18ValidateActivityBitmap(bitmap: Bitmap, width: Int, height: Int,
             if (pixel == 0xFFFFFFFF.toInt()) white++
             if (pixel == background) backgroundPixels++
             if (pixel == surface) surfacePixels++
-            if (pixel == ink) inkPixels++
+            if (pixel in expectedForegrounds) foregroundPixels++
         }
     }
     val count = width.toLong() * height
     record("activity-pixels=${count} opaque=$opaque black=$black transparent=$transparent white=$white " +
         "expectedBackground=$background backgroundPixels=$backgroundPixels expectedSurface=$surface surfacePixels=$surfacePixels " +
-        "expectedInk=$ink inkPixels=$inkPixels dimensions=${width}x$height")
+        "expectedForegrounds=${expectedForegrounds.sorted()} foregroundPixels=$foregroundPixels dimensions=${width}x$height")
     assertTrue("normal capture rejects blank/transparent/white placeholders", black + transparent < count * .9 && white != count)
     assertTrue("real Activity palette background/surface painted", backgroundPixels + surfacePixels > 250)
     assertTrue("real Activity palette occupies content", backgroundPixels + surfacePixels >= count / 20)
-    assertTrue("real Activity palette ink painted", inkPixels > 10)
+    assertTrue("real Activity palette foreground painted", foregroundPixels > 10)
     assertTrue("real Activity opaque content", opaque > 250)
 }
 

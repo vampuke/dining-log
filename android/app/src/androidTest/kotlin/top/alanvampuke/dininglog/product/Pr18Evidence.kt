@@ -673,7 +673,9 @@ internal class Pr18Evidence(
             }
             pr18ValidateActivityBitmap(bitmap, bounds.right.roundToInt() - bounds.left.roundToInt(),
                 bounds.bottom.roundToInt() - bounds.top.roundToInt(), capturedColors.bg.toArgb(),
-                capturedColors.surface.toArgb(), capturedColors.ink.toArgb(), ::record)
+                capturedColors.surface.toArgb(), setOf(capturedColors.ink, capturedColors.secondary,
+                    capturedColors.tertiary, capturedColors.accent, capturedColors.danger,
+                    capturedColors.onAccent, capturedColors.stickerInk).map { it.toArgb() }.toSet(), ::record)
             val file = captureFile(name, 0)
             file.outputStream().use {
                 assertTrue("screenshot PNG written", bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
