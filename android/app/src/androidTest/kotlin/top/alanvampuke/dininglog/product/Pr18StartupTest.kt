@@ -35,15 +35,18 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         runtime = next
         return next
     }
-    private fun awaitPopup(next: Pr18Runtime, release: AppRelease, protectedEvidence: Boolean = false) {
+    private fun awaitPopup(next: Pr18Runtime, release: AppRelease, protectedEvidence: Boolean = false): Pr18CaptureReceipt? {
         compose.waitUntil(15_000) { next.updates.state.value.release == release && !next.updates.state.value.checking }
         val count = compose.onAllNodesWithTag("screen:update", true).fetchSemanticsNodes().size
         evidence.record("startup popupCount=$count release=${next.manager.state.value.release?.versionCode} " +
             "expectedRelease=${release.versionCode} requests=${next.versions.requests.get()}")
-        if (protectedEvidence) evidence.saveProtected("startup-popup")
-        else evidence.save("startup-popup", dialog = true)
         assertEquals("one startup popup", 1, count)
         assertEquals(release, next.manager.state.value.release)
+        noDownload(next)
+        assertEquals("startup checker requested once before evidence", 1, next.versions.requests.get())
+        if (protectedEvidence) return evidence.probeProtected("startup-popup")
+        evidence.save("startup-popup", dialog = true)
+        return null
     }
     private fun noDownload(next: Pr18Runtime) {
         evidence.record("download serviceStarts=${next.updateContext.downloads.get()} transportRequests=${next.transport.requests.get()} " +
@@ -74,7 +77,7 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         val release = pr18Release()
         next.versions.enqueue(release)
         next.render(evidence)
-        awaitPopup(next, release, protectedEvidence = true)
+        val popupFrame = requireNotNull(awaitPopup(next, release, protectedEvidence = true))
         evidence.record("login startup actual font=${evidence.actualFont}")
         next.assertPalette(evidence, style, dark, authenticated = false)
         assertEquals(1, next.versions.requests.get())
@@ -82,6 +85,7 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         dismiss()
         evidence.target("auth-username").assertExists()
         assertNoPopup(next, "login-dismiss")
+        popupFrame.requireValid()
     }
 
     @Test fun f5DismissRotateAndRecreateRetainsTheLaunchAcknowledgement() {
@@ -106,13 +110,15 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         val release = pr18Release()
         next.versions.enqueue(release)
         next.render(evidence)
-        awaitPopup(next, release, protectedEvidence = true); dismiss()
+        val popupFrame = requireNotNull(awaitPopup(next, release, protectedEvidence = true)); dismiss()
         evidence.configure(2f)
         evidence.record("F5 actual system font after dismissal resourcesFont=${compose.activity.resources.configuration.fontScale}")
-        evidence.saveProtected("startup-dismiss-system-font")
+        val fontFrame = evidence.probeProtected("startup-dismiss-system-font")
         noDownload(next)
         assertEquals("system font change never requests again", 1, next.versions.requests.get())
         assertNoPopup(next, "F5 dismiss-actual-system-font")
+        popupFrame.requireValid()
+        fontFrame.requireValid()
     }
 
     @Test fun f5DismissThemeStyleRecompositionDoesNotShowAgain() {

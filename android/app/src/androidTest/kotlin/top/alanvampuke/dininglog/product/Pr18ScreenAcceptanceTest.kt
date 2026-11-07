@@ -44,18 +44,54 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
         val next = Pr18Runtime(ApplicationProvider.getApplicationContext<Context>(), enabled = false, style = style,
             choice = if (dark) ThemeChoice.DARK else ThemeChoice.LIGHT, authenticated = authenticated)
         runtime = next; next.render(evidence, adaptive)
-        return next to if (authenticated) next.model(evidence) else null
+        val vm = if (authenticated) next.model(evidence) else null
+        evidence.stateReceipt = { compose.runOnIdle {
+            val current = compose.activity.viewModelStore.get("product:pr18-owner:${next.account.generation}") as? ProductViewModel
+            "expectedVm=${vm?.let { System.identityHashCode(it) }} currentVm=${current?.let { System.identityHashCode(it) }} " +
+                "sameVm=${current === vm} activity=${System.identityHashCode(compose.activity)} " +
+                "window=${System.identityHashCode(compose.activity.window)} generation=${next.account.generation} " +
+                "listKind=${vm?.list?.value?.query?.kind} detailRef=${vm?.detail?.value?.cached?.snapshot?.ref} " +
+                "currentListKind=${current?.list?.value?.query?.kind} currentDetailRef=${current?.detail?.value?.cached?.snapshot?.ref} " +
+                "currentEditorRef=${current?.editor?.value?.input?.ref} " +
+                "editorRef=${vm?.editor?.value?.input?.ref} errors=${vm?.editor?.value?.errors} " +
+                "detailRequests=${next.repository.detailRequests.toList()} writes=${next.repository.writes.size}"
+        } }
+        evidence.navigationReceipt("launch")
+        return next to vm
+    }
+    private fun boundary(stage: String, block: () -> Unit) {
+        evidence.navigationReceipt("entry-before-$stage")
+        try { block(); evidence.navigationReceipt("entry-after-$stage") }
+        catch (failure: Throwable) { evidence.diagnose(stage, failure); throw failure }
     }
     private fun list(vm: ProductViewModel, kind: RecordKind) {
-        compose.waitUntil(15_000) { vm.list.value.query.kind == kind && !vm.list.value.isRefreshing && vm.list.value.items.isNotEmpty() }
-        evidence.target("screen:${kind.name.lowercase()}:list").assertExists()
+        boundary("list-$kind") {
+            compose.waitUntil(15_000) { vm.list.value.query.kind == kind && !vm.list.value.isRefreshing && vm.list.value.items.isNotEmpty() }
+            evidence.target("screen:${kind.name.lowercase()}:list").assertExists()
+        }
     }
     private fun detail(vm: ProductViewModel, ref: RecordRef) {
-        compose.waitUntil(15_000) { vm.detail.value.cached.snapshot?.ref == ref && !vm.detail.value.refreshing }
+        boundary("detail-$ref") {
+            compose.waitUntil(15_000) { vm.detail.value.cached.snapshot?.ref == ref && !vm.detail.value.refreshing }
+            evidence.target(if (ref.kind == RecordKind.REVISION) "screen:history" else "screen:detail").assertExists()
+        }
     }
     private fun editor(vm: ProductViewModel, kind: RecordKind) {
-        compose.waitUntil(15_000) { vm.editor.value.input?.ref?.kind == kind && !vm.editor.value.loading }
-        evidence.target("screen:edit").assertExists()
+        boundary("editor-$kind") {
+            compose.waitUntil(15_000) { vm.editor.value.input?.ref?.kind == kind && !vm.editor.value.loading }
+            evidence.target("screen:edit").assertExists()
+        }
+    }
+    private fun openRecord(next: Pr18Runtime, vm: ProductViewModel, ref: RecordRef) {
+        val entry = evidence.target("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
+        val requests = next.repository.detailRequests.size
+        evidence.tap("record-list", "record:${ref.id}")
+        detail(vm, ref)
+        val after = evidence.target("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
+        evidence.record("record-open ref=$ref entryBefore=$entry entryAfter=$after detailCallbackDelta=${next.repository.detailRequests.size - requests}")
+        assertNotEquals("record touch creates a new destination entry", entry, after)
+        assertEquals("record touch requests the correct detail once", requests + 1, next.repository.detailRequests.size)
+        assertEquals("record destination has the exact ref", ref, vm.detail.value.cached.snapshot?.ref)
     }
     private fun input(tag: String, text: String) {
         evidence.scroll("edit-scroll", tag)
@@ -128,8 +164,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.target("search").performTextReplacement("")
                 compose.waitUntil(15_000) { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
                 evidence.hideKeyboard()
-                evidence.tap("record-list", "record:${next.repository.parent.id}")
-                detail(vm, next.repository.parent)
+                openRecord(next, vm, next.repository.parent)
                 frame(next, "screen:detail", "flow-restaurant-detail")
                 evidence.tap("detail-scroll", "add-dish"); editor(vm, RecordKind.DISH)
                 input("field:name", "新菜品"); input("field:review", "保留完整短评。")
@@ -144,12 +179,11 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 compose.onNodeWithTag("detail-scroll").performScrollToNode(hasText("管理店内菜品"))
                 val manage = compose.onNode(hasClickAction() and hasAnyDescendant(hasText("管理店内菜品")), true)
                 evidence.minimumTarget(manage, "管理店内菜品")
-                evidence.touchReceipt(manage, "管理店内菜品")
-                manage.performClick()
+                evidence.touch(manage, "管理店内菜品", "detail-scroll")
                 evidence.navigationReceipt("after-manage-dishes")
                 list(vm, RecordKind.DISH)
                 frame(next, "screen:dish:list", "flow-dishes", true)
-                evidence.tap("record-list", "record:${next.repository.dish.id}"); detail(vm, next.repository.dish)
+                openRecord(next, vm, next.repository.dish)
                 frame(next, "screen:detail", "flow-unrated-dish-detail")
                 evidence.tap("detail-scroll", "edit"); editor(vm, RecordKind.DISH)
                 evidence.scroll("edit-scroll", "rating")
@@ -162,7 +196,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.tap("record-list", "back"); detail(vm, next.repository.parent)
                 evidence.tap("detail-scroll", "visit-history"); list(vm, RecordKind.VISIT)
                 frame(next, "screen:visit:list", "flow-visits", true)
-                evidence.tap("record-list", "record:${next.repository.visit.id}"); detail(vm, next.repository.visit)
+                openRecord(next, vm, next.repository.visit)
                 frame(next, "screen:detail", "flow-visit-detail")
                 evidence.tap("detail-scroll", "back"); list(vm, RecordKind.VISIT)
                 evidence.tap("record-list", "back"); detail(vm, next.repository.parent)
@@ -172,7 +206,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.scroll("record-list", timeTag); evidence.minimumTarget(timeTag)
                 val entryBefore = evidence.target("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
                 val detailRequests = next.repository.detailRequests.size
-                evidence.target(timeTag).performTouchInput { click() }
+                evidence.touch(evidence.target(timeTag), timeTag, "record-list")
                 evidence.target("history-absolute:${next.repository.revision.id}").assertExists()
                 val entryAfterTime = evidence.target("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
                 evidence.record("nested-history-time entryBefore=$entryBefore entryAfter=$entryAfterTime " +
@@ -180,7 +214,10 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 assertEquals("time tap does not open card", entryBefore, entryAfterTime)
                 assertEquals("time tap does not request detail", detailRequests, next.repository.detailRequests.size)
                 val card = evidence.target("record:${next.repository.revision.id}")
-                card.performTouchInput { click(Offset(center.x, 8 * evidence.density)) }
+                evidence.touch(card, "history-card", "record-list") { node ->
+                    val full = pr18FullBounds(node)
+                    Offset(full.center.x, full.top + 8 * evidence.density)
+                }
                 detail(vm, next.repository.revision)
                 val entryAfterCard = evidence.target("product-navigation").fetchSemanticsNode().config[NavigationEntryId]
                 evidence.record("history-card entryBefore=$entryBefore entryAfter=$entryAfterCard " +
@@ -214,76 +251,80 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
     }
 
     @Test fun f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches() {
-        for (font in listOf(1f, 1.3f, 1.31f, 2f)) {
+        for (font in listOf(1f, 1.3f, 1.31f, 1.5f, 2f)) {
             val (next, loaded) = launch(font, adaptive = true)
             val vm = loaded!!
-            evidence.landscape()
-            next.render(evidence, adaptive = true)
-            compose.activityRule.scenario.onActivity { it.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
-            list(vm, RecordKind.RESTAURANT)
-            evidence.tap("record-list", "record:${next.repository.parent.id}"); detail(vm, next.repository.parent)
-            evidence.tap("detail-scroll", "edit"); editor(vm, RecordKind.RESTAURANT)
-            input("field:name", "窄屏输入测试")
-            compose.waitUntil(15_000) { evidence.keyboardBounds()?.height()?.let { it > 0 } == true }
-            val keyboard = evidence.keyboardBounds()!!
-            val save = evidence.bounds("save", window = true)
-            val viewport = evidence.bounds("pr18:viewport", window = true)
-            val before = next.repository.writes.size
-            evidence.record("landscape-IME keyboard=$keyboard save=$save viewport=$viewport viewportWidthDp=${viewport.width / evidence.density}")
-            evidence.save("landscape-ime", dialog = true)
-            evidence.minimumTarget("save")
-            assertEquals("narrow 360dp input flow", 360f, viewport.width / evidence.density, .5f)
-            assertTrue("save clears actual IME", save.bottom <= keyboard.top + .5f * evidence.density)
-            assertTrue("save is within visible viewport", save.top >= viewport.top)
-            evidence.target("save").performTouchInput { click() }
-            compose.waitUntil(15_000) { next.repository.writes.size > before }
-            evidence.record("landscape-IME saveCallbackDelta=${next.repository.writes.size - before}")
-            assertEquals(before + 1, next.repository.writes.size)
-            evidence.hideKeyboard(); evidence.portrait()
+            try {
+                evidence.landscape()
+                next.render(evidence, adaptive = true)
+                compose.activityRule.scenario.onActivity { it.window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE) }
+                list(vm, RecordKind.RESTAURANT)
+                openRecord(next, vm, next.repository.parent)
+                evidence.tap("detail-scroll", "edit"); editor(vm, RecordKind.RESTAURANT)
+                input("field:name", "窄屏输入测试")
+                compose.waitUntil(15_000) { evidence.keyboardBounds()?.height()?.let { it > 0 } == true }
+                val keyboard = evidence.keyboardBounds()!!
+                val save = evidence.bounds("save", window = true)
+                val viewport = evidence.bounds("pr18:viewport", window = true)
+                val before = next.repository.writes.size
+                evidence.record("landscape-IME keyboard=$keyboard save=$save viewport=$viewport viewportWidthDp=${viewport.width / evidence.density}")
+                evidence.save("landscape-ime", dialog = true)
+                evidence.minimumTarget("save")
+                assertEquals("narrow 360dp input flow", 360f, viewport.width / evidence.density, .5f)
+                assertTrue("save clears actual IME", save.bottom <= keyboard.top + .5f * evidence.density)
+                assertTrue("save is within visible viewport", save.top >= viewport.top)
+                evidence.target("save").performTouchInput { click() }
+                compose.waitUntil(15_000) { next.repository.writes.size > before }
+                evidence.record("landscape-IME saveCallbackDelta=${next.repository.writes.size - before}")
+                assertEquals(before + 1, next.repository.writes.size)
+                evidence.hideKeyboard(); evidence.portrait()
+            } catch (failure: Throwable) { evidence.diagnose("narrow-landscape-ime", failure); throw failure }
         }
     }
 
     @Test fun f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches() {
-        for (font in listOf(1f, 1.3f, 1.31f, 2f)) {
+        for (font in listOf(1f, 1.3f, 1.31f, 1.5f, 2f)) {
             val (next, loaded) = launch(font)
             val vm = loaded!!
-            for (reverse in listOf(false, true)) {
-                evidence.landscape(reverse); next.render(evidence)
-                evidence.target("tab:restaurants").performClick(); list(vm, RecordKind.RESTAURANT)
-                compose.onNodeWithTag("record-list").performScrollToIndex(0)
-                frame(next, "screen:restaurant:list", "landscape-restaurants-reverse$reverse", true)
-                evidence.scroll("record-list", "record:pr18-row-20")
-                evidence.minimumTarget("record:pr18-row-20")
-                evidence.tap("record-list", "record:${next.repository.parent.id}"); detail(vm, next.repository.parent)
-                compose.onNodeWithTag("detail-scroll").performScrollToNode(hasText("管理店内菜品"))
-                val manage = compose.onNode(hasClickAction() and hasAnyDescendant(hasText("管理店内菜品")), true)
-                evidence.touchReceipt(manage, "landscape-管理店内菜品")
-                manage.performClick()
-                evidence.navigationReceipt("after-landscape-manage-dishes")
-                list(vm, RecordKind.DISH)
-                frame(next, "screen:dish:list", "landscape-dishes-reverse$reverse", true)
-                evidence.tap("record-list", "record:${next.repository.dish.id}"); detail(vm, next.repository.dish)
-                evidence.tap("detail-scroll", "back"); list(vm, RecordKind.DISH)
-                evidence.tap("record-list", "back"); detail(vm, next.repository.parent)
-                evidence.tap("detail-scroll", "visit-history"); list(vm, RecordKind.VISIT)
-                frame(next, "screen:visit:list", "landscape-visits-reverse$reverse", true)
-                evidence.tap("record-list", "back"); detail(vm, next.repository.parent)
-                evidence.tap("detail-scroll", "history"); list(vm, RecordKind.REVISION)
-                frame(next, "screen:revision:list", "landscape-history-reverse$reverse", true)
-                evidence.scroll("record-list", "history-time:${next.repository.revision.id}")
-                evidence.minimumTarget("history-time:${next.repository.revision.id}")
-                evidence.target("tab:restaurants").performClick(); list(vm, RecordKind.RESTAURANT)
-                evidence.scroll("record-list", "search")
-                evidence.target("search").performTextReplacement("兰巴赫")
-                compose.waitUntil(15_000) { vm.list.value.query.query == "兰巴赫" && !vm.list.value.isRefreshing }
-                evidence.hideKeyboard()
-                compose.onNodeWithTag("record-list").performScrollToIndex(0)
-                frame(next, "screen:search", "landscape-search-reverse$reverse", true)
-                evidence.scroll("record-list", "search"); evidence.target("search").performTextReplacement("")
-                compose.waitUntil(15_000) { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
-                evidence.hideKeyboard()
-            }
-            evidence.portrait()
+            try {
+                for (reverse in listOf(false, true)) {
+                    evidence.landscape(reverse); next.render(evidence)
+                    evidence.target("tab:restaurants").performClick(); list(vm, RecordKind.RESTAURANT)
+                    compose.onNodeWithTag("record-list").performScrollToIndex(0)
+                    frame(next, "screen:restaurant:list", "landscape-restaurants-reverse$reverse", true)
+                    evidence.scroll("record-list", "record:pr18-row-20")
+                    evidence.minimumTarget("record:pr18-row-20")
+                    openRecord(next, vm, next.repository.parent)
+                    compose.onNodeWithTag("detail-scroll").performScrollToNode(hasText("管理店内菜品"))
+                    val manage = compose.onNode(hasClickAction() and hasAnyDescendant(hasText("管理店内菜品")), true)
+                    evidence.minimumTarget(manage, "landscape-管理店内菜品")
+                    evidence.touch(manage, "landscape-管理店内菜品", "detail-scroll")
+                    evidence.navigationReceipt("after-landscape-manage-dishes")
+                    list(vm, RecordKind.DISH)
+                    frame(next, "screen:dish:list", "landscape-dishes-reverse$reverse", true)
+                    openRecord(next, vm, next.repository.dish)
+                    evidence.tap("detail-scroll", "back"); list(vm, RecordKind.DISH)
+                    evidence.tap("record-list", "back"); detail(vm, next.repository.parent)
+                    evidence.tap("detail-scroll", "visit-history"); list(vm, RecordKind.VISIT)
+                    frame(next, "screen:visit:list", "landscape-visits-reverse$reverse", true)
+                    evidence.tap("record-list", "back"); detail(vm, next.repository.parent)
+                    evidence.tap("detail-scroll", "history"); list(vm, RecordKind.REVISION)
+                    frame(next, "screen:revision:list", "landscape-history-reverse$reverse", true)
+                    evidence.scroll("record-list", "history-time:${next.repository.revision.id}")
+                    evidence.minimumTarget("history-time:${next.repository.revision.id}")
+                    evidence.target("tab:restaurants").performClick(); list(vm, RecordKind.RESTAURANT)
+                    evidence.scroll("record-list", "search")
+                    evidence.target("search").performTextReplacement("兰巴赫")
+                    compose.waitUntil(15_000) { vm.list.value.query.query == "兰巴赫" && !vm.list.value.isRefreshing }
+                    evidence.hideKeyboard()
+                    compose.onNodeWithTag("record-list").performScrollToIndex(0)
+                    frame(next, "screen:search", "landscape-search-reverse$reverse", true)
+                    evidence.scroll("record-list", "search"); evidence.target("search").performTextReplacement("")
+                    compose.waitUntil(15_000) { vm.list.value.query.query.isEmpty() && !vm.list.value.isRefreshing }
+                    evidence.hideKeyboard()
+                }
+                evidence.portrait()
+            } catch (failure: Throwable) { evidence.diagnose("landscape-lists", failure); throw failure }
         }
     }
 
@@ -303,7 +344,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
             evidence.hideKeyboard()
             next.assertPalette(evidence, style, dark, authenticated = false)
             evidence.visibleTextFits()
-            evidence.saveProtected("auth-${page}-form")
+            val protectedFrame = evidence.probeProtected("auth-${page}-form")
             val before = next.auth.logins.get() + next.auth.registrations.get() + next.auth.recoveries.get()
             evidence.target("auth-submit").performScrollTo()
             evidence.minimumTarget("auth-submit"); evidence.target("auth-submit").assertIsEnabled().performClick()
@@ -322,6 +363,7 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
             next.assertPalette(evidence, style, dark)
             evidence.record("auth page=$page production-navigation reached after acknowledgement")
             evidence.save("auth-${page}-completed", dialog = true)
+            protectedFrame.requireValid()
         }
     }
 }

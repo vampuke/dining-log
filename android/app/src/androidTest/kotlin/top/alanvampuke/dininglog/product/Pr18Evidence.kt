@@ -1,6 +1,8 @@
 package top.alanvampuke.dininglog.product
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.accessibilityservice.AccessibilityServiceInfo
@@ -25,10 +27,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.platform.testTag
@@ -47,6 +51,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.pow
 import org.junit.Assert.*
@@ -58,6 +63,20 @@ import top.alanvampuke.dininglog.feature.components.NavigationEntryId
 import top.alanvampuke.dininglog.feature.theme.*
 
 internal val Pr18RenderedStyle = SemanticsPropertyKey<String>("Pr18RenderedStyle")
+
+internal fun pr18FullBounds(node: SemanticsNode): Rect = Rect(node.positionInRoot.x, node.positionInRoot.y,
+    node.positionInRoot.x + node.size.width, node.positionInRoot.y + node.size.height)
+
+internal fun pr18OuterCoordinates(node: SemanticsNode): androidx.compose.ui.layout.LayoutCoordinates {
+    var coordinates = node.layoutInfo.coordinates
+    val parent = coordinates.parentLayoutCoordinates
+    // Public pinned LayoutCoordinates: parentCoordinates traverses modifiers;
+    // parentLayoutCoordinates is outside this LayoutNode's outer coordinator.
+    while (coordinates.parentCoordinates != null && coordinates.parentCoordinates !== parent) {
+        coordinates = requireNotNull(coordinates.parentCoordinates)
+    }
+    return coordinates
+}
 
 internal fun pr18TouchDetails(node: SemanticsNode): String {
     val view = (node.root as ViewRootForTest).view
@@ -117,6 +136,9 @@ internal class Pr18Evidence(
     var density = compose.activity.resources.displayMetrics.density; private set
     private var renderedStyle = style
     private var renderedDark = dark
+    private val evidenceCase = UUID.randomUUID().toString()
+    private var captureStep = 0
+    var stateReceipt: (() -> String)? = null
     fun observedPalette(style: ThemeStyle, dark: Boolean) { renderedStyle = style; renderedDark = dark }
     val actualFont get() = compose.activity.resources.configuration.fontScale
     private val folder get() = ApplicationProvider.getApplicationContext<Context>()
@@ -308,7 +330,146 @@ internal class Pr18Evidence(
     fun scroll(list: String, tag: String) {
         compose.onNodeWithTag(list).performScrollToNode(hasTestTag(tag))
         target(tag).assertIsDisplayed()
+        expose(target(tag), tag, list)
         record("reachable list=$list tag=$tag full=${bounds(tag)} visible=${target(tag).fetchSemanticsNode().boundsInRoot}")
+    }
+
+    private fun ownerWindow(view: View): Window {
+        dialogWindow(view)?.let { return it }
+        var context = view.context
+        while (context is ContextWrapper && context !is Activity) context = context.baseContext
+        return (context as? Activity)?.window ?: error("Cannot identify actual Activity window")
+    }
+
+    private data class TouchGeometry(
+        val root: View, val window: Window, val full: Rect, val clipped: Rect,
+        val windowFull: Rect, val windowClipped: Rect, val point: Offset,
+        val screenOrigin: Offset, val visible: Rect, val overlays: List<Pair<String, Rect>>,
+    )
+
+    private fun touchGeometry(node: SemanticsNode, point: (SemanticsNode) -> Offset): TouchGeometry {
+        val view = (node.root as ViewRootForTest).view
+        val window = ownerWindow(view)
+        return compose.runOnIdle {
+            require(view.isAttachedToWindow && view.rootView === window.decorView.rootView && view.hasWindowFocus()) {
+                "Touch target is not in the attached focused owner window"
+            }
+            val origin = IntArray(2).also { view.getLocationOnScreen(it) }
+            val visible = android.graphics.Rect()
+            check(view.getGlobalVisibleRect(visible)) { "Touch root has no visible screen bounds" }
+            val screenOrigin = Offset(origin[0].toFloat(), origin[1].toFloat())
+            val rootVisible = Rect(visible.left.toFloat(), visible.top.toFloat(), visible.right.toFloat(), visible.bottom.toFloat())
+                .translate(-screenOrigin)
+            val position = node.positionInWindow
+            TouchGeometry(view, window, pr18FullBounds(node), node.boundsInRoot,
+                Rect(position.x, position.y, position.x + node.size.width, position.y + node.size.height),
+                node.boundsInWindow, point(node), screenOrigin, rootVisible, emptyList())
+        }
+    }
+
+    private fun withOverlays(node: SemanticsNode, geometry: TouchGeometry): TouchGeometry {
+        val ancestors = generateSequence(node) { it.parent }.map { it.id }.toSet()
+        val overlays = compose.onAllNodes(SemanticsMatcher("floating touch overlays") {
+            val tag = it.config.getOrElse(SemanticsProperties.TestTag) { "" }
+            tag == "floating-tabs" || tag == "nav-add" || tag.startsWith("tab:")
+        }, true).fetchSemanticsNodes().filter {
+            it.id !in ancestors && ownerWindow((it.root as ViewRootForTest).view) === geometry.window
+        }.map { overlay ->
+            // Coordinates from a different Compose root must first go through screen space.
+            val view = (overlay.root as ViewRootForTest).view
+            val origin = compose.runOnIdle { IntArray(2).also { view.getLocationOnScreen(it) } }
+            val outer = pr18OuterCoordinates(overlay)
+            val position = outer.positionInRoot()
+            val full = Rect(position.x, position.y, position.x + outer.size.width, position.y + outer.size.height)
+            val windowPosition = outer.positionInWindow()
+            record("overlay tag=${overlay.config[SemanticsProperties.TestTag]} owner=${System.identityHashCode(geometry.window)} " +
+                "root=${System.identityHashCode(view)} outerFull=$full outerClipped=${outer.boundsInRoot()} " +
+                "windowPosition=$windowPosition size=${outer.size} semanticFull=${pr18FullBounds(overlay)} semanticClipped=${overlay.boundsInRoot}")
+            overlay.config[SemanticsProperties.TestTag] to outer.boundsInRoot().translate(
+                Offset(origin[0].toFloat(), origin[1].toFloat()) - geometry.screenOrigin)
+        }.toMutableList()
+        val keyboard = keyboardBounds()
+        if (keyboard != null) overlays += "IME-screen" to Rect(keyboard.left.toFloat(), keyboard.top.toFloat(),
+            keyboard.right.toFloat(), keyboard.bottom.toFloat()).translate(-geometry.screenOrigin)
+        val imeVisible = compose.runOnIdle {
+            requireNotNull(ViewCompat.getRootWindowInsets(geometry.root)) { "Touch owner IME insets unavailable" }
+                .isVisible(WindowInsetsCompat.Type.ime())
+        }
+        check(!imeVisible || keyboard != null) { "IME visible but its actual screen geometry is unknown" }
+        return geometry.copy(overlays = overlays)
+    }
+
+    private fun logTouchGeometry(name: String, g: TouchGeometry) {
+        record("touch-geometry name=$name owner=${System.identityHashCode(g.window)} root=${System.identityHashCode(g.root)} " +
+            "full=${g.full} clipped=${g.clipped} windowFull=${g.windowFull} windowClipped=${g.windowClipped} " +
+            "pointRoot=${g.point} pointWindow=${g.point + g.windowFull.topLeft - g.full.topLeft} " +
+            "pointScreen=${g.point + g.screenOrigin} rootVisible=${g.visible} overlays=${g.overlays}")
+    }
+
+    // ScrollBy moves actual layout; OnClick is never invoked through semantics.
+    // Compose 1.8.2 minimal ScrollTo does not account for same-window overlays.
+    private fun expose(node: SemanticsNodeInteraction, name: String, list: String?,
+        point: (SemanticsNode) -> Offset = { pr18FullBounds(it).center }): TouchGeometry {
+        val deadline = System.nanoTime() + 15_000_000_000L
+        var stable: TouchGeometry? = null
+        while (System.nanoTime() < deadline) {
+            compose.waitForIdle()
+            val semantics = node.fetchSemanticsNode()
+            val g = withOverlays(semantics, touchGeometry(semantics, point))
+            logTouchGeometry(name, g)
+            val exposed = g.full.contains(g.point) && g.clipped.contains(g.point) && g.visible.contains(g.point) &&
+                g.overlays.none { it.second.contains(g.point) }
+            if (exposed && stable == g) return g
+            if (exposed) { stable = g; continue }
+            stable = null
+            val scroller = generateSequence(semantics.parent) { it.parent }.firstOrNull {
+                it.config.contains(SemanticsProperties.VerticalScrollAxisRange) && it.config.contains(SemanticsActions.ScrollBy)
+            } ?: error("Unreachable touch $name: no vertical scroll ancestor")
+            if (list != null) check(scroller.config.getOrElse(SemanticsProperties.TestTag) { "" } == list) {
+                "Wrong vertical scroll ancestor for $name: expected $list, actual ${scroller.config}"
+            }
+            check(scroller.root === semantics.root) { "Scroll ancestor belongs to a different root" }
+            val viewport = scroller.boundsInRoot.intersect(g.visible)
+            var bands = listOf(viewport.top to viewport.bottom)
+            for ((_, overlay) in g.overlays.filter { g.point.x >= it.second.left && g.point.x < it.second.right }) {
+                bands = bands.flatMap { (top, bottom) ->
+                    if (overlay.bottom <= top || overlay.top >= bottom) listOf(top to bottom)
+                    else listOf(top to minOf(bottom, overlay.top), maxOf(top, overlay.bottom) to bottom)
+                }.filter { it.second > it.first }
+            }
+            check(g.point.x >= viewport.left && g.point.x < viewport.right && bands.isNotEmpty()) {
+                "Unreachable touch $name: no exposed vertical band at actual touch X"
+            }
+            // Fit the full target when possible; otherwise expose its requested physical point.
+            val band = bands.maxBy { it.second - it.first }
+            val half = minOf(g.full.height / 2, (band.second - band.first) / 2)
+            val desiredY = g.point.y.coerceIn(band.first + half, band.second - half)
+            val dy = g.point.y - desiredY
+            check(dy != 0f) { "Unreachable touch $name: clipping/ownership cannot be resolved by vertical scrolling" }
+            val range = scroller.config[SemanticsProperties.VerticalScrollAxisRange]
+            val before = compose.runOnIdle { range.value() }
+            val delta = if (range.reverseScrolling) -dy else dy
+            record("expose-scroll name=$name ancestor=${scroller.id} full=${pr18FullBounds(scroller)} " +
+                "clipped=${scroller.boundsInRoot} value=$before max=${range.maxValue()} deltaY=$delta")
+            compose.onNode(SemanticsMatcher("measured vertical ancestor ${scroller.id}") { it.id == scroller.id }, true)
+                .performSemanticsAction(SemanticsActions.ScrollBy) { check(it(0f, delta)) { "ScrollBy rejected $name" } }
+            compose.waitForIdle()
+            val after = node.fetchSemanticsNode()
+            val moved = compose.runOnIdle { range.value() } != before || pr18FullBounds(after) != g.full
+            check(moved) { "Unreachable touch $name at true vertical scroll limit: value=$before max=${range.maxValue()}" }
+        }
+        error("Touch $name did not become stable and exposed within 15000ms")
+    }
+
+    fun touch(node: SemanticsNodeInteraction, name: String, list: String? = null,
+        point: (SemanticsNode) -> Offset = { pr18FullBounds(it).center }) {
+        val geometry = expose(node, name, list, point)
+        touchReceipt(node, name)
+        val current = withOverlays(node.fetchSemanticsNode(), touchGeometry(node.fetchSemanticsNode(), point))
+        check(current == geometry) { "Touch geometry changed before injection: $name" }
+        // Pinned MultiModalInjectionScope adds clipped.topLeft to the local point.
+        node.performTouchInput { click(geometry.point - geometry.clipped.topLeft) }
+        navigationReceipt("after-$name")
     }
 
     fun touchReceipt(node: SemanticsNodeInteraction, name: String) {
@@ -319,14 +480,16 @@ internal class Pr18Evidence(
     fun navigationReceipt(stage: String) {
         val entries = compose.onAllNodesWithTag("product-navigation", true).fetchSemanticsNodes()
             .map { it.config.getOrElse(NavigationEntryId) { "missing-entry" } }
-        record("navigation stage=$stage entries=$entries")
+        val screens = compose.onAllNodes(SemanticsMatcher("destination tags") {
+            it.config.getOrElse(SemanticsProperties.TestTag) { "" }.startsWith("screen:")
+        }, true).fetchSemanticsNodes().map { it.config[SemanticsProperties.TestTag] }
+        record("navigation stage=$stage entries=$entries screens=$screens")
+        stateReceipt?.let { record("flow-state stage=$stage ${it()}") }
     }
 
     fun tap(list: String, tag: String) {
         scroll(list, tag); minimumTarget(tag)
-        touchReceipt(target(tag), tag)
-        target(tag).performClick()
-        navigationReceipt("after-$tag")
+        touch(target(tag), tag, list)
     }
 
     fun layouts(node: SemanticsNodeInteraction): List<TextLayoutResult> {
@@ -394,7 +557,7 @@ internal class Pr18Evidence(
         return (listOf(compose.activity.window) + dialogs).distinct()
     }
 
-    fun saveProtected(name: String) {
+    fun probeProtected(name: String): Pr18CaptureReceipt {
         compose.waitForIdle()
         val windows = evidenceWindows()
         compose.runOnIdle {
@@ -405,14 +568,45 @@ internal class Pr18Evidence(
                     flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
             }
         }
-        // Protected content must never be captured through a different API or
-        // temporarily unprotected. This receipt is explicitly not a screenshot.
-        record("protected-evidence=$name capture=not-attempted screenshot=none")
         visibleTextFits()
         val roots = compose.onAllNodes(isRoot(), true)
         for (index in roots.fetchSemanticsNodes().indices) {
             record("protected-semantics evidence=$name root=$index ${roots[index].printToString()}")
         }
+        return probeWindows(name, protected = true, includeDialogs = true)
+    }
+
+    fun saveProtected(name: String) { probeProtected(name).requireValid() }
+
+    private fun captureFile(name: String, owner: Int): File {
+        val method = Thread.currentThread().stackTrace.firstOrNull { frame ->
+            frame.className.startsWith("top.alanvampuke.dininglog.product.Pr18") && frame.className.endsWith("Test") &&
+                Class.forName(frame.className).methods.any {
+                    it.name == frame.methodName && it.isAnnotationPresent(org.junit.Test::class.java)
+                }
+        }?.let { "${it.className.substringAfterLast('.')}.${it.methodName}" }
+            ?: error("Capture requires actual named test provenance")
+        val filename = "pr18-case$evidenceCase-step${++captureStep}-$name-owner$owner-" +
+            "${renderedStyle.name.lowercase()}-${if (renderedDark) "dark" else "light"}-actualFont$actualFont-api${Build.VERSION.SDK_INT}.png"
+        val methodFolder = File(folder, method).apply { check(isDirectory || mkdirs()) { "Capture method directory unavailable" } }
+        record("capture-provenance method=$method case=$evidenceCase step=$captureStep name=$name file=$method/$filename")
+        return File(methodFolder, filename)
+    }
+
+    private fun probeWindows(name: String, protected: Boolean, includeDialogs: Boolean): Pr18CaptureReceipt {
+        val nodes = mutableListOf(target("pr18:viewport").fetchSemanticsNode())
+        if (includeDialogs) nodes += compose.onAllNodes(isDialog(), true).fetchSemanticsNodes()
+        val failures = nodes.mapIndexedNotNull { index, node ->
+            val view = (node.root as ViewRootForTest).view
+            val window = ownerWindow(view)
+            val capturedColors = when (renderedStyle) {
+                ThemeStyle.INK_PAPER -> if (renderedDark) InkPaperDark else InkPaperLight
+                ThemeStyle.QUIET_GRID -> if (renderedDark) QuietGridDark else QuietGridLight
+            }
+            pr18OwnWindowCapture(this, node, window, captureFile(name, index), protected,
+                capturedColors.bg.toArgb(), capturedColors.surface.toArgb(), capturedColors.ink.toArgb())
+        }
+        return Pr18CaptureReceipt(failures)
     }
 
     fun save(name: String, dialog: Boolean = false) {
@@ -424,14 +618,15 @@ internal class Pr18Evidence(
                     0, window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
             }
         }
-        val bitmap = if (dialog) requireNotNull(automation.takeScreenshot()) { "Unexpected null screenshot on a normal window: $name" }
-            else target("pr18:viewport").captureToImage().asAndroidBitmap()
-        val filename = "pr18-$name-${renderedStyle.name.lowercase()}-${if (renderedDark) "dark" else "light"}" +
-            "-actualFont$actualFont-api${Build.VERSION.SDK_INT}.png"
-        File(folder, filename).outputStream().use {
-            assertTrue("screenshot PNG written", bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+        if (dialog) probeWindows(name, protected = false, includeDialogs = true).requireValid()
+        else {
+            val bitmap = target("pr18:viewport").captureToImage().asAndroidBitmap()
+            val file = captureFile(name, 0)
+            file.outputStream().use {
+                assertTrue("screenshot PNG written", bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+            }
+            record("screenshot=${file.name} pixels=${bitmap.width}x${bitmap.height}")
         }
-        record("screenshot=$filename pixels=${bitmap.width}x${bitmap.height}")
     }
 
     fun diagnose(name: String, failure: Throwable) {
@@ -482,6 +677,21 @@ internal class Pr18Evidence(
     }
 
     private fun recordKeyboardWindows(stage: String) {
+        compose.onAllNodes(isRoot(), true).fetchSemanticsNodes().forEach { node ->
+            val view = (node.root as ViewRootForTest).view
+            compose.runOnIdle {
+                val owner = ownerWindow(view)
+                val insets = ViewCompat.getRootWindowInsets(view)
+                val screen = IntArray(2).also { view.getLocationOnScreen(it) }
+                val window = IntArray(2).also { view.getLocationInWindow(it) }
+                record("IME-owner stage=$stage owner=${System.identityHashCode(owner)} root=${System.identityHashCode(view)} " +
+                    "flags=${owner.attributes.flags} full=${pr18FullBounds(node)} clipped=${node.boundsInRoot} " +
+                    "windowClipped=${node.boundsInWindow} screenOrigin=${screen.toList()} windowOrigin=${window.toList()} " +
+                    "focused=${view.findFocus()} windowFocus=${view.hasWindowFocus()} " +
+                    "tokenMatchesOwner=${view.windowToken == owner.decorView.windowToken} " +
+                    "imeVisible=${insets?.isVisible(WindowInsetsCompat.Type.ime())} imeInsets=${insets?.getInsets(WindowInsetsCompat.Type.ime())}")
+            }
+        }
         automation.windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }.forEach { window ->
             val bounds = android.graphics.Rect().also { window.getBoundsInScreen(it) }
             record("IME-window stage=$stage bounds=$bounds rootVisible=${window.root?.isVisibleToUser} " +

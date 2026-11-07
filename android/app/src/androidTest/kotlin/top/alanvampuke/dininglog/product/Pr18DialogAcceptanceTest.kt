@@ -29,7 +29,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
     }
     @get:Rule val compose = createAndroidComposeRule<P9VisualActivity>()
     private lateinit var evidence: Pr18Evidence
-    private val fonts = listOf(1f, 1.3f, 1.31f, 2f)
+    private val fonts = listOf(1f, 1.3f, 1.31f, 1.5f, 2f)
     private val ref = RecordRef(RecordKind.RESTAURANT, "pr18-dialog-record")
     private val time = "2026-11-07T08:00:00Z"
     private val address = "中山路沿江街区，经过桥边的咖啡店后向右转。".repeat(16)
@@ -205,13 +205,14 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.minimumTarget("password-save")
                 val secure = compose.activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0
                 evidence.record("password secureHost=$secure inputCallbacks=$inputs saveCallbacks=$saves")
-                evidence.saveProtected("password-real-window")
+                val protectedFrame = evidence.probeProtected("password-real-window")
                 evidence.visibleTextFits()
                 assertTrue("password keeps production screenshot protection", secure)
                 val before = saves
                 evidence.target("password-save").assertIsEnabled().performClick()
                 compose.runOnIdle { evidence.record("password-save callbackDelta=${saves - before}"); assertEquals(before + 1, saves) }
                 evidence.target("screen:password").assertDoesNotExist()
+                protectedFrame.requireValid()
             } catch (failure: Throwable) { evidence.diagnose("password", failure); throw failure }
         }
     }
