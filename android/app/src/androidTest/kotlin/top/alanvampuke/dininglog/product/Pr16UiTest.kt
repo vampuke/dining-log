@@ -51,7 +51,14 @@ class Pr16UiTest {
             compose.onNodeWithTag("field:first-visit-date").performTextReplacement("2026-13-45")
             compose.onNodeWithText("YYYY-MM-DD", useUnmergedTree = true).assertExists()
             scrollEditor("first-visit-toggle")
+            android.util.Log.i("DiningP4", "pr16 fold-before ${pr18TouchDetails(compose.onNodeWithTag("first-visit-toggle").fetchSemanticsNode())} " +
+                "field=${compose.onNodeWithTag("field:first-visit-date").fetchSemanticsNode().config}")
             compose.onNodeWithTag("first-visit-toggle").performClick()
+            compose.runOnIdle {
+                android.util.Log.i("DiningP4", "pr16 fold-after errors=${fixture.vm.editor.value.errors} " +
+                    "visit=${fixture.vm.editor.value.input?.firstVisit} submissions=${fixture.repository.submissions}")
+            }
+            android.util.Log.i("DiningP4", "pr16 fold-after ${pr18TouchDetails(compose.onNodeWithTag("first-visit-toggle").fetchSemanticsNode())}")
             compose.onNodeWithTag("field:first-visit-date").assertDoesNotExist()
             compose.onNodeWithTag("save").performClick()
             compose.runOnIdle {

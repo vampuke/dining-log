@@ -35,12 +35,13 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         runtime = next
         return next
     }
-    private fun awaitPopup(next: Pr18Runtime, release: AppRelease) {
+    private fun awaitPopup(next: Pr18Runtime, release: AppRelease, protectedEvidence: Boolean = false) {
         compose.waitUntil(15_000) { next.updates.state.value.release == release && !next.updates.state.value.checking }
         val count = compose.onAllNodesWithTag("screen:update", true).fetchSemanticsNodes().size
         evidence.record("startup popupCount=$count release=${next.manager.state.value.release?.versionCode} " +
             "expectedRelease=${release.versionCode} requests=${next.versions.requests.get()}")
-        evidence.save("startup-popup", dialog = true)
+        if (protectedEvidence) evidence.saveProtected("startup-popup")
+        else evidence.save("startup-popup", dialog = true)
         assertEquals("one startup popup", 1, count)
         assertEquals(release, next.manager.state.value.release)
     }
@@ -73,7 +74,7 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         val release = pr18Release()
         next.versions.enqueue(release)
         next.render(evidence)
-        awaitPopup(next, release)
+        awaitPopup(next, release, protectedEvidence = true)
         evidence.record("login startup actual font=${evidence.actualFont}")
         next.assertPalette(evidence, style, dark, authenticated = false)
         assertEquals(1, next.versions.requests.get())
@@ -105,10 +106,10 @@ class Pr18StartupTest(private val style: ThemeStyle, private val dark: Boolean) 
         val release = pr18Release()
         next.versions.enqueue(release)
         next.render(evidence)
-        awaitPopup(next, release); dismiss()
+        awaitPopup(next, release, protectedEvidence = true); dismiss()
         evidence.configure(2f)
         evidence.record("F5 actual system font after dismissal resourcesFont=${compose.activity.resources.configuration.fontScale}")
-        evidence.save("startup-dismiss-system-font", dialog = true)
+        evidence.saveProtected("startup-dismiss-system-font")
         noDownload(next)
         assertEquals("system font change never requests again", 1, next.versions.requests.get())
         assertNoPopup(next, "F5 dismiss-actual-system-font")

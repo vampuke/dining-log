@@ -9,8 +9,10 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
-import android.view.KeyEvent
 import android.view.Surface
+import android.view.View
+import android.view.Window
+import android.view.WindowManager
 import android.view.accessibility.AccessibilityWindowInfo
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -28,6 +30,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.ViewRootForTest
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.test.*
@@ -36,6 +39,9 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.rules.ActivityScenarioRule
@@ -48,9 +54,19 @@ import top.alanvampuke.dininglog.P9VisualActivity
 import top.alanvampuke.dininglog.core.ThemeStyle
 import top.alanvampuke.dininglog.feature.components.BackgroundArgb
 import top.alanvampuke.dininglog.feature.components.ForegroundArgb
+import top.alanvampuke.dininglog.feature.components.NavigationEntryId
 import top.alanvampuke.dininglog.feature.theme.*
 
 internal val Pr18RenderedStyle = SemanticsPropertyKey<String>("Pr18RenderedStyle")
+
+internal fun pr18TouchDetails(node: SemanticsNode): String {
+    val view = (node.root as ViewRootForTest).view
+    val origin = IntArray(2).also { view.getLocationOnScreen(it) }
+    val visible = android.graphics.Rect().also { view.getGlobalVisibleRect(it) }
+    return "nodeId=${node.id} root=${node.positionInRoot} window=${node.positionInWindow} screen=${node.positionOnScreen} " +
+        "size=${node.size} clipped=${node.boundsInRoot} touch=${node.touchBoundsInRoot} " +
+        "rootViewScreen=${origin.toList()} rootViewVisible=$visible semantics=${node.config}"
+}
 
 internal fun pr18StyleCases(): List<Array<Any>> = listOf(
     arrayOf<Any>(ThemeStyle.INK_PAPER, false), arrayOf<Any>(ThemeStyle.INK_PAPER, true),
@@ -262,6 +278,15 @@ internal class Pr18Evidence(
         return Rect(position.x, position.y, position.x + coordinates.size.width, position.y + coordinates.size.height)
     }
 
+    fun taggedBounds(tag: String): Rect {
+        // Compose 1.8.2 LayoutInfo.coordinates is the innermost layout, after
+        // modifiers. SemanticsNode position/size measure the tagged coordinator
+        // (the clickable body for buttons), without viewport clipping.
+        val node = target(tag).fetchSemanticsNode()
+        val position = node.positionInRoot
+        return Rect(position.x, position.y, position.x + node.size.width, position.y + node.size.height)
+    }
+
     fun minimumTarget(tag: String) {
         minimumTarget(target(tag), tag)
     }
@@ -286,7 +311,23 @@ internal class Pr18Evidence(
         record("reachable list=$list tag=$tag full=${bounds(tag)} visible=${target(tag).fetchSemanticsNode().boundsInRoot}")
     }
 
-    fun tap(list: String, tag: String) { scroll(list, tag); minimumTarget(tag); target(tag).performClick() }
+    fun touchReceipt(node: SemanticsNodeInteraction, name: String) {
+        record("before-touch name=$name ${pr18TouchDetails(node.fetchSemanticsNode())}")
+        navigationReceipt("before-$name")
+    }
+
+    fun navigationReceipt(stage: String) {
+        val entries = compose.onAllNodesWithTag("product-navigation", true).fetchSemanticsNodes()
+            .map { it.config.getOrElse(NavigationEntryId) { "missing-entry" } }
+        record("navigation stage=$stage entries=$entries")
+    }
+
+    fun tap(list: String, tag: String) {
+        scroll(list, tag); minimumTarget(tag)
+        touchReceipt(target(tag), tag)
+        target(tag).performClick()
+        navigationReceipt("after-$tag")
+    }
 
     fun layouts(node: SemanticsNodeInteraction): List<TextLayoutResult> {
         val results = mutableListOf<TextLayoutResult>()
@@ -339,43 +380,126 @@ internal class Pr18Evidence(
         if (titleTag != null) target(titleTag).assert(SemanticsMatcher.expectValue(ForegroundArgb, colors.ink.toArgb()))
     }
 
+    private fun dialogWindow(view: View): Window? {
+        if (view is DialogWindowProvider) return view.window
+        return (view.parent as? View)?.let(::dialogWindow)
+    }
+
+    private fun evidenceWindows(): List<Window> {
+        val dialogs = compose.onAllNodes(isDialog(), true).fetchSemanticsNodes().map { node ->
+            requireNotNull(dialogWindow((node.root as ViewRootForTest).view)) {
+                "Cannot identify the actual dialog window for evidence"
+            }
+        }
+        return (listOf(compose.activity.window) + dialogs).distinct()
+    }
+
+    fun saveProtected(name: String) {
+        compose.waitForIdle()
+        val windows = evidenceWindows()
+        compose.runOnIdle {
+            windows.forEachIndexed { index, window ->
+                val flags = window.attributes.flags
+                record("protected-window evidence=$name index=$index flags=$flags")
+                assertTrue("protected evidence retains FLAG_SECURE on host and every dialog",
+                    flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
+            }
+        }
+        // Protected content must never be captured through a different API or
+        // temporarily unprotected. This receipt is explicitly not a screenshot.
+        record("protected-evidence=$name capture=not-attempted screenshot=none")
+        visibleTextFits()
+        val roots = compose.onAllNodes(isRoot(), true)
+        for (index in roots.fetchSemanticsNodes().indices) {
+            record("protected-semantics evidence=$name root=$index ${roots[index].printToString()}")
+        }
+    }
+
     fun save(name: String, dialog: Boolean = false) {
         compose.waitForIdle()
-        val bitmap = if (dialog) requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        val windows = evidenceWindows()
+        compose.runOnIdle {
+            windows.forEach { window ->
+                assertEquals("normal screenshot evidence requires an unprotected window; use explicit protected evidence",
+                    0, window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE)
+            }
+        }
+        val bitmap = if (dialog) requireNotNull(automation.takeScreenshot()) { "Unexpected null screenshot on a normal window: $name" }
             else target("pr18:viewport").captureToImage().asAndroidBitmap()
         val filename = "pr18-$name-${renderedStyle.name.lowercase()}-${if (renderedDark) "dark" else "light"}" +
             "-actualFont$actualFont-api${Build.VERSION.SDK_INT}.png"
-        File(folder, filename).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(folder, filename).outputStream().use {
+            assertTrue("screenshot PNG written", bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
+        }
         record("screenshot=$filename pixels=${bitmap.width}x${bitmap.height}")
     }
 
     fun diagnose(name: String, failure: Throwable) {
         record("FAIL case=$name type=${failure.javaClass.name} message=${failure.message}")
-        runCatching { save("failure-$name", dialog = true) }
-        runCatching { record("semantics=${compose.onRoot(true).printToString()}") }
+        runCatching {
+            if (compose.activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0)
+                saveProtected("failure-$name")
+            else save("failure-$name", dialog = true)
+        }.onFailure { record("evidence-failure case=$name type=${it.javaClass.name} message=${it.message}") }
+        runCatching {
+            navigationReceipt("failure-$name")
+            recordKeyboardWindows("failure-$name")
+            val roots = compose.onAllNodes(isRoot(), true)
+            for (index in roots.fetchSemanticsNodes().indices) record("semantics root=$index ${roots[index].printToString()}")
+        }.onFailure { record("diagnostics-failure case=$name type=${it.javaClass.name} message=${it.message}") }
     }
 
     fun hideKeyboard() {
-        compose.activityRule.scenario.onActivity { activity ->
-            (activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
-                .hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
+        val focusedViews = compose.onAllNodes(isFocused(), true).fetchSemanticsNodes()
+            .map { (it.root as ViewRootForTest).view }.distinct()
+        val views = focusedViews.ifEmpty { listOf(compose.activity.window.decorView) }
+        compose.runOnIdle {
+            views.forEach { view ->
+                val focused = view.findFocus() ?: view
+                val window = dialogWindow(view) ?: compose.activity.window
+                record("hide-IME owner=${if (dialogWindow(view) != null) "dialog" else "host"} " +
+                    "focused=${view.findFocus() != null} tokenMatchesHost=${focused.windowToken == compose.activity.window.decorView.windowToken}")
+                (view.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager)
+                    .hideSoftInputFromWindow(focused.windowToken, 0)
+                androidx.core.view.WindowInsetsControllerCompat(window, focused).hide(WindowInsetsCompat.Type.ime())
+            }
         }
         automation.serviceInfo = automation.serviceInfo.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
-        if (automation.windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }) {
-            automation.injectInputEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK), true)
-            automation.injectInputEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK), true)
+        recordKeyboardWindows("after-hide-request")
+        compose.waitUntil(15_000) {
+            val visibleInsets = compose.runOnIdle {
+                views.any { view ->
+                    requireNotNull(ViewCompat.getRootWindowInsets(view)) { "IME visibility insets unavailable" }
+                        .isVisible(WindowInsetsCompat.Type.ime())
+                }
+            }
+            !visibleInsets && keyboardBounds() == null
         }
-        compose.waitUntil(15_000) { automation.windows.none { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD } }
+        recordKeyboardWindows("hidden")
         compose.waitForIdle()
+    }
+
+    private fun recordKeyboardWindows(stage: String) {
+        automation.windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }.forEach { window ->
+            val bounds = android.graphics.Rect().also { window.getBoundsInScreen(it) }
+            record("IME-window stage=$stage bounds=$bounds rootVisible=${window.root?.isVisibleToUser} " +
+                "active=${window.isActive} focused=${window.isFocused}")
+        }
     }
 
     fun keyboardBounds(): android.graphics.Rect? {
         automation.serviceInfo = automation.serviceInfo.apply {
             flags = flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
-        return automation.windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-            ?.let { window -> android.graphics.Rect().also { window.getBoundsInScreen(it) } }
+        return automation.windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            .firstNotNullOfOrNull { window ->
+                android.graphics.Rect().also { window.getBoundsInScreen(it) }.takeIf { bounds ->
+                    // A missing accessibility root is unknown, not proof of
+                    // invisibility. Keep counting it while it has screen area.
+                    !bounds.isEmpty && window.root?.isVisibleToUser != false
+                }
+            }
     }
 }

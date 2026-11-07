@@ -65,6 +65,19 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
         evidence.target(tag).assertIsDisplayed().performClick()
     }
 
+    private fun scrollComparisonVerticallyTo(tag: String) {
+        // performScrollTo in Compose 1.8.2 only drives the nearest scroll
+        // parent: ComparisonColumns' horizontal scroll, not ReviewDialog's Y.
+        val scroller = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange) and
+            hasAnyDescendant(hasTestTag(tag)), true)
+        val viewport = scroller.fetchSemanticsNode().boundsInRoot
+        val full = evidence.taggedBounds(tag)
+        val range = scroller.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+        val delta = (full.top - viewport.top) * if (range.reverseScrolling) -1f else 1f
+        evidence.record("comparison-scroll tag=$tag full=$full viewport=$viewport verticalDeltaPx=$delta")
+        scroller.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, delta) }
+    }
+
     @Test fun f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch() {
         val release = pr18Release(name = "下一版本").copy(notes = "详细更新说明，继续记录每一次到店。\n".repeat(45))
         val stages = listOf(UpdateInstallState(release),
@@ -117,13 +130,24 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                     tap("update-download-page")
                     assertEquals(beforePage + 1, actions.size); assertEquals("page", actions.last())
                     evidence.target("update-close").performScrollTo()
-                    val page = evidence.bounds("update-download-page")
-                    val close = evidence.bounds("update-close")
-                    val panel = evidence.bounds("screen:update")
+                    // Reaching the button does not expose the trailing padding:
+                    // performScrollTo stops at the button's edge. Measure the
+                    // footer only after the real scroller reaches its end.
+                    val beforeFooterScroll = range.value()
+                    evidence.target("update-scroll").performSemanticsAction(SemanticsActions.ScrollBy) {
+                        it(0f, range.maxValue() - range.value())
+                    }
+                    val page = evidence.taggedBounds("update-download-page")
+                    val close = evidence.taggedBounds("update-close")
+                    val panel = evidence.taggedBounds("screen:update")
                     val contentWidth = panel.width / evidence.density - 32
                     val horizontal = font <= 1.3f && contentWidth >= 240
                     evidence.record("update-pair stage=${state.stage} contentDp=$contentWidth horizontal=$horizontal " +
                         "page=$page close=$close panel=$panel bottomGapDp=${(panel.bottom - close.bottom) / evidence.density}")
+                    evidence.record("update-pair-inner page=${evidence.bounds("update-download-page")} " +
+                        "close=${evidence.bounds("update-close")} panel=${evidence.bounds("screen:update")}")
+                    evidence.record("update-footer-scroll before=$beforeFooterScroll after=${range.value()} max=${range.maxValue()}")
+                    assertEquals("footer measured at actual scroll end", range.maxValue(), range.value(), .5f * evidence.density)
                     evidence.save("update-stage-$index-footer", dialog = true)
                     evidence.visibleTextFits()
                     if (horizontal) {
@@ -181,7 +205,7 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.minimumTarget("password-save")
                 val secure = compose.activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0
                 evidence.record("password secureHost=$secure inputCallbacks=$inputs saveCallbacks=$saves")
-                evidence.save("password-real-window", dialog = true)
+                evidence.saveProtected("password-real-window")
                 evidence.visibleTextFits()
                 assertTrue("password keeps production screenshot protection", secure)
                 val before = saves
@@ -214,7 +238,9 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                 evidence.target("expand:compare:address:1").performScrollTo().performClick()
                 compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange), true)
                     .performSemanticsAction(SemanticsActions.ScrollBy) { it(100_000f, 0f) }
+                scrollComparisonVerticallyTo("local_input")
                 evidence.target("local_input").performScrollTo().assertIsDisplayed()
+                scrollComparisonVerticallyTo("compare:address:1")
                 evidence.target("compare:address:1").performScrollTo().assertTextEquals(address)
                 evidence.textFits(evidence.target("compare:address:1"))
                 evidence.save("conflict-expanded-local", dialog = true)
