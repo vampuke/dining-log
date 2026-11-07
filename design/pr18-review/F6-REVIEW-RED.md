@@ -98,3 +98,45 @@ The separate F5 fixture scheduling correction must allow the parent to observe
 its intended popup assertion before any further F5 production edit. The parent
 will push the exact new probe head and rerun the four methods. No remote writes
 or local Android build were performed here.
+
+## Separate F5 fixture scheduling correction
+
+F6 candidate commit: `c9945d87eb46c33325f05dbe1d6dbfeb43bc5627`.
+The next commit changes only the review regression class's Compose rule and
+this scheduling record. It supplies `StandardTestDispatcher()` through the
+existing `effectContext` overload, with the required API opt-ins.
+
+Inspected the actual pinned Compose 1.8.2 sources downloaded from Google Maven
+for `ui-test-android` and `ui-test-junit4-android`; local inspection copies are
+under `/tmp/dining-release-20261107/compose-1.8.2-source-inspection`.
+`AndroidComposeTestRule.android.kt` exposes the `effectContext` overload.
+`ComposeUiTest.android.kt:258` accepts a supplied `TestDispatcher` and otherwise
+creates `UnconfinedTestDispatcher`. Its recomposer, frame clock and composition
+effects use that dispatcher. A plain `Dispatchers.Main` argument would not
+replace that fallback. `MainTestClockImpl.android.kt` supplies `runOnUiThread`
+to `AbstractMainTestClock`, whose scheduler advancement and `runCurrent()` run
+on the Android UI thread. A standard dispatcher queues resumed work for that
+clock instead of executing it immediately on an I/O emitter.
+
+The class still renders actual `MainActivityContent`, including its actual
+system-bar `SideEffect`. Initial attachment remains in
+`ActivityScenario.onActivity`. Existing idle waits and clock auto-advancement
+drive the supplied dispatcher; no separate scheduler is advanced off the UI
+thread. The first preference emission is still withheld by the replaying
+`MutableSharedFlow`, the startup response still uses its controlled deferred
+barrier, and the checker still uses the instance's real I/O scope. No flow
+emission, authentication action, production popup logic or F5/F6 assertion was
+changed to make the test pass.
+
+Post-fixture source guards confirm that removing the rule declaration/import
+change makes the entire regression class byte-identical to the probe base,
+including all four method bodies. All production files except the F6 manager
+are byte-identical to the base. The source inspection verifies the pinned
+overload and its dispatcher/clock contract; it does not establish device GREEN.
+`git diff --check` passes. No Android build, push or other remote write was run.
+
+The parent must rerun the exact committed head: expect the three F6 methods to
+exercise one owned continuation and preserve stale rejection; observe F5's
+actual dismissed-popup assertion after its scheduling error is removed. Any
+mixed result remains subject to the unchanged validator's classification.
+Further F5 production work remains unauthorized until valid F5 behavior RED.
