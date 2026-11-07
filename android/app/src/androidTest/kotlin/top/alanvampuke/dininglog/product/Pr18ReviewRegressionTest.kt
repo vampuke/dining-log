@@ -5,6 +5,9 @@ import android.content.Intent
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.compose.material3.Text
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -37,6 +40,8 @@ class Pr18ReviewRegressionTest {
     )
     private lateinit var evidence: Pr18Evidence
     private var runtime: Pr18Runtime? = null
+    private var checkerInComposition: AppUpdateChecker? = null
+    private lateinit var compositionScope: CoroutineScope
     private val a = pr18Release(name = "手动选择 A")
     private val b = pr18Release(a.versionCode + 1, "启动结果 B")
 
@@ -61,18 +66,56 @@ class Pr18ReviewRegressionTest {
     private fun diagnose(case: String, block: () -> Unit) {
         try { block() } catch (failure: Throwable) {
             runtime?.let { record(it, "failure-$case") }
+            if (checkerInComposition != null) runCatching { recordF5Ui("failure-$case") }
             evidence.diagnose(case, failure)
             throw failure
         }
     }
 
     private fun record(next: Pr18Runtime, case: String) {
-        evidence.record("review-regression case=$case checker=${next.updates.state.value} " +
+        evidence.record("review-regression case=$case checker=${(checkerInComposition ?: next.updates).state.value} " +
             "selected=${next.manager.state.value} requests=${next.versions.requests.get()} " +
             "downloads=${next.updateContext.downloads.get()} connections=${next.transport.requests.get()} " +
             "verifications=${next.installer.verifications.get()} " +
             "completedVerifications=${next.installer.completedVerifications.get()} " +
             "permissions=${next.permissionRequests.size} installed=${next.installer.installed.map { it.name }}")
+    }
+
+    private fun recordF5Ui(case: String) {
+        val rows = compose.onAllNodesWithTag("app-update").fetchSemanticsNodes()
+        val checks = compose.onAllNodesWithTag("check-update").fetchSemanticsNodes()
+        evidence.record("F5-001 observation=$case lifecycle=${compose.activityRule.scenario.state} " +
+            "clockMs=${compose.mainClock.currentTime} " +
+            "appUpdate=${rows.map { "${it.config} bounds=${it.boundsInRoot}" }} " +
+            "checkUpdate=${checks.map { it.config }}")
+    }
+
+    private fun awaitSettingsBAndOfferHandling() {
+        recordF5Ui("await-settings-B")
+        // Source-state B can precede the queued lifecycle collector. Unlike an
+        // idle check, this wait pumps the UI clock until the real row updates.
+        // Existence also permits an erroneous dialog to reach the popup assertion.
+        compose.waitUntil("F5-001 real Settings applies completed B", 15_000) {
+            compose.onAllNodes(
+                hasText("有新版本 ${b.versionName}") and hasAnyAncestor(hasTestTag("app-update")),
+                useUnmergedTree = true,
+            ).fetchSemanticsNodes().size == 1 &&
+                compose.onAllNodesWithTag("check-update", true).fetchSemanticsNodes()
+                    .singleOrNull()?.config?.contains(SemanticsProperties.Disabled) == false
+        }
+        // The startup-offer effect is synchronous on this composition dispatcher.
+        // A frame receipt after real B, then idle/layout, drains its queued work
+        // before observing the popup. This scope adds no product state or input.
+        val frameApplied = CompletableDeferred<Unit>()
+        compose.runOnUiThread {
+            compositionScope.launch {
+                withFrameNanos { }
+                frameApplied.complete(Unit)
+            }
+        }
+        compose.waitUntil("F5-001 composition frame after Settings B", 15_000) { frameApplied.isCompleted }
+        compose.waitForIdle()
+        recordF5Ui("B-offer-frame-completed")
     }
 
     private fun secureWindow(expected: Boolean) {
@@ -103,7 +146,10 @@ class Pr18ReviewRegressionTest {
             override suspend fun setUpdateChecksEnabled(enabled: Boolean) { restored.emit(enabled) }
         }
         val checker = AppUpdateChecker(next.versions, delayedPreferences, BuildConfig.VERSION_CODE, next.ioScope)
+        checkerInComposition = checker
         evidence.renderProduction {
+            val scope = rememberCoroutineScope()
+            SideEffect { compositionScope = scope }
             MainActivityContent(compose.activity, next.store, next.account, next.auth, next.refresh,
                 next.repository, next.security, next.preferences, checker, next.manager,
                 { next.permissionRequests += it })
@@ -143,7 +189,7 @@ class Pr18ReviewRegressionTest {
         assertEquals("dismissal retains selected A while B is pending", a, next.manager.state.value.release)
         automaticB.complete(b)
         compose.waitUntil(15_000) { checker.state.value.startupRelease == b && !checker.state.value.checking }
-        compose.waitForIdle()
+        awaitSettingsBAndOfferHandling()
         val popupCount = compose.onAllNodesWithTag("screen:update", true).fetchSemanticsNodes().size
         evidence.record("F5-001 checker=${checker.state.value} popupCount=$popupCount selected=${next.manager.state.value}")
         assertEquals("automatic B cannot replace explicitly selected A", a, next.manager.state.value.release)
