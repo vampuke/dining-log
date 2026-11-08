@@ -396,30 +396,60 @@ internal class Pr18Evidence(
     }
 
     private fun withOverlays(node: SemanticsNode, geometry: TouchGeometry): TouchGeometry {
-        val ancestors = generateSequence(node) { it.parent }.map { it.id }.toSet()
         val candidates = compose.onAllNodes(SemanticsMatcher("actionable Compose surfaces") {
             it.config.contains(SemanticsActions.OnClick) || it.config.contains(SemanticsActions.OnLongClick) ||
                 it.config.contains(SemanticsActions.ScrollBy) || it.config.contains(SemanticsActions.SetText) ||
                 it.config.contains(SemanticsActions.SetProgress)
         }, true).fetchSemanticsNodes()
-        val overlays = compose.runOnIdle { candidates.filter {
-            it.id !in ancestors && ownerWindow((it.root as ViewRootForTest).view) === geometry.window
-        }.mapNotNull { overlay ->
-            // Coordinates from a different Compose root must first go through screen space.
-            val view = (overlay.root as ViewRootForTest).view
-            val origin = IntArray(2).also { view.getLocationOnScreen(it) }
-            val outer = pr18OuterCoordinates(overlay)
-            val position = outer.positionInRoot()
-            val full = Rect(position.x, position.y, position.x + outer.size.width, position.y + outer.size.height)
-            val windowPosition = outer.positionInWindow()
-            val label = "node-${overlay.id}:${overlay.config.getOrElse(SemanticsProperties.TestTag) { "untagged" }}"
-            record("overlay tag=$label owner=${System.identityHashCode(geometry.window)} " +
-                "root=${System.identityHashCode(view)} outerFull=$full outerClipped=${outer.boundsInRoot()} " +
-                "windowPosition=$windowPosition size=${outer.size} semanticFull=${pr18FullBounds(overlay)} semanticClipped=${overlay.boundsInRoot}")
-            outer.boundsInRoot().takeIf { it.width > 0 && it.height > 0 }?.let { bounds ->
-                label to bounds.translate(Offset(origin[0].toFloat(), origin[1].toFloat()) - geometry.screenOrigin)
+        val overlays = compose.runOnIdle {
+            // Layout ancestry also covers parents omitted by merged semantics.
+            val ancestors = generateSequence(node.layoutInfo) { it.parentInfo }.toList()
+            val paintRanks = mutableMapOf<Int, Int>()
+            fun visit(current: SemanticsNode) {
+                val layout = current.layoutInfo
+                if (!layout.isAttached || !layout.isPlaced || layout.isDeactivated) return
+                paintRanks[current.id] = paintRanks.size
+                // Public Compose 1.8.2 children are in paint (inverse hit-test)
+                // order, including zIndex/placement and non-semantic wrappers.
+                current.children.forEach(::visit)
             }
-        } }.toMutableList()
+            node.root?.semanticsOwner?.unmergedRootSemanticsNode?.let(::visit)
+            val targetRank = paintRanks[node.id]
+            candidates.filter {
+                ancestors.none { ancestor -> ancestor === it.layoutInfo } &&
+                    ownerWindow((it.root as ViewRootForTest).view) === geometry.window
+            }.mapNotNull { overlay ->
+                // Coordinates from a different Compose root must first go through screen space.
+                val view = (overlay.root as ViewRootForTest).view
+                val origin = IntArray(2).also { view.getLocationOnScreen(it) }
+                val outer = pr18OuterCoordinates(overlay)
+                val position = outer.positionInRoot()
+                val full = Rect(position.x, position.y, position.x + outer.size.width, position.y + outer.size.height)
+                val windowPosition = outer.positionInWindow()
+                val label = "node-${overlay.id}:${overlay.config.getOrElse(SemanticsProperties.TestTag) { "untagged" }}"
+                val rank = if (overlay.root === node.root) paintRanks[overlay.id] else null
+                val order = when {
+                    rank == null || targetRank == null -> "unknown"
+                    rank > targetRank -> "above"
+                    else -> "below"
+                }
+                // This is the clipped input coordinator, with Compose's actual
+                // minimum-touch extent for clicks, rather than outer padding.
+                val input = overlay.touchBoundsInRoot
+                record("overlay tag=$label owner=${System.identityHashCode(geometry.window)} " +
+                    "root=${System.identityHashCode(view)} order=$order paintRank=$rank targetPaintRank=$targetRank " +
+                    "layoutAncestors=${generateSequence(overlay.layoutInfo) { it.parentInfo }.map { it.semanticsId }.toList()} " +
+                    "outerFull=$full outerClipped=${outer.boundsInRoot()} inputClipped=$input " +
+                    "windowPosition=$windowPosition size=${outer.size} semanticFull=${pr18FullBounds(overlay)} semanticClipped=${overlay.boundsInRoot}")
+                if (order == "below") return@mapNotNull null
+                // Unrelated roots or unavailable ranks remain conservative
+                // obstructions; no tag, action or independently clickable child is exempt.
+                val obstruction = if (order == "unknown") "$label:paint-order-unknown" else label
+                input.takeIf { it.width > 0 && it.height > 0 }?.let { bounds ->
+                    obstruction to bounds.translate(Offset(origin[0].toFloat(), origin[1].toFloat()) - geometry.screenOrigin)
+                }
+            }
+        }.toMutableList()
         val windows = interactiveWindows()
         val ownerId = compose.runOnIdle {
             val info = geometry.root.createAccessibilityNodeInfo()

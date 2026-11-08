@@ -1,0 +1,5 @@
+# Preserve exact generated failure reports and logs, including original spaces.
+# This affects only archive whitespace diagnostics; text diffs remain visible.
+ci/api-*/*.html -whitespace
+lightweight/red/*.log -whitespace
+lightweight/green/*.log -whitespace

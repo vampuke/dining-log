@@ -1,0 +1,184 @@
+package top.alanvampuke.dininglog.product
+import android.graphics.Rect as AndroidRect
+import android.view.accessibility.AccessibilityWindowInfo
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.LayoutCoordinates
+import top.alanvampuke.dininglog.product.SemanticsProperties.Text
+import top.alanvampuke.dininglog.product.SemanticsProperties.InputText
+import top.alanvampuke.dininglog.product.SemanticsProperties.EditableText
+internal fun pr18FullBounds(node: SemanticsNode): Rect = Rect(node.positionInRoot.x, node.positionInRoot.y,
+    node.positionInRoot.x + node.size.width, node.positionInRoot.y + node.size.height)
+internal fun pr18OuterCoordinates(node: SemanticsNode): androidx.compose.ui.layout.LayoutCoordinates {
+    var coordinates = node.layoutInfo.coordinates
+    val parent = coordinates.parentLayoutCoordinates
+    // Public pinned LayoutCoordinates: parentCoordinates traverses modifiers;
+    // parentLayoutCoordinates is outside this LayoutNode's outer coordinator.
+    while (coordinates.parentCoordinates != null && coordinates.parentCoordinates !== parent) {
+        coordinates = requireNotNull(coordinates.parentCoordinates)
+    }
+    return coordinates
+}
+fun hasText(
+    text: String,
+    substring: Boolean = false,
+    ignoreCase: Boolean = false
+): SemanticsMatcher {
+    val propertyName = "${Text.name} + ${InputText.name} + ${EditableText.name}"
+    return if (substring) {
+        SemanticsMatcher("$propertyName contains '$text' (ignoreCase: $ignoreCase) as substring") {
+            val isInInputTextValue =
+                it.config.getOrNull(InputText)?.text?.contains(text, ignoreCase) ?: false
+            val isInEditableTextValue =
+                it.config.getOrNull(EditableText)?.text?.contains(text, ignoreCase) ?: false
+            val isInTextValue =
+                it.config.getOrNull(Text)?.any { item -> item.text.contains(text, ignoreCase) }
+                    ?: false
+            isInInputTextValue || isInEditableTextValue || isInTextValue
+        }
+    } else {
+        SemanticsMatcher("$propertyName contains '$text' (ignoreCase: $ignoreCase)") {
+            val isInInputTextValue =
+                it.config.getOrNull(InputText)?.text?.equals(text, ignoreCase) ?: false
+            val isInEditableTextValue =
+                it.config.getOrNull(EditableText)?.text?.equals(text, ignoreCase) ?: false
+            val isInTextValue =
+                it.config.getOrNull(Text)?.any { item -> item.text.equals(text, ignoreCase) }
+                    ?: false
+            isInInputTextValue || isInEditableTextValue || isInTextValue
+        }
+    }
+}
+
+fun hasTextExactly(
+    vararg textValues: String,
+    includeEditableText: Boolean = true
+): SemanticsMatcher {
+    val expected = textValues.toList()
+    val propertyName =
+        if (includeEditableText) {
+            "${Text.name} + ${EditableText.name}"
+        } else {
+            Text.name
+        }
+    return SemanticsMatcher("$propertyName = [${textValues.joinToString(",")}]") { node ->
+        val actual = mutableListOf<String>()
+        if (includeEditableText) {
+            node.config.getOrNull(EditableText)?.let { actual.add(it.text) }
+        }
+        node.config.getOrNull(Text)?.let { actual.addAll(it.map { anStr -> anStr.text }) }
+        actual.containsAll(expected) && expected.containsAll(actual)
+    }
+}
+fun SemanticsNodeInteraction.assertTextContains(
+    value: String,
+    substring: Boolean = false,
+    ignoreCase: Boolean = false
+): SemanticsNodeInteraction = assert(hasText(value, substring = substring, ignoreCase = ignoreCase))
+
+fun SemanticsNodeInteraction.assertTextEquals(
+    vararg values: String,
+    includeEditableText: Boolean = true
+): SemanticsNodeInteraction =
+    assert(hasTextExactly(*values, includeEditableText = includeEditableText))
+
+class AdapterProbe(val compose: FixtureCompose, val windows: List<AccessibilityWindowInfo>) {
+    val logs = mutableListOf<String>()
+    private fun ownerWindow(view: View) = view.window
+    private fun record(line: String) { logs += line }
+    private fun interactiveWindows() = windows
+    private fun windowRectangles(window: AccessibilityWindowInfo) = window.rectangles
+    private fun keyboardRectangles(windows: List<AccessibilityWindowInfo>): List<AndroidRect> =
+        windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }.flatMap { it.rectangles }
+    private data class TouchGeometry(
+        val root: View, val window: Window, val full: Rect, val clipped: Rect,
+        val windowFull: Rect, val windowClipped: Rect, val point: Offset,
+        val screenOrigin: Offset, val visible: Rect, val overlays: List<Pair<String, Rect>>,
+        val configuration: String,
+    )
+    private fun withOverlays(node: SemanticsNode, geometry: TouchGeometry): TouchGeometry {
+        val ancestors = generateSequence(node) { it.parent }.map { it.id }.toSet()
+        val candidates = compose.onAllNodes(SemanticsMatcher("actionable Compose surfaces") {
+            it.config.contains(SemanticsActions.OnClick) || it.config.contains(SemanticsActions.OnLongClick) ||
+                it.config.contains(SemanticsActions.ScrollBy) || it.config.contains(SemanticsActions.SetText) ||
+                it.config.contains(SemanticsActions.SetProgress)
+        }, true).fetchSemanticsNodes()
+        val overlays = compose.runOnIdle { candidates.filter {
+            it.id !in ancestors && ownerWindow((it.root as ViewRootForTest).view) === geometry.window
+        }.mapNotNull { overlay ->
+            // Coordinates from a different Compose root must first go through screen space.
+            val view = (overlay.root as ViewRootForTest).view
+            val origin = IntArray(2).also { view.getLocationOnScreen(it) }
+            val outer = pr18OuterCoordinates(overlay)
+            val position = outer.positionInRoot()
+            val full = Rect(position.x, position.y, position.x + outer.size.width, position.y + outer.size.height)
+            val windowPosition = outer.positionInWindow()
+            val label = "node-${overlay.id}:${overlay.config.getOrElse(SemanticsProperties.TestTag) { "untagged" }}"
+            record("overlay tag=$label owner=${System.identityHashCode(geometry.window)} " +
+                "root=${System.identityHashCode(view)} outerFull=$full outerClipped=${outer.boundsInRoot()} " +
+                "windowPosition=$windowPosition size=${outer.size} semanticFull=${pr18FullBounds(overlay)} semanticClipped=${overlay.boundsInRoot}")
+            outer.boundsInRoot().takeIf { it.width > 0 && it.height > 0 }?.let { bounds ->
+                label to bounds.translate(Offset(origin[0].toFloat(), origin[1].toFloat()) - geometry.screenOrigin)
+            }
+        } }.toMutableList()
+        val windows = interactiveWindows()
+        val ownerId = compose.runOnIdle {
+            val info = geometry.root.createAccessibilityNodeInfo()
+            try { requireNotNull(info).windowId } finally { info?.recycle() }
+        }
+        val owner = windows.singleOrNull { it.id == ownerId } ?: error("Screen owner window availability is unknown")
+        for (window in windows.filter { it.id != ownerId && it.layer > owner.layer && it.type != AccessibilityWindowInfo.TYPE_INPUT_METHOD }) {
+            for ((index, bounds) in windowRectangles(window).withIndex()) overlays += "window-${window.id}-$index" to
+                Rect(bounds.left.toFloat(), bounds.top.toFloat(), bounds.right.toFloat(), bounds.bottom.toFloat()).translate(-geometry.screenOrigin)
+        }
+        val keyboards = keyboardRectangles(windows)
+        for ((index, keyboard) in keyboards.withIndex()) overlays += "IME-screen-$index" to Rect(keyboard.left.toFloat(), keyboard.top.toFloat(),
+            keyboard.right.toFloat(), keyboard.bottom.toFloat()).translate(-geometry.screenOrigin)
+        val imeVisible = compose.runOnIdle {
+            requireNotNull(ViewCompat.getRootWindowInsets(geometry.root)) { "Touch owner IME insets unavailable" }
+                .isVisible(WindowInsetsCompat.Type.ime())
+        }
+        check(!imeVisible || keyboards.isNotEmpty()) { "IME visible but its actual screen geometry is unknown" }
+        return geometry.copy(overlays = overlays)
+    }
+
+    private fun observedGeometry(node: SemanticsNode): TouchGeometry {
+        val view = node.root.view
+        val full = pr18FullBounds(node)
+        return withOverlays(node, TouchGeometry(view, view.window, full, node.boundsInRoot,
+            full, node.boundsInRoot, full.center, Offset(view.x.toFloat(), view.y.toFloat()),
+            view.visible, emptyList(), "CONTROL synthetic geometry"))
+    }
+    fun exposed(node: SemanticsNode): Boolean {
+        val g = observedGeometry(node)
+            val exposed = g.full.contains(g.point) && g.clipped.contains(g.point) && g.visible.contains(g.point) &&
+                g.overlays.none { it.second.contains(g.point) }
+
+        return exposed
+    }
+    fun overlays(node: SemanticsNode) = observedGeometry(node).overlays
+    fun target(tag: String) = SemanticsNodeInteraction(compose.nodes.single {
+        it.config.getOrElse(SemanticsProperties.TestTag) { "" } == tag
+    })
+    fun progress(state: ProgressState) {
+        val evidence = this
+evidence.target("update-progress").assertTextContains(if (state.stage == UpdateStage.VERIFYING) "正在校验安装包…"
+                            else if (state.percent == null) "百分比待确认" else "50%")
+    }
+}
+fun productionProgress(state: ProgressState): String = if (state.stage == UpdateStage.VERIFYING) "正在校验安装包…" else "正在下载 · ${state.percent?.let { "$it%" } ?: "百分比待确认"}"
+fun observedFailureControls(): List<ObservedFailureControl> {
+    fun rect(value: String): Rect {
+        val parts = value.split(',').map { it.toFloat() }
+        return Rect(parts[0], parts[1], parts[2], parts[3])
+    }
+    val observations = "26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false]|56704|42.0,1436.0,1038.0,1562.0|42.0,1436.0,1038.0,1562.0|0.0,0.0,1080.0,1730.0|56712;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1730.0;0.0,0.0,1080.0,1730.0\n26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true]|57683|42.0,1436.0,1038.0,1562.0|42.0,1436.0,1038.0,1562.0|0.0,0.0,1080.0,1730.0|57691;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1730.0;0.0,0.0,1080.0,1730.0\n26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false]|58689|42.0,1436.0,1038.0,1562.0|42.0,1436.0,1038.0,1562.0|0.0,0.0,1080.0,1730.0|58697;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1730.0;0.0,0.0,1080.0,1730.0\n26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true]|59721|42.0,1436.0,1038.0,1562.0|42.0,1436.0,1038.0,1562.0|0.0,0.0,1080.0,1730.0|59729;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1394.0;0.0,0.0,1080.0,1730.0;0.0,0.0,1080.0,1730.0\n26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false]|67042|74.0,724.0,693.0,887.0|74.0,724.0,693.0,887.0|0.0,0.0,1680.0,945.0|67039;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~67127;53.0,801.0,1501.0,1023.0;53.0,801.0,1501.0,945.0;53.0,801.0,1501.0,1023.0;53.0,801.0,1501.0,945.0\n26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true]|69545|74.0,724.0,693.0,887.0|74.0,724.0,693.0,887.0|0.0,0.0,1680.0,945.0|69542;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~69616;53.0,801.0,1501.0,1023.0;53.0,801.0,1501.0,945.0;53.0,801.0,1501.0,1023.0;53.0,801.0,1501.0,945.0\n26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false]|72578|74.0,712.0,693.0,887.0|74.0,712.0,693.0,887.0|0.0,0.0,1680.0,945.0|72575;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~72684;40.6,716.8,1510.6,888.8;40.6,691.2,1513.4,888.8;42.0,704.0,1512.0,876.0;42.0,704.0,1512.0,876.0\n26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true]|75643|74.0,712.0,693.0,887.0|74.0,712.0,693.0,887.0|0.0,0.0,1680.0,945.0|75640;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~75749;40.6,716.8,1510.6,888.8;40.6,691.2,1513.4,888.8;42.0,704.0,1512.0,876.0;42.0,704.0,1512.0,876.0\n26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false]|66963|53.0,317.0,766.0,443.0|53.0,317.0,766.0,443.0|0.0,0.0,945.0,1080.0|66968;0.0,63.0,819.0,264.0;0.0,63.0,819.0,264.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true]|69466|53.0,317.0,766.0,443.0|53.0,317.0,766.0,443.0|0.0,0.0,945.0,1080.0|69471;0.0,63.0,819.0,264.0;0.0,63.0,819.0,264.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false]|72475|42.0,328.0,777.0,454.0|42.0,328.0,777.0,454.0|0.0,0.0,945.0,1080.0|72480;0.0,63.0,819.0,286.0;0.0,63.0,819.0,286.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true]|75540|42.0,328.0,777.0,454.0|42.0,328.0,777.0,454.0|0.0,0.0,945.0,1080.0|75545;0.0,63.0,819.0,286.0;0.0,63.0,819.0,286.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false]|65307|53.0,1375.0,892.0,1501.0|53.0,1375.0,892.0,1501.0|0.0,0.0,945.0,1680.0|65312;0.0,63.0,945.0,1322.0;0.0,63.0,945.0,1322.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true]|67810|53.0,1375.0,892.0,1501.0|53.0,1375.0,892.0,1501.0|0.0,0.0,945.0,1680.0|67815;0.0,63.0,945.0,1322.0;0.0,63.0,945.0,1322.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false]|70470|42.0,1386.0,903.0,1512.0|42.0,1386.0,903.0,1512.0|0.0,0.0,945.0,1680.0|70475;0.0,63.0,945.0,1344.0;0.0,63.0,945.0,1344.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true]|73535|42.0,1386.0,903.0,1512.0|42.0,1386.0,903.0,1512.0|0.0,0.0,945.0,1680.0|73540;0.0,63.0,945.0,1344.0;0.0,63.0,945.0,1344.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|76538;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|77885;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|79542;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|81508;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|76333;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|77680;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|79235;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|81201;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|76997;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|78330;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|80242;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|82198;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false]|56320|42.0,1437.0,1038.0,1563.0|42.0,1437.0,1038.0,1563.0|0.0,0.0,1080.0,1731.0|56328;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1731.0;0.0,0.0,1080.0,1731.0\n35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true]|57310|42.0,1437.0,1038.0,1563.0|42.0,1437.0,1038.0,1563.0|0.0,0.0,1080.0,1731.0|57318;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1731.0;0.0,0.0,1080.0,1731.0\n35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false]|58326|42.0,1437.0,1038.0,1563.0|42.0,1437.0,1038.0,1563.0|0.0,0.0,1080.0,1731.0|58334;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1731.0;0.0,0.0,1080.0,1731.0\n35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true]|59358|42.0,1437.0,1038.0,1563.0|42.0,1437.0,1038.0,1563.0|0.0,0.0,1080.0,1731.0|59366;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1395.0;0.0,0.0,1080.0,1731.0;0.0,0.0,1080.0,1731.0\n35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false]|66639|74.0,724.0,693.0,887.0|74.0,724.0,693.0,887.0|0.0,0.0,1680.0,945.0|66636;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~66697;53.0,596.0,1501.0,838.0;53.0,596.0,1501.0,838.0;53.0,596.0,1501.0,838.0;53.0,596.0,1501.0,838.0\n35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true]|69162|74.0,724.0,693.0,887.0|74.0,724.0,693.0,887.0|0.0,0.0,1680.0,945.0|69159;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~69220;53.0,596.0,1501.0,838.0;53.0,596.0,1501.0,838.0;53.0,596.0,1501.0,838.0;53.0,596.0,1501.0,838.0\n35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false]|72162|74.0,712.0,693.0,887.0|74.0,712.0,693.0,887.0|0.0,0.0,1680.0,945.0|72159;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~72268;40.5,736.8,1510.5,921.8;40.5,711.2,1513.5,921.8;42.0,724.0,1512.0,909.0;42.0,724.0,1512.0,909.0\n35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true]|75208|74.0,712.0,693.0,887.0|74.0,712.0,693.0,887.0|0.0,0.0,1680.0,945.0|75205;0.0,63.0,1554.0,945.0;0.0,63.0,1554.0,945.0;0.0,0.0,1680.0,945.0;0.0,0.0,1680.0,945.0~75314;40.5,736.8,1510.5,921.8;40.5,711.2,1513.5,921.8;42.0,724.0,1512.0,909.0;42.0,724.0,1512.0,909.0\n35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false]|66560|53.0,317.0,766.0,443.0|53.0,317.0,766.0,443.0|0.0,0.0,945.0,1080.0|66565;0.0,63.0,819.0,264.0;0.0,63.0,819.0,264.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true]|69083|53.0,317.0,766.0,443.0|53.0,317.0,766.0,443.0|0.0,0.0,945.0,1080.0|69088;0.0,63.0,819.0,264.0;0.0,63.0,819.0,264.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false]|72059|42.0,328.0,777.0,454.0|42.0,328.0,777.0,454.0|0.0,0.0,945.0,1080.0|72064;0.0,63.0,819.0,286.0;0.0,63.0,819.0,286.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true]|75105|42.0,328.0,777.0,454.0|42.0,328.0,777.0,454.0|0.0,0.0,945.0,1080.0|75110;0.0,63.0,819.0,286.0;0.0,63.0,819.0,286.0;0.0,0.0,945.0,496.0;0.0,0.0,945.0,496.0\n35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false]|64891|53.0,1375.0,892.0,1501.0|53.0,1375.0,892.0,1501.0|0.0,0.0,945.0,1680.0|64896;0.0,63.0,945.0,1322.0;0.0,63.0,945.0,1322.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true]|67462|53.0,1375.0,892.0,1501.0|53.0,1375.0,892.0,1501.0|0.0,0.0,945.0,1680.0|67467;0.0,63.0,945.0,1322.0;0.0,63.0,945.0,1322.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false]|70087|42.0,1386.0,903.0,1512.0|42.0,1386.0,903.0,1512.0|0.0,0.0,945.0,1680.0|70092;0.0,63.0,945.0,1344.0;0.0,63.0,945.0,1344.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true]|73133|42.0,1386.0,903.0,1512.0|42.0,1386.0,903.0,1512.0|0.0,0.0,945.0,1680.0|73138;0.0,63.0,945.0,1344.0;0.0,63.0,945.0,1344.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|76032;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|77355;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|79040;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|80941;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|75888;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|77150;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|78744;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|80645;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0~80788;43.7,1325.5,904.7,1510.5;40.5,1325.5,904.5,1525.5;42.0,1333.0,903.0,1518.0;42.0,1333.0,903.0,1518.0\n35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|76538;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]|-9001|556.0,1333.0,871.0,1496.0|556.0,1333.0,871.0,1496.0|0.0,0.0,945.0,1680.0|77861;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|79719;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0\n35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]|-9001|556.0,1321.0,871.0,1496.0|556.0,1321.0,871.0,1496.0|0.0,0.0,945.0,1680.0|81620;0.0,63.0,945.0,1680.0;0.0,63.0,945.0,1680.0;0.0,0.0,945.0,1680.0;0.0,0.0,945.0,1680.0"
+    return observations.lineSequence().map { line ->
+        val fields = line.split('|')
+        val covers = fields[5].split('~').map { value ->
+            val parts = value.split(';')
+            ObservedCover(parts[0].toInt(), rect(parts[1]), rect(parts[2]), rect(parts[3]), rect(parts[4]))
+        }
+        ObservedFailureControl(fields[0], fields[1].toInt(), rect(fields[2]), rect(fields[3]), rect(fields[4]), covers)
+    }.toList()
+}

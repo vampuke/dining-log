@@ -1,0 +1,129 @@
+JUnit version 4.13.2
+....E.E...E.E..E.....E.E.E...CONTROL actual-CI geometry / audited lower order 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]: exposed=false
+CONTROL actual-CI geometry / audited lower order 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]: exposed=false
+E..E..E.
+Time: 1.211
+There were 11 failures:
+1) layoutAncestorsAreNotSiblingCoversForMergedTargets(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError
+	at org.junit.Assert.fail(Assert.java:87)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertTrue(Assert.java:53)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.layoutAncestorsAreNotSiblingCoversForMergedTargets(RuntimeAdapterControls.kt:128)
+2) lowerNestedClickableRowMayOverlapFloatingTab(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Compare whole paint branches, not semantic IDs or nested depth
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.lowerNestedClickableRowMayOverlapFloatingTab(RuntimeAdapterControls.kt:57)
+3) lowerScrollListMayOverlapFloatingTab(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Lower list must not obstruct the later-painted capsule
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.lowerScrollListMayOverlapFloatingTab(RuntimeAdapterControls.kt:48)
+4) knownProgressRequiresTheCompleteStatusAndExactPercentage(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Text + InputText + EditableText contains '50%' (ignoreCase: false)
+	at top.alanvampuke.dininglog.product.SemanticsNodeInteraction.assert(AdapterFixtures.kt:87)
+	at top.alanvampuke.dininglog.product.ExtractedAdapterKt.assertTextContains(ExtractedAdapter.kt:77)
+	at top.alanvampuke.dininglog.product.ExtractedAdapterKt.assertTextContains$default(ExtractedAdapter.kt:73)
+	at top.alanvampuke.dininglog.product.AdapterProbe.progress(ExtractedAdapter.kt:165)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.progress(RuntimeAdapterControls.kt:232)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.knownProgressRequiresTheCompleteStatusAndExactPercentage(RuntimeAdapterControls.kt:238)
+5) partiallyClippedHigherInputUsesItsActualClippedRegion(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Clipping removes the claimed obstruction at the touch point
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.partiallyClippedHigherInputUsesItsActualClippedRegion(RuntimeAdapterControls.kt:102)
+6) progressCannotPassWithWrongMissingOrTruncatedStatus(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Wrong status must reject: 50%
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.progressCannotPassWithWrongMissingOrTruncatedStatus(RuntimeAdapterControls.kt:256)
+7) actualInputBoundsDoNotIncludeOuterLayoutPadding(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Even a higher scroll surface does not accept a touch in its outer padding
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.actualInputBoundsDoNotIncludeOuterLayoutPadding(RuntimeAdapterControls.kt:79)
+8) higherMinimumTouchExtensionRemainsAnObstruction(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Use pinned touch bounds, retaining the clickable minimum-touch extent
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertFalse(Assert.java:65)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.higherMinimumTouchExtensionRemainsAnObstruction(RuntimeAdapterControls.kt:87)
+9) all56ActualFailureGeometryControlsAcceptOnlyTheProvenLowerPlane(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: All audited lower-plane controls must expose the actual target expected:<[]> but was:<[26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false], 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true], 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false], 26:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true], 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false], 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true], 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false], 26:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true], 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false], 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true], 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false], 26:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true], 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false], 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true], 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false], 26:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true], 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false], 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true], 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false], 26:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true], 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false], 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true], 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false], 26:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true], 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false], 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true], 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false], 26:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true], 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false], 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true], 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false], 35:f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true], 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false], 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true], 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false], 35:f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true], 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false], 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true], 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false], 35:f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true], 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false], 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true], 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false], 35:f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true], 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false], 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true], 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false], 35:f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true], 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false], 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true], 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false], 35:f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true], 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false], 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true], 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false], 35:f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]]>
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.failNotEquals(Assert.java:835)
+	at org.junit.Assert.assertEquals(Assert.java:120)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.all56ActualFailureGeometryControlsAcceptOnlyTheProvenLowerPlane(RuntimeAdapterControls.kt:225)
+10) unknownProgressRequiresTheCompleteStatus(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError: Text + InputText + EditableText contains '百分比待确认' (ignoreCase: false)
+	at top.alanvampuke.dininglog.product.SemanticsNodeInteraction.assert(AdapterFixtures.kt:87)
+	at top.alanvampuke.dininglog.product.ExtractedAdapterKt.assertTextContains(ExtractedAdapter.kt:77)
+	at top.alanvampuke.dininglog.product.ExtractedAdapterKt.assertTextContains$default(ExtractedAdapter.kt:73)
+	at top.alanvampuke.dininglog.product.AdapterProbe.progress(ExtractedAdapter.kt:165)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.progress(RuntimeAdapterControls.kt:232)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.unknownProgressRequiresTheCompleteStatus(RuntimeAdapterControls.kt:244)
+11) lowerUntaggedScrimDoesNotObstructLaterTarget(top.alanvampuke.dininglog.product.RuntimeAdapterControls)
+java.lang.AssertionError
+	at org.junit.Assert.fail(Assert.java:87)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at org.junit.Assert.assertTrue(Assert.java:53)
+	at top.alanvampuke.dininglog.product.RuntimeAdapterControls.lowerUntaggedScrimDoesNotObstructLaterTarget(RuntimeAdapterControls.kt:64)
+
+FAILURES!!!
+Tests run: 26,  Failures: 11
+

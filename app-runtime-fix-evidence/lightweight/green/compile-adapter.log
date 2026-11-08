@@ -1,0 +1,9 @@
+/tmp/pr18-runtime-controls-ee10tr_v/ExtractedAdapter.kt:117:22: warning: unnecessary safe call on a non-null receiver of type ViewRootForTest
+            node.root?.semanticsOwner?.unmergedRootSemanticsNode?.let(::visit)
+                     ^
+/tmp/pr18-runtime-controls-ee10tr_v/ExtractedAdapter.kt:121:42: warning: no cast needed
+                    ownerWindow((it.root as ViewRootForTest).view) === geometry.window
+                                         ^
+/tmp/pr18-runtime-controls-ee10tr_v/ExtractedAdapter.kt:124:42: warning: no cast needed
+                val view = (overlay.root as ViewRootForTest).view
+                                         ^

@@ -1,0 +1,27 @@
+{
+  "executed_at_utc": "2026-11-08T03:30:14.105533+00:00",
+  "execution_head": "fd9294181b5fef8bb67cb3f2c337711f36e45beb",
+  "checks": [
+    {
+      "command": [
+        "python3",
+        "-B",
+        "app-runtime-fix-evidence/verify-scope.py"
+      ],
+      "exit_code": 0,
+      "output": "PASS 739 baseline files byte-identical; only the adapter and exact progress assertion changed\nPASS 20/109/190 and original 17/93/174 identities retained; CI artifacts and pinned sources unchanged\nPASS actual 26-case RED (11 failures) -> GREEN; unchanged harness inputs bind both executions to source\nAndroid GREEN pending real Actions\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "android_green": "pending_real_Actions",
+  "scope_program_sha256": "ae21dc0ac0adaf8aa4059292a43666342a46545a32b267cf1d6ea2c8e41a4090"
+}

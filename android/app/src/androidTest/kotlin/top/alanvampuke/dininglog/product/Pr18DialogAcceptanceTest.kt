@@ -124,8 +124,8 @@ class Pr18DialogAcceptanceTest(private val style: ThemeStyle, private val dark: 
                         tap("update-cancel")
                         evidence.record("update-cancel callbackDelta=${actions.size - before}")
                         assertEquals(before + 1, actions.size); assertEquals("cancel", actions.last())
-                        evidence.target("update-progress").assertTextContains(if (state.stage == UpdateStage.VERIFYING) "正在校验安装包…"
-                            else if (state.percent == null) "百分比待确认" else "50%")
+                        evidence.target("update-progress").assertTextEquals(if (state.stage == UpdateStage.VERIFYING) "正在校验安装包…"
+                            else if (state.percent == null) "正在下载 · 百分比待确认" else "正在下载 · 50%")
                     } else evidence.target("update-cancel").assertDoesNotExist()
                     val primary = when (state.stage) {
                         UpdateStage.IDLE -> "update-now" to "download"

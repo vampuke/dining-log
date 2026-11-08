@@ -1,0 +1,38 @@
+{
+  "command": "python3 -B app-runtime-fix-evidence/verify-scope.py",
+  "executed_at_utc": "2026-11-08T03:30:14.019125+00:00",
+  "execution_head": "fd9294181b5fef8bb67cb3f2c337711f36e45beb",
+  "status": "pass",
+  "base_sha": "fd9294181b5fef8bb67cb3f2c337711f36e45beb",
+  "unchanged_base_files": 739,
+  "modified_base_files": [
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt",
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt"
+  ],
+  "fixture_methods": 26,
+  "red_failures": 11,
+  "current_android_inventory": {
+    "classes": 20,
+    "methods": 109,
+    "cases": 190
+  },
+  "original_android_inventory": {
+    "classes": 17,
+    "methods": 93,
+    "cases": 174
+  },
+  "tested_worktree_source_sha256": {
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt": "99ea93b934930907963e17fe5c53c432da21a5f6d6d701dd0ea730b38e42c822",
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt": "2f3771c943b42874a7f227c017a15025a7fa7edb610491b47167d6172071b165"
+  },
+  "preserved": [
+    "all production files/assets/themes",
+    "all original case/method identities",
+    "action selector",
+    "window/IME ordering",
+    "physical injection/provenance gates",
+    "FLAG_SECURE and PNG/capture/font provenance",
+    "all callback assertions"
+  ],
+  "android_green": "pending_real_Actions"
+}

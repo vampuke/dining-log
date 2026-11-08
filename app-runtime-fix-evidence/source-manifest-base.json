@@ -1,0 +1,4717 @@
+{
+  "base_sha": "fd9294181b5fef8bb67cb3f2c337711f36e45beb",
+  "created_at_utc": "2026-11-08T02:56:45.155963+00:00",
+  "repair_inputs_sha256": {
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt": "dc3513a4f3f64764c0ee752caf442621d18c18e16ac454c61ab37fc7b037e4eb",
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt": "d7e9e62cb3e1a37e823666388d3823f4936af7fe316613785fded4c5e520ee9b"
+  },
+  "android_test_suites": {
+    "AndroidAuthTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/auth/AndroidAuthTest.kt",
+      "sha256": "fa416ae3dc65304316e0192380adb4d7c3961a305d98a308073be36f7d8b34b3",
+      "methods": [
+        "realAndroidKeystoreRoundTripCorruptionAndMissingKeyReturnLogin",
+        "loginLightLargeFontShowsPersistent429AndPasswordToggle",
+        "registrationDarkLargeFontKeepsInputsAndSubmitReachable",
+        "recoveryLightLargeFontKeepsRecoveryInputAndSubmitReachable",
+        "loginDarkLargeFontKeepsSubmitReachable",
+        "registrationLightLargeFontKeepsSubmitReachable",
+        "recoveryDarkUsesApprovedTokens"
+      ],
+      "actual_ci_cases": 7
+    },
+    "P6SmallScreenEndToEndTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6SmallScreenEndToEndTest.kt",
+      "sha256": "378b658d6e8654c4acd118df6ffd2df578d939eb389fa6dc7a9e84009a64249c",
+      "methods": [
+        "realApiRecordsFitTheSmallFirstScreenAndTheMinimalEditorSavesInBothThemes"
+      ],
+      "actual_ci_cases": 1
+    },
+    "P6UiTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6UiTest.kt",
+      "sha256": "460e48426dc0ece5b660293ec59519252f4229f55cdb805d8aad718b3aeb2e09",
+      "methods": [
+        "first360By640DpScreenShowsAtLeastThreeCompleteRecordItemsInBothThemes",
+        "selectedTabsPaintMeasuredContrastAndChangeTheirActualSilhouettesInBothThemes",
+        "emptyOptionalAddressReviewAndNoteAreOmittedAndMinimalEditorCanSave",
+        "bothTabReselectionsKeepTheSameBackStackEntryAndScrollToTop",
+        "centeredAddCreatesARestaurantFromEitherTab",
+        "systemRemoveAnimationsIsObservedAndDarkNavigationFramesNeverPaintWhite",
+        "actualAdaptiveRoundAndMonochromeIconsAndNativeNightThemeResolveCorrectly"
+      ],
+      "actual_ci_cases": 7
+    },
+    "P6UpdateUiTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6UpdateUiTest.kt",
+      "sha256": "cb4be5dd4ec8d1fd203b61868146940e33c2a648abf907a7a176966007c49e38",
+      "methods": [
+        "manualCheckWithStartupDisabledShowsAnEntryThatOpensTheDiscoveredRelease",
+        "failedManualCheckReplacesTheLatestVersionMessageAndAllowsRetry",
+        "inlineEntryAllowsOptOutAndInstallProviderExposesOnlyTheUpdatesSubdirectory"
+      ],
+      "actual_ci_cases": 3
+    },
+    "P8VisualTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt",
+      "sha256": "fda686c9c6dcc5309020d8d753a95e1860b413e459598f9d0f34546114da6136",
+      "methods": [
+        "eightEvidenceScreensAndEveryListTailStayAboveTheFloatingCapsuleInBothThemes",
+        "updatePanelFitsShortContentAndScrollsLongNotesAt200PercentInBothThemes",
+        "landscapeCapsuleAndControlsRespectSideBarsAndCutoutsInBothDirectionsAndThemes",
+        "emptyFocusedDisabledErrorAndMultilineFieldsFitAt100And200PercentInBothThemes",
+        "removedChooserEntriesAreAbsentFromOpenRestaurantAndVisitMenusInBothThemes"
+      ],
+      "actual_ci_cases": 5
+    },
+    "Pr16UiTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr16UiTest.kt",
+      "sha256": "b4b07ca49c31e40b32aaa0d1d10b8ba1e2712a6542200332845cd801e418db3b",
+      "methods": [
+        "invalidFirstVisitDateIsRevealedAfterFoldingAndSavingAndStaysVisibleWhenFoldedAgain",
+        "invalidFirstVisitNoteRemainsVisibleAfterSaveAndCompositionRestoration",
+        "historyTimeHasBothActionsAndStableHeightAtLargeFontWithoutOpeningTheCard",
+        "historyDetailAlsoReplacesTheTimeInsteadOfAddingAnotherLine",
+        "loadedStatsLabelTheirPageScopeAndFollowPaginationMissingCountsAndEmptyCache",
+        "restaurantAndDishChipsUseTheirLabelsAndExactInclusiveBoundaries"
+      ],
+      "actual_ci_cases": 6
+    },
+    "Pr17ListFirstScreenTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr17ListFirstScreenTest.kt",
+      "sha256": "5e13a1c68ad8a04e71b370a76c2a26f10000762f74b871d2bfb544266f9a9ffa",
+      "methods": [
+        "fiveListsHaveAtLeastTheMeasuredBaselineCompleteCards"
+      ],
+      "actual_ci_cases": 1
+    },
+    "Pr17UiTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr17UiTest.kt",
+      "sha256": "978cee9fed76195594423029c46bb1cfaddae5d3a8ba7f70726231385703048f",
+      "methods": [
+        "measuredTextLayoutsStillRejectRealWidthHeightAndMaxLinesOverflow",
+        "detailEntityStateMatrixPreservesValuesMetadataAndAllCallbacks",
+        "pageActionsAndHeadersUseContentWidthBoundaryAndSingleCallbackFillsTheRow",
+        "receiptTailIsMeasuredAgainstTheOriginalCardWithMatchingData",
+        "ratingEditorNullSteppersBoundariesAndFilterControlsDoNotCrossValues",
+        "editorKeepsTheOuterRatingCardAndSavedRestaurantChildActions",
+        "historyPairsFullTextTimeAndConfirmationCallbacksRemainReachable",
+        "applyPreviewAndComparisonColumnsKeepTheirOwnValuesAndScroll",
+        "settingsProfileUpdatePasswordAndLogoutRemainReachableWithoutSessionManagement",
+        "updateStageMatrixPreservesCallbacksProgressAndScrollableBottomPadding",
+        "updatePairUsesDialogContent239And240Boundary",
+        "listKindsBrandHeadersAndLandscapeRemainReachableWithAllFontsAndThemes"
+      ],
+      "actual_ci_cases": 12
+    },
+    "Pr18CaptureBoundaryTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18CaptureBoundaryTest.kt",
+      "sha256": "d58753c97ed981b87e2c976a089eb200b986660305dd509a82f56819080b1cc7",
+      "methods": [
+        "originalAndroidPngAcceptsAccentOnlyProductInBothCaptureMethods",
+        "androidReadbackRejectsChangedBytesAndSameSizeTransparentSubstitution",
+        "androidReadbackRejectsWrongSourceAndMetadata",
+        "androidPngBoundaryRejectsNullDecodeCompressAndPixelMismatch",
+        "labelledLegacyFixtureCannotEnterRuntimePersistence",
+        "independentRealDialogCapturesProductOwnerWhileBlankHostKeepsFlagChecks"
+      ],
+      "actual_ci_cases": 6
+    },
+    "Pr18ComponentTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ComponentTest.kt",
+      "sha256": "cfd86bf33e6618d6bb0a230cd321f09b73722b57ff0c989bb25fc16de6fa6940",
+      "methods": [
+        "f3InputRuleIsPaintedAboveTheContainerBeforeSupportingTextForEveryFieldState",
+        "f1RenderedButtonAndPlaceholderUseAccessibleForegroundsAndPreserveCallbacks",
+        "f2ActualSettingsUncheckedSwitchThumbAndBorderContrastWithTrackAndSurface",
+        "f4ScoreVerdictAndFillEmphasize40And50WithNeutral39AndNull",
+        "explicitUnratedTrackRequiresAnActionAndSteppersKeepOneTenthAndBounds",
+        "pinnedTextRemeasurementStillRejectsWidthHeightAndMaxLinesClipping",
+        "actualTargetMeasurementRejectsA24dpControlEvenWithAutomaticTouchExpansion"
+      ],
+      "actual_ci_cases": 28
+    },
+    "Pr18DialogAcceptanceTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt",
+      "sha256": "d7e9e62cb3e1a37e823666388d3823f4936af7fe316613785fded4c5e520ee9b",
+      "methods": [
+        "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity",
+        "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "f7ApplyCurrentProposedFieldsAndFooterUseActualFontAndMeasuredTargets",
+        "f7ConfirmationAndOperationDialogActionsKeepCallbacksAndRealFonts"
+      ],
+      "actual_ci_cases": 20
+    },
+    "Pr18InstallTransactionTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18InstallTransactionTest.kt",
+      "sha256": "4fe28c595559123ba9d75f82a62d2394c79f488723235858dd8db6923966e3f4",
+      "methods": [
+        "f6DelayedAutomaticBDoesNotReplaceReadyAOrPreventInstall",
+        "f6DelayedAutomaticBDoesNotReplacePermissionTransactionAOnReturn",
+        "f6DelayedAutomaticBDoesNotSweepInstallingAOrReceiveAsynchronousFailureFromA",
+        "f6RepeatedInstallTapsOwnOneJobAndOnePermissionRequest",
+        "f6RepeatedPermissionReturnInRecreatedOwnerOwnsOneJobAndInstallerIntent",
+        "f6ExplicitCancelAndManualBSelectionCannotReceiveStaleAInstallerCompletion",
+        "cancelRetryAndExplicitManualSelectionRemainUsableWithoutAutomaticDownload"
+      ],
+      "actual_ci_cases": 7
+    },
+    "Pr18PhysicalTouchBoundaryTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PhysicalTouchBoundaryTest.kt",
+      "sha256": "fb8f0a66b79f7fe9781c0bfbba0a1c019dad2fbc17638225f5828d1124f2dd82",
+      "methods": [
+        "offsetRealDialogUsesLocalVisibilityAndScreenInput",
+        "liveWrongOwnerAndBoundsControlsRejectBeforePhysicalInput",
+        "hiddenRealTargetCannotUseAViewDispatchedCallbackAsProof",
+        "untaggedActionableComposeCoverBlocksTheRealScreenTarget",
+        "nativeSameWindowOnTouchListenerCoverCannotDeliverTheTargetCallback",
+        "nonfocusablePopupWindowCoverCannotDeliverTheTargetCallback"
+      ],
+      "actual_ci_cases": 6
+    },
+    "Pr18PreferencesOrchestrationTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PreferencesOrchestrationTest.kt",
+      "sha256": "0c1c0d871d0c168acafc09818d6eefe30109955ed220df186b94b198557c44cd",
+      "methods": [
+        "f8AbsentStyleRendersInkPaperAndPersistedClassicRestoresAfterRecreationAndReopeningDataStore",
+        "f8BothStyleAndSystemLightDarkChoicesStayOrthogonalThroughSystemNightAndRecreation",
+        "f5FreshLaunchOwnersCanCheckAgainWithoutDownloadingAfterThePreviousLaunchDismissed"
+      ],
+      "actual_ci_cases": 3
+    },
+    "Pr18ReviewRegressionTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ReviewRegressionTest.kt",
+      "sha256": "5d4976151b8beb5deb10d292a2273476062cbc6661ccd9b7ab112014f79960cf",
+      "methods": [
+        "f5DelayedFirstPreferenceRestoreKeepsDismissedManualAClosedAndSettingsBAvailable",
+        "f6SynchronousPermissionReturnContinuesOwnedA",
+        "f6DuplicateSynchronousAndCompletedPermissionReturnsContinueOwnedAOnce",
+        "f6SynchronousPermissionReturnAfterManualBSelectionRejectsStaleA"
+      ],
+      "actual_ci_cases": 4
+    },
+    "Pr18ScreenAcceptanceTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ScreenAcceptanceTest.kt",
+      "sha256": "9a97eb6c067974ab203b83e0e6cc229794a02b975df7e9633bfb93e1473d0517",
+      "methods": [
+        "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent",
+        "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches",
+        "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches",
+        "f7ProductionLoginRegistrationRecoveryAndAcknowledgementAt100And200Percent"
+      ],
+      "actual_ci_cases": 16
+    },
+    "Pr18StartupTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18StartupTest.kt",
+      "sha256": "44f3d49a4f4373e4d48429823edd5ea06a43f1b6750381be505fa882bd8e3e73",
+      "methods": [
+        "f8NewerEnabledStartupOnLoginShowsOnePopupWithZeroDownloads",
+        "f5DismissRotateAndRecreateRetainsTheLaunchAcknowledgement",
+        "f5DismissActualSystemFontChangeRetainsTheLaunchAcknowledgementOnLogin",
+        "f5DismissThemeStyleRecompositionDoesNotShowAgain",
+        "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup",
+        "f8DisabledStartupIssuesNoRequestAndShowsNoPopup",
+        "f8FailedStartupShowsNoPopup",
+        "f8EqualStartupShowsNoPopup",
+        "f8OlderStartupShowsNoPopup",
+        "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload",
+        "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload"
+      ],
+      "actual_ci_cases": 44
+    },
+    "ProductEndToEndTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt",
+      "sha256": "df09015b191e345822853c37ca8b29c79cbcb89d94806cc9183a63abf8d72351",
+      "methods": [
+        "plan104RegistrationThroughOfflineConflictRestorePasswordAndLogin"
+      ],
+      "actual_ci_cases": 1
+    },
+    "ProductVisualTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductVisualTest.kt",
+      "sha256": "edd19cbbd638bfdd604cadfdd5da500014b45a8e7eaf477b31d8d98a9f981894",
+      "methods": [
+        "lightAndDarkListDetailEditSearchHistoryAndConflictRenderActualApprovedColors",
+        "light200PercentFontKeepsFullInputTextAndSaveReachable",
+        "dark200PercentFontKeepsFullInputTextAndSaveReachable",
+        "lightKeyboardLeavesSaveAboveActualIme",
+        "darkKeyboardAt200PercentLeavesSaveAboveActualIme",
+        "darkKeyboardAt200PercentWithLongSaveMessageKeepsButtonReachable",
+        "bothTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes",
+        "emptyNoResultsOfflineAndRefreshingContentRemainDistinct",
+        "sameFieldConflictSaveIsDisabledUntilExplicitChoice",
+        "selectingDefaultRatingSetsAnUnratedRecordAndEveryStepIsOneTenth",
+        "clearingARatingReturnsToAnUnratedTrackWithNoImpliedScore",
+        "longReviewsAndHistoryValuesCanBeReadInFullInBothThemesAt200Percent"
+      ],
+      "actual_ci_cases": 12
+    },
+    "ScreenshotSecurityTest": {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt",
+      "sha256": "8706279a07c181fc83414dffe71d598a6bb645886e88de1a8c40fc74a53e3342",
+      "methods": [
+        "passwordDismissalAndNavigationRestoreScreenshotsInBothThemes"
+      ],
+      "actual_ci_cases": 1
+    }
+  },
+  "original_counts": {
+    "classes": 17,
+    "methods": 93,
+    "cases": 174
+  },
+  "current_counts": {
+    "classes": 20,
+    "methods": 109,
+    "cases": 190
+  },
+  "git_tree": [
+    {
+      "path": ".github/fixtures/android-worker.toml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2be948f250a376c87275b30676d2196909d63797"
+    },
+    {
+      "path": ".github/release-policy.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "194f1be2558bfe1b4cb71e794b0b45e0be24e870"
+    },
+    {
+      "path": ".github/scripts/android-test.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c354688cecadae8640ff403f8bca4dfb0430ed27"
+    },
+    {
+      "path": ".github/scripts/apk_metadata.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "573d642c2fa827eb648dfbc69c117012c80e3cb8"
+    },
+    {
+      "path": ".github/scripts/fixtures/build-tools-35-badging.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f37cbf7d6e368a9186a63b2e6963e345c1d9f93d"
+    },
+    {
+      "path": ".github/scripts/pr18-regression-probe.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7f344804d10b2467d6b33feee7104a6914d3b801"
+    },
+    {
+      "path": ".github/scripts/production-d1.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ae4c81e716013e152cf5ec96275b5c4b7c402ff5"
+    },
+    {
+      "path": ".github/scripts/release-guards.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c2d840cc598914cc334c53f39f94a981ae2aafb4"
+    },
+    {
+      "path": ".github/scripts/release-guards.test.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2c43292d37f763f192dc6246e307145156eeb94f"
+    },
+    {
+      "path": ".github/scripts/release-install.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c5cb77205c043981715db0ef39e53f6b83480031"
+    },
+    {
+      "path": ".github/scripts/start-android-api.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c7e6a23ab3987d3f994727fd97c1692bd02edc75"
+    },
+    {
+      "path": ".github/scripts/test_apk_metadata.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d1a4a59507021c730429889ef4ab9f7ffe6124ab"
+    },
+    {
+      "path": ".github/scripts/test_apk_only_release.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1db928a69a9a2e72af1ad25fc24479de593d1b4c"
+    },
+    {
+      "path": ".github/scripts/test_release_install.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e28482a06b25a305fc84806193bc0307c3b931fd"
+    },
+    {
+      "path": ".github/scripts/validate-release.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2769de2e86c4c07886934b078481e49b00f2037c"
+    },
+    {
+      "path": ".github/scripts/verify-apk-only-release.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e435b2868ee0c66a8efbdb4764d1a1460f7f39c3"
+    },
+    {
+      "path": ".github/scripts/verify-pr18-regression-probe.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4e794e6729e995e89f3db7a80b80249aa2ff3aa3"
+    },
+    {
+      "path": ".github/scripts/verify-release-apk.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9240438470cba59c258003921b9644c2254cb8de"
+    },
+    {
+      "path": ".github/workflows/android-ui.yml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3af9c29b041e2ba089be6ddfc96239ef5679b532"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "14f8e0db3c9c3b13d572582a5fd67dc376bcfe25"
+    },
+    {
+      "path": ".github/workflows/pr18-regression-probe.yml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2c2c0f2b4715723fe1e99b044ea95bc5d8e6e519"
+    },
+    {
+      "path": ".github/workflows/release.yml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "34af92ed625939b1386082312dfb7421842a21c9"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a3fd3e7fff54bfa0e160d34ddd1dc4919afba41b"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8ca601fa78f117c8b22d20e8b29a1081cc94f27c"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f8631a82810ba1feeefa84f4904140813ff23398"
+    },
+    {
+      "path": "P1_ACCEPTANCE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "92e2cd02bdfb48ea42eae6ba5921bdc310006864"
+    },
+    {
+      "path": "P1_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6896537811a8bcac6b6f59b59dd5ae9c3ccd8f10"
+    },
+    {
+      "path": "P1_FINISH_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "783e0f8a45bb88e42760ce3cc061ff5e2f058070"
+    },
+    {
+      "path": "P2_BLOCKERS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b722b8c2bda7535c64c72bbc172c700603ee8b5d"
+    },
+    {
+      "path": "P2_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "82e7d29a4a4ed97ed62c1e248ce7cbf3b335b337"
+    },
+    {
+      "path": "P3_BLOCKERS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ff969466115de5127cd121771697bc63926f50b4"
+    },
+    {
+      "path": "P3_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fb572c5bb55cd7b65768486386e8579a182f5c58"
+    },
+    {
+      "path": "P4_BLOCKERS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a2625037ab556db1c3a8366c64c1bbd1b83d2fd5"
+    },
+    {
+      "path": "P4_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a70d9048022113edd16e67895a9303a69ea08be4"
+    },
+    {
+      "path": "P5_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6ee5f18fb4c6761292442b780485c50eca5139eb"
+    },
+    {
+      "path": "P6_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6708b47bb9153d8a510b57657bcd1ab0c36196dd"
+    },
+    {
+      "path": "P7_DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31fd25608b6db49e1f1dd0a3d5090a1c61daad80"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "371ad6329a15f9a0e33a1010f4583ad3c4f4c554"
+    },
+    {
+      "path": "android/app/build.gradle.kts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4b66a433040b00bff1927230a8baf6c50b00981c"
+    },
+    {
+      "path": "android/app/gradle.lockfile",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d93e032a4fdc9b4f2e73fec4190b7ae23225df11"
+    },
+    {
+      "path": "android/app/proguard-rules.pro",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ba4a4f607f7e3796dadf8782986ba137dbc49a5f"
+    },
+    {
+      "path": "android/app/src/androidTest/assets/pr18-capture-controls/legacy-real-accent-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "97e0bd508fb9cd51307f96f68fe3fa3479e5acdf"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/auth/AndroidAuthTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "493a4e163220d65e6e0c359e588166ee1165a2a7"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6SmallScreenEndToEndTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2d82a812fa671bb8573ecb3ee7d334e6fcd47e9b"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6UiTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "67d9c743aaa89966b068fe5b2409268c9222a70a"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6UpdateUiTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7a30ae69c42413beb7e0a2898cb330238e54bbf2"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0dea4b838988bea9003b12f7643b55ec29755b7d"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr16UiTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e8a04ce15f68f583a3f740ab3f02e4e1784f227a"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr17ListFirstScreenTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ad8b188eec674f6703799ba6417c377f61bd2dcf"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr17UiTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d7e455331d0435bf1aed7be1947cb3ea97661b56"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18CaptureBoundaryTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bd2bf3c0bcd4240d4ba2ec573d2f8d5ba97ceeb9"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ComponentTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e70380e986b5cca40ec42154504dc2d967d4e9e5"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d5e5c80bc4246f0a747f67e61bbab14ea651610c"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2784cbc521fb227218bed375d5250b66ceb6ce73"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18EvidenceBoundary.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bfe518dccedae524a97615f385afb37bdf00e787"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Fixtures.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "573c673a85c804b48b3db096431a8481d2fdafae"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18InstallTransactionTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4b692fdb48874da58718b372dfacaf74fae1b6ff"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PhysicalTouchBoundaryTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ffa79ff3950b6fbad1ac07eaf53e833e113a7dd9"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PreferencesOrchestrationTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1020e266739fabdca78c281160565a3f501f1bde"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ReviewRegressionTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "64ad331a90840df73709ceff49f4e2690baf4692"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ScreenAcceptanceTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "753101bc7fc6f92eb424d4264215bf17710f6e09"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18StartupTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f541dadb2d268a725d73cf73618b0a64c51cfbbc"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18WindowCapture.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c62f52ec8dad5c7748a34640dcf362b848086493"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8c22e03a791b5de011d9213f8cca9036debee508"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductVisualTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a7e01374343883c83e8fd3e0a6d42c5edb815344"
+    },
+    {
+      "path": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "725342f89391532756d37027d9435ce31661c79c"
+    },
+    {
+      "path": "android/app/src/debug/AndroidManifest.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2efeb60a74fd77949f3831d6ff9529db23432941"
+    },
+    {
+      "path": "android/app/src/debug/kotlin/top/alanvampuke/dininglog/P9VisualActivity.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b7c917eef7a67d9d6b03ba558fb218747a2fa083"
+    },
+    {
+      "path": "android/app/src/debug/res/xml/network_security_config.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5ba8053a2a587a8468ef36f4789ae8ae5931cb80"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7e36e81de243098f07badd674721d51350a35df9"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/AppModule.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5421c88dd96ac13103a72ed3a52b1ee4d98c805f"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/DiningLogApplication.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3864b636a4a0850934fcc2a51feab8fd2b942f21"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/InAppUpdates.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8114cb20b2c275a44752b866638b225b89771278"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "44de595dbac2573ec48e6d1ffaa521d9e5afed2c"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivityContent.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b6ec0002886598117a3004e8aaff71a8abef08c7"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/UpdateDownloadService.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dd280ad5387a4b1d0ff17dd1bbbbf9e52700c6cd"
+    },
+    {
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/UpdateIo.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bba0d393e3096723502a9ff96205eb36ad21bfa1"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v1_burger.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aebb914181cbe270ea8780093a2367d8ebd63f14"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v2_ramen.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "13dc7569e2790eadeab981bbb8c6c9d4afa1077c"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v3_receipt.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "705aab733a7c6258d09bbe919b5cfab1717a5033"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v4_bite.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "210a5780c2774f030623051bd98fe3d0205b0aab"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v5_radar.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "331b1ef87486bb5db063755d3694edfe07b8f1c2"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v6_price.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cffbb28143980be0457063274433ea36ec14c48e"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v7_cloche.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e53b61c4315b5bd5b7eafff772d29a81574c51a7"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/bite_v8_notebook.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3fa4f358a186b6b57f84f182ec51aa52f9653cd4"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_background.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8ef108d846f3d7a5997f145cb43cee1afedd1cf5"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_foreground.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6948e3d2df52c7b7f765cee6bbc2397ce7cb1bea"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_monochrome.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9477362179eef1e5191acda1b677433e5f157e10"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "413f12c6a22e542ae47efb1984a3d77134fb3315"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "413f12c6a22e542ae47efb1984a3d77134fb3315"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v33/ic_launcher.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31100d8e0960b8213fe9038bd0c6f9c7327823f6"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v33/ic_launcher_round.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31100d8e0960b8213fe9038bd0c6f9c7327823f6"
+    },
+    {
+      "path": "android/app/src/main/res/values-night/colors.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ca6e49d4c8f22329adbedb3e8bc9bff9e8187c0b"
+    },
+    {
+      "path": "android/app/src/main/res/values-v27/themes.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a46c410b048457726a42d53f11f3c3ee5750c41e"
+    },
+    {
+      "path": "android/app/src/main/res/values-v31/themes.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "79833b2bcee1b0370603edb6434f14cd9aa1d40b"
+    },
+    {
+      "path": "android/app/src/main/res/values/colors.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bd2699cd9bdf0556aac5c12d83f244c35e4611a"
+    },
+    {
+      "path": "android/app/src/main/res/values/themes.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c168a145c9d729b62a6c1f1740b5c6ee74aec2a5"
+    },
+    {
+      "path": "android/app/src/main/res/xml/backup_rules.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8194d8f6f113582ef356fc9d4e820d70748d44c8"
+    },
+    {
+      "path": "android/app/src/main/res/xml/data_extraction_rules.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "af890085ebf7a7e4cb94782df78bb07be4d71a21"
+    },
+    {
+      "path": "android/app/src/main/res/xml/file_paths.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e48b3b6bcc95587b97ca48e95cd38812ae8a9a1e"
+    },
+    {
+      "path": "android/app/src/main/res/xml/network_security_config.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "34604acf62213a9f964fa2baf3a5a62824f13508"
+    },
+    {
+      "path": "android/build.gradle.kts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cd4b0e0088ac454041e41c6b96c433468b5dc159"
+    },
+    {
+      "path": "android/core/build.gradle.kts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8dea434ab85c93b138bf0dd5e06e544f5f879720"
+    },
+    {
+      "path": "android/core/gradle.lockfile",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ea31ea7b7ad40d0847cac80674cc482783e22f34"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/CacheRules.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "282b7756fc943ffa45504309377df09447262d38"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Models.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c90ee06eb29bbf57514924cda9e5a3b3c2540bb8"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Product.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8ed296545cbc2059dee4c9d60fa723376aa05c0f"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Rating.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2596a3ed22872797c1658c5fb82f6d5217fa3ce3"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Repositories.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0910b83750827977e8ce7c19de0035c568a3aae5"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/UpdateInstall.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5f9c8b1b1ae69b5589157a6832cad1a041ca1251"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Updates.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dd5e0e5ac4ccb83d82cbd9c9bd5977c2bcd97327"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/Writes.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6bf3891bcd6c664f3f16305bc7153ebce1aac001"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/auth/Authentication.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f89c75274923fc41e3c3f1b19e08a3ef3fba1305"
+    },
+    {
+      "path": "android/core/src/main/kotlin/top/alanvampuke/dininglog/core/auth/SecureTokenStore.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dd3bd4c00fc2d5fc68b281a140be7f5f3b61337c"
+    },
+    {
+      "path": "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/DomainTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9779a6b9a277a290799b6289fa64af0f7e302c96"
+    },
+    {
+      "path": "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/ProductRulesTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b87c96caba639d726bd6b6c6ed728d328ae1fc0a"
+    },
+    {
+      "path": "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/StartupUpdatesTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d8e5da2dcabb2f48f430b29edd01c91354938bf5"
+    },
+    {
+      "path": "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/TimeFormatTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5ae46384c79a25369e79ce6920e83b06df263aa3"
+    },
+    {
+      "path": "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/UpdatesTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "51cc6eee1241e360f8e8d00f771895553033397c"
+    },
+    {
+      "path": "android/core/src/test/kotlin/top/alanvampuke/dininglog/core/auth/AuthTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0cfd539241bafd89d443d82115803151e45c5574"
+    },
+    {
+      "path": "android/data/build.gradle.kts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d3b7624e811a9b1506c3ab90b89dbd1e331bd60a"
+    },
+    {
+      "path": "android/data/gradle.lockfile",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8de9726b1184501c3e175a227adcdb88699b167d"
+    },
+    {
+      "path": "android/data/schemas/top.alanvampuke.dininglog.data.local.ProductDatabase/1.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f44618ac77d008df00cd7d359d06893c5b26464f"
+    },
+    {
+      "path": "android/data/schemas/top.alanvampuke.dininglog.data.local.ProductDatabase/2.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "44d4293266a71104b63aa301414a0fd00e959a0d"
+    },
+    {
+      "path": "android/data/src/debug/kotlin/top/alanvampuke/dininglog/data/Pr18PreferenceFile.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c9738282a5e1333e8267efb15a30c1b0a301adc7"
+    },
+    {
+      "path": "android/data/src/main/AndroidManifest.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cc947c56799598205b8fb518f3ba95843c1bab71"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/AndroidPreferences.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d687bd7d99c69ca7f92fe6242abd1d783178392b"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/DataFoundation.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a851a0a196798c8b8c3ea82cf42c88cec6b059d7"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/ProductRepositoryImpl.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e44b085996506185cb9258927458448a2e871f5d"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/auth/AndroidTokenStorage.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5ce65e87b1fe3db2c51632e5b79992c5f78f58d2"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/auth/RetrofitAccountSecurity.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d6c75f33b11d581d71d265fe950e15f5cd043277"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/auth/RetrofitAuthGateway.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cc56a1ea0d7ec075c3c72d4fe55dd4fbc25d1c67"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/local/ProductDatabase.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "28519872df98910509dd9e656eed344609a3bdc1"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/remote/AppVersionGateway.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1759f3b796bd75d41c9ad9e63f7333ca1adafd0d"
+    },
+    {
+      "path": "android/data/src/main/kotlin/top/alanvampuke/dininglog/data/remote/ProductApi.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "85a8fe2b8075ab8b56e811b0839b5ee832e0c9be"
+    },
+    {
+      "path": "android/data/src/test/kotlin/top/alanvampuke/dininglog/data/AppVersionTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5e91b028888ea90ae5904e7ecb1c87954023df7d"
+    },
+    {
+      "path": "android/data/src/test/kotlin/top/alanvampuke/dininglog/data/DirectSaveTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7a612795bf86ac1018e617979e5b2087cd777c7d"
+    },
+    {
+      "path": "android/data/src/test/kotlin/top/alanvampuke/dininglog/data/RemoteContractTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a15af25f722878c73cdc12e13b456de7270cbb4e"
+    },
+    {
+      "path": "android/data/src/test/kotlin/top/alanvampuke/dininglog/data/RoomCacheTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c04481567d96d2223d64008791c149eb9c250192"
+    },
+    {
+      "path": "android/data/src/test/kotlin/top/alanvampuke/dininglog/data/UpdatePreferencesTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b814a98325136446ddbff598dd6e17a829cb219a"
+    },
+    {
+      "path": "android/feature/LICENSES/JetBrainsMono-OFL.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8bee4148c1d54dbf5dae6d6c117fc80414266abb"
+    },
+    {
+      "path": "android/feature/LICENSES/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "29aad51383ca5194c5e43a6c204819bf8d06c998"
+    },
+    {
+      "path": "android/feature/auth/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "162b830e39b29f2a050303edb331d6cfab45cf25"
+    },
+    {
+      "path": "android/feature/build.gradle.kts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6da867e352b7b09536145a9d34fc3ddf013f8dd9"
+    },
+    {
+      "path": "android/feature/dishes/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ba4d68201fae30e6f3a5f2fdec17f14aa869adcd"
+    },
+    {
+      "path": "android/feature/gradle.lockfile",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6d380062bbda3a3c48b4f17d78f0ae8d08189f0e"
+    },
+    {
+      "path": "android/feature/restaurants/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4072dd88872181eddfa7c449d638120c9efbcfb1"
+    },
+    {
+      "path": "android/feature/revisions/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5f27013fca10325ee2d4f04a160af56e3045c197"
+    },
+    {
+      "path": "android/feature/settings/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3e0e87e897e3ee88c6e94a7bf9d72b975b29fb4f"
+    },
+    {
+      "path": "android/feature/src/main/AndroidManifest.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cc947c56799598205b8fb518f3ba95843c1bab71"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductRoot.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c7ef91c3f29a821344993e1635d3075a1ace7c8c"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/ProductViewModel.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2ac3b8028c25c70f998061fe28ef6315f6bc3f7b"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/auth/AuthScreens.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0ad82cddec9ee4c715ac9ff9cc9c6496f1c7f53b"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "de023a39a5d7d0ae85fddac95d9b81c711879947"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/HistoryTimeText.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7b09834590c2f21f22b9379debec40e17d8a134f"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/NavigationMotion.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6680805ebdfa7492900d3a79c5571eabe600be37"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "25d9930a20a813913a50fb2bfab4bf1ea95b410a"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridIcons.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8646253e7e3869762071f40d620324d9c9196b89"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/SecureScreen.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "50f638926975d0f4e925be09c4d9314fcecc3f69"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/DetailEditScreens.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3e43e6645ff97242138f3fcd63307cb52e9c4bc4"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/restaurants/ListScreens.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "36ea82b284701ad7d17bc0add7e6b1c8603976bd"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/revisions/HistoryScreens.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4e3608b489e005937a9d4a34118e955d2df6448c"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/SettingsScreen.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fc1d76e6043abe7d0521eabef46038d8e09b3cc2"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/settings/UpdateDialog.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fda015644df7c6a9aee5f369e221293dd7b0c950"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "57750a3aa09c1a00a8fd1dc604e323645511b069"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Shapes.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8bd890a04b8c7e796c488cc1b976f577bc73a001"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Theme.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "03dadc406c0c58fcd7ec80b12c6941b8ede3e75e"
+    },
+    {
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Typography.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "120dd12a3ec2d33edc444d8dfe9631bf5d7236e5"
+    },
+    {
+      "path": "android/feature/src/main/res/drawable/bite_v1_burger.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aebb914181cbe270ea8780093a2367d8ebd63f14"
+    },
+    {
+      "path": "android/feature/src/main/res/drawable/bite_v1_burger_dark.xml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e4a174d1cf316ee3d2c2018a80d222830e17842e"
+    },
+    {
+      "path": "android/feature/src/main/res/font/jetbrains_mono_medium.ttf",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "97671156df256e850498054fdebcd41d74a65d6b"
+    },
+    {
+      "path": "android/feature/src/main/res/font/jetbrains_mono_regular.ttf",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dff66cc50702c75abd025dcf49f62a4dcc2d72de"
+    },
+    {
+      "path": "android/feature/src/main/res/font/jetbrains_mono_semibold.ttf",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a70e69bd21aa901f93ffa280f691cf513d13859d"
+    },
+    {
+      "path": "android/feature/src/test/kotlin/top/alanvampuke/dininglog/feature/ProductViewModelTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c390a6f3bda396b7ae854e79322a2c8d41c2322c"
+    },
+    {
+      "path": "android/feature/visits/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "611513ac5e3be54fe15e86c62081932af2598f43"
+    },
+    {
+      "path": "android/gradle.properties",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ed9a2fd0c92355c04fbdf2d91f9f9aac6a331520"
+    },
+    {
+      "path": "android/gradle/libs.versions.toml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bf9038c850352653d9d2967f65904998fcb211c8"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.jar",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a4b76b9530d66f5e68d973ea569d8e19de379189"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.properties",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9715a887c231e07811ca44c3fa367faac26604a4"
+    },
+    {
+      "path": "android/gradlew",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "d95bf6131dc41079a1665889f84d4cfec92a2bc1"
+    },
+    {
+      "path": "android/gradlew.bat",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "640d68685c14950470c82031e02198e220b96e62"
+    },
+    {
+      "path": "android/settings.gradle.kts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "275a308c18fa05f5ffc2f137585dbdb4c4fc5759"
+    },
+    {
+      "path": "android/tools/convert_bite_icons.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e3c153d1b9676ccfc3ffcce69c36c2bbd434d930"
+    },
+    {
+      "path": "android/tools/p7_baseline.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1bea9173b0d416a73528c053a11daa2636143449"
+    },
+    {
+      "path": "android/tools/p8_protected_hashes.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "856608603c86d531cc4d650f698ba100904a60a5"
+    },
+    {
+      "path": "android/tools/pr18_visual_roles.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d7533ecd9ff493795d545fe9c653bc92c72e1871"
+    },
+    {
+      "path": "android/tools/test_pr18_theme_regressions.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5247f37cc12946a1b4c470c7d2cf4cc6a1829428"
+    },
+    {
+      "path": "android/tools/verify_apk.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bc667592b5a0c7405a2bd926975b44d5f93413f1"
+    },
+    {
+      "path": "android/tools/verify_bite_visuals.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c60f859177d221c4eb9bbbe89c88da7f096a8c91"
+    },
+    {
+      "path": "android/tools/verify_p6_visuals.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3efaecddd60556e23cc9ebf7c4bc4fa2db38f45f"
+    },
+    {
+      "path": "backend/.dev.vars.example",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "88b46f002f7b5ca4d89007aa501695c70548ecba"
+    },
+    {
+      "path": "backend/eslint.config.js",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "410e7df1c34c70fed772e8fdb771b57694f31b10"
+    },
+    {
+      "path": "backend/migrations/0001_initial.sql",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d023d34d31d835ce9d677feba98d370652d95b80"
+    },
+    {
+      "path": "backend/migrations/0002_address_optional.sql",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1b8473271d4a904d4639452d0b13018165059b8c"
+    },
+    {
+      "path": "backend/migrations/VERIFY.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b3efa20a1c21afc9c3e0fcc3eb86e982a8aa0b43"
+    },
+    {
+      "path": "backend/package-lock.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e575377a5feab5313e7a34ea2cdceeb3f1bc98e5"
+    },
+    {
+      "path": "backend/package.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6c861c6749ded4789e68aa55ec0a72f6dcb4da79"
+    },
+    {
+      "path": "backend/scripts/smoke-production.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "359759c630ac8f62309ec5df0877116981c01086"
+    },
+    {
+      "path": "backend/scripts/verify_migration_0002.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "c99c5cfbdbca4ccda36b5f335f5c0926868f5e0c"
+    },
+    {
+      "path": "backend/src/auth/account-cleanup.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c63c7b6a51f77264cb841badf5883831faa8c52d"
+    },
+    {
+      "path": "backend/src/auth/account.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "eebe0b763eeb865546d62bd433249f2519ce3ec2"
+    },
+    {
+      "path": "backend/src/auth/cleanup.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9d9e2237cfe6db99423249a1c73a396f7f5ef357"
+    },
+    {
+      "path": "backend/src/auth/config.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aa2b094663e9455c284dff8c1d247fc2e5cb3192"
+    },
+    {
+      "path": "backend/src/auth/encoding.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0bb44586cbf5b5ac55b0e47fadbdf831bee72f81"
+    },
+    {
+      "path": "backend/src/auth/encrypted-result.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dc99a950d618804635249b4629dc055f150c1b05"
+    },
+    {
+      "path": "backend/src/auth/idempotency.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "302cd0ffe7beae09e3472c9ff481f08266680d56"
+    },
+    {
+      "path": "backend/src/auth/jwt.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b706c64a62e35687bb26117f4fe92ba7c2be0943"
+    },
+    {
+      "path": "backend/src/auth/password.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b2c9a9c3fd3c1c0fdeff80e03d6835a95d051727"
+    },
+    {
+      "path": "backend/src/auth/rate-limit.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "041381817983eba20cf33c68510db734946a4a64"
+    },
+    {
+      "path": "backend/src/auth/recovery.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "24ecf651d4d5b6f403ea31fb01f9c19119989466"
+    },
+    {
+      "path": "backend/src/auth/rotation.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f10573cb74f942a5f6cc2d5b52928e8d3d765735"
+    },
+    {
+      "path": "backend/src/auth/routes.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "52a2f0f516b87f163ff8cd724954196f611606f6"
+    },
+    {
+      "path": "backend/src/auth/schemas.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0058b48ee2e16c55ce388defba9a9a8385b9f932"
+    },
+    {
+      "path": "backend/src/auth/session.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fef27759c0ab36ee92bf32dd6c2a9d5409d4560d"
+    },
+    {
+      "path": "backend/src/auth/weak-passwords.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dde5eb351309b6632489fad04c2f51450d4e2513"
+    },
+    {
+      "path": "backend/src/auth/weak-passwords.sha256",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "835be9e614b12ce2e033387063be11a5703818e2"
+    },
+    {
+      "path": "backend/src/domain/cleanup.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2ab131e67bae0548dec8e49e5c078022f7b5aa14"
+    },
+    {
+      "path": "backend/src/domain/http.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a0f4649e97d9d63b2bb9da50da92b7e7e8917355"
+    },
+    {
+      "path": "backend/src/domain/model.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "972e3b2ce26bbb7d48226c23914cabd5282391f8"
+    },
+    {
+      "path": "backend/src/domain/mutations.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4b851bd9d93c66c56834354f100cc85894f123a7"
+    },
+    {
+      "path": "backend/src/domain/pagination.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8ca331edd9b146cb9510af05e6f5be12e770ab3e"
+    },
+    {
+      "path": "backend/src/domain/queries.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "daac81e1ff10c90db6f1fbe99d7c4bec2f939dd2"
+    },
+    {
+      "path": "backend/src/domain/revision-metadata.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ea2128188303d5562cd3d1c82da725046c241c55"
+    },
+    {
+      "path": "backend/src/domain/schemas.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "29524766e1dcc1be36df51e03e03e3beecbe38ca"
+    },
+    {
+      "path": "backend/src/domain/search-index.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8c3ae31b2798d04426c7c9b425da670952fdcf59"
+    },
+    {
+      "path": "backend/src/env.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8000b815ad09b524450dab51a8b499fd134abd00"
+    },
+    {
+      "path": "backend/src/index.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6a21b1857388bfc542bc451f9f57b7c9e373670d"
+    },
+    {
+      "path": "backend/src/repositories/auth.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "77b79066a6ce5c087953dca1e60a7a9619fa64ca"
+    },
+    {
+      "path": "backend/src/repositories/d1.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3f8cb547018de3df7467e11417a7585b7051fbb5"
+    },
+    {
+      "path": "backend/src/repositories/dishes.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "58c4e5e4453cae03da067c8142251f5fa6825119"
+    },
+    {
+      "path": "backend/src/repositories/domain.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6766cef9d815c5986b1dbfbef05e7196281cc50a"
+    },
+    {
+      "path": "backend/src/repositories/history.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6ae10521ef61efccba45d1e957e2529f69fae784"
+    },
+    {
+      "path": "backend/src/repositories/restaurants.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "feaefd4fdddac363930314fb2520dde4e3a1e264"
+    },
+    {
+      "path": "backend/src/repositories/revisions.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5b36cd407b661cb53d1e07d34725466ea342669f"
+    },
+    {
+      "path": "backend/src/repositories/visits.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4ce99b54d617294d450010621f020f817fd7c110"
+    },
+    {
+      "path": "backend/src/routes/app-version.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d334fdea16e53fa3ec7dec85c3073ef5f40f1e37"
+    },
+    {
+      "path": "backend/src/routes/auth.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "01c3bef5ee7828df7000e283b2e9a5919f637675"
+    },
+    {
+      "path": "backend/src/routes/dishes.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4ffaf6426ab2a8596fbe6fa789ce59dcd4fd2a90"
+    },
+    {
+      "path": "backend/src/routes/restaurants.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2edb5b421a1b385642fa81c0d1ac02a12d6a3e3b"
+    },
+    {
+      "path": "backend/src/routes/revisions.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6834ead16849af5c63b00f87b08beb0efb0a961a"
+    },
+    {
+      "path": "backend/src/routes/visits.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a689f03401af1d7273761502f8d8c0cbc6d243d0"
+    },
+    {
+      "path": "backend/src/services/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "396a89eaef9a6cce18393423811173bcf86099a4"
+    },
+    {
+      "path": "backend/tests/app-version.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bb0944f7fc753b7fef78b8e3e69dab0fb3d833e4"
+    },
+    {
+      "path": "backend/tests/auth/account-cleanup.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dd292d1f3193bc14d6c53406764052a102a45be4"
+    },
+    {
+      "path": "backend/tests/auth/account.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d16e5298348d63727ffe72b41db022c184ab4425"
+    },
+    {
+      "path": "backend/tests/auth/auth.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1bd0b504b5ca975989dba2516fa61d9c98396db5"
+    },
+    {
+      "path": "backend/tests/capacity/RESULTS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a954320325d076572ee52cb9b44db9dd87f65815"
+    },
+    {
+      "path": "backend/tests/capacity/capacity_test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ec590c8b2fb3c147f6325a43bde8a5449e8c8883"
+    },
+    {
+      "path": "backend/tests/capacity/measurements.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5e13bf919b9fabfa49a91f35c0b5e0b51ba683f1"
+    },
+    {
+      "path": "backend/tests/capacity/report.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ffbb79ff8bac1cdec2155c21c8006b2c0745831e"
+    },
+    {
+      "path": "backend/tests/contracts.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7d706a2f7d0ed0f28b72756582710006dcf0827c"
+    },
+    {
+      "path": "backend/tests/domain/acceptance.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bb3c9dbc9dc22b32e0d66d772f7cfb00cc788267"
+    },
+    {
+      "path": "backend/tests/domain/core.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8d395ca2093a06ccf39a8b8fe95ce42490a2993a"
+    },
+    {
+      "path": "backend/tests/domain/helpers.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "782a6d4ebb27039fda97b2e4db2c1814658fb8b0"
+    },
+    {
+      "path": "backend/tests/domain/queries.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ca53e42dbbe5b480a4d764750b3063aacec174ed"
+    },
+    {
+      "path": "backend/tests/health.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fffcc7c7788bef17925836265b27714c2526e000"
+    },
+    {
+      "path": "backend/tests/jwt.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1e58ab28a1c500cd13f279e4963475d936e84f57"
+    },
+    {
+      "path": "backend/tests/migration0002.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "61e77c63891179c2fa5a199627e96062b63ea545"
+    },
+    {
+      "path": "backend/tests/migrations.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d207a437cc1aa181b0640288bfd5cabb6b60c779"
+    },
+    {
+      "path": "backend/tests/password-vectors.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8ba3a344fc560cefe38ea26d7652f16853683296"
+    },
+    {
+      "path": "backend/tests/password-vectors.mjs",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ead3bf9f890889f9de84819deae9ca7419d2e97a"
+    },
+    {
+      "path": "backend/tests/password.test.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31dcfe472c2afd639ed158df661568817839fd80"
+    },
+    {
+      "path": "backend/tests/sql.d.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1474c4b71cdccff064b1146e6b4e457285493c7d"
+    },
+    {
+      "path": "backend/tests/sql/fixtures.sql",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5c36d6a25204653bad18079b04ef612f325d42f9"
+    },
+    {
+      "path": "backend/tests/sql/verify.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "b639ba0c0c631d73b9884faa355d5c99567d88ed"
+    },
+    {
+      "path": "backend/tsconfig.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2e5ef886a9c93c11d7a017927fb1ba149689a72c"
+    },
+    {
+      "path": "backend/vitest.capacity.config.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c842b1d2b7b08a082826c7cfdc1f8ba6a2896fd0"
+    },
+    {
+      "path": "backend/vitest.config.ts",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "44b9abc476eac616a344c0d9624c65188b826a80"
+    },
+    {
+      "path": "backend/wrangler.toml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "86a19466c772f2b59a3ae7506aecfc3e0475aa40"
+    },
+    {
+      "path": "contracts/openapi.yaml",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a6a0a8a24ed2cc90f231ea08f78130c9506bbcb4"
+    },
+    {
+      "path": "design/P1_FINISH_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "873b3fff3df93cdf78c983de0636c6998893ef85"
+    },
+    {
+      "path": "design/P1_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bc0e3762e7d539efd915805d2db748fca167eff8"
+    },
+    {
+      "path": "design/P2_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bcc114fa9cad50dc84f7b982ea8896f2fd38411c"
+    },
+    {
+      "path": "design/P3_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2bbee6c1d38cbeba59d625d1d995562e932aa69b"
+    },
+    {
+      "path": "design/P4_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "649643ec02e4d441b974fd6253c643a62926be3f"
+    },
+    {
+      "path": "design/P5_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "87280627f03b60af481bf4fdb14b6009cf0d2c70"
+    },
+    {
+      "path": "design/P6_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "74c7caab37a19e52aee007430f0e244d8806890b"
+    },
+    {
+      "path": "design/P7_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ba18d271fb48c4fe2afacc6290fd2b24e626887b"
+    },
+    {
+      "path": "design/P8_REVIEW_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "486087e96f473ef70ad773fdb87ea6c6a215d5c6"
+    },
+    {
+      "path": "design/P8_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7f1fe188a2e729776f8f0d7e5b20c0f35b47a53f"
+    },
+    {
+      "path": "design/P9_FIX_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "445b43281c2ce2643f046c07af215335a20eb630"
+    },
+    {
+      "path": "design/P9_R9_SCREENSHOT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e3a9fa48f52ce74a123c3deb1520dabf04436f2c"
+    },
+    {
+      "path": "design/PATCH_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "066115010b69f82f979bd045bf308f5e2088f4c7"
+    },
+    {
+      "path": "design/PLAN.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "acdc6d487a995a47349141ad3d525f73579b9fd1"
+    },
+    {
+      "path": "design/PLAN_REVISION.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bb6932ed8d3d2f42a40842cb317dc725011970bf"
+    },
+    {
+      "path": "design/PR13_REVIEW_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f421566d9a49ec2b419646535fa684da8cb59005"
+    },
+    {
+      "path": "design/PR16_CI_FIX2_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cd7e09d7073960fe424b645e164ed55678f53a44"
+    },
+    {
+      "path": "design/PR16_CI_FIX3_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a2fca7d5a2870a43d74f8aa1534bc2abe4e89276"
+    },
+    {
+      "path": "design/PR16_CI_FIX_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d1fbec1a05567983e55cff18a81b0ab02151d891"
+    },
+    {
+      "path": "design/PR16_FIX_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "399d3164ab1eab1bcff068b0e5db3d2a6d989a28"
+    },
+    {
+      "path": "design/PR16_REVIEW_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "92deb81044e64ce48ede5b606cab1406835cfc86"
+    },
+    {
+      "path": "design/PR16_TESTFIX2_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d422a456ec98065500184e782d5f612b5c69239f"
+    },
+    {
+      "path": "design/PR16_TESTFIX_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "309ee04d7fc719aaf6eb6a0144f4d0d478420387"
+    },
+    {
+      "path": "design/PR17_AUDIT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "eaecddd92185629362f33a9a1d103c61d5feec04"
+    },
+    {
+      "path": "design/PR17_CIFIX1_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fcb3392c37d9bb721692c3c748643a72143b7e2f"
+    },
+    {
+      "path": "design/PR17_CIFIX2_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4c364759cc618f3712b35a50608055a6d2b42b65"
+    },
+    {
+      "path": "design/PR17_REVIEWFIX2_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3aea43d855aaff33ca3b6b35ffd28103992b0492"
+    },
+    {
+      "path": "design/PR17_REVIEWFIX_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dc3a2f9cedb3a394022e184bc87ea702afa13311"
+    },
+    {
+      "path": "design/PR17_REVIEW_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bb14747b932918924c1e4f7f90cd6c2d5c794fa"
+    },
+    {
+      "path": "design/PR17_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f04dece4022a1e5b58edcacf9139f17bffc68a41"
+    },
+    {
+      "path": "design/TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7b8dfc4ef34994f1b0e1a05027e46e7b6c2a174e"
+    },
+    {
+      "path": "design/UI_TASK.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "696668984b112aff5051b936fb4e335a9cc3f491"
+    },
+    {
+      "path": "design/UI_TASK2.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e53883d6471aff5679dd087c8d6cc7b4d30d18e8"
+    },
+    {
+      "path": "design/UI_TASK3.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "589b5a931e5a76ab9b28791f9ae5c0ea5e2fc03f"
+    },
+    {
+      "path": "design/UI_TASK4.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6facdb2dc888b6822af47dbe46abf24dddc4ac89"
+    },
+    {
+      "path": "design/UI_TASK5.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d6aa14a4ac53aef71b8de1e654a2563a05f5f6b3"
+    },
+    {
+      "path": "design/UI_TASK6.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "07d8e859b626a831422893cd73fe79040834cb2f"
+    },
+    {
+      "path": "design/adr/.gitkeep",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "design/adr/0001-production-release.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a7d2ffca099cc2c9c15fe6144e5f4d69694a9cfd"
+    },
+    {
+      "path": "design/bite/BITE_DESIGN_REFERENCE.html",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "20b5054e819f85f0fed0e7d60267d6d36ce57f04"
+    },
+    {
+      "path": "design/bite/p7-evidence/contrast.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "518b80f13628371c68ae7cdd53fd8678ca6df4b9"
+    },
+    {
+      "path": "design/bite/p7-evidence/dark-detail-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5857f1b99f8e92375b3d12e8a6e8f4ffcceae54e"
+    },
+    {
+      "path": "design/bite/p7-evidence/dark-detail-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "af0209f18c402de1df91ad4d4022d1af091c3747"
+    },
+    {
+      "path": "design/bite/p7-evidence/dark-edit-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "37239b43d02d1c8d17c767d3279747d80db65aeb"
+    },
+    {
+      "path": "design/bite/p7-evidence/dark-edit-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a9b49355acf8351f22704800e8154b521a0e9f5d"
+    },
+    {
+      "path": "design/bite/p7-evidence/evidence.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e108704f8ac5ad672985bd89f3807322f08294b6"
+    },
+    {
+      "path": "design/bite/p7-evidence/light-detail-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e781d8ab13155690baf6c6b10f9407819eedcbe1"
+    },
+    {
+      "path": "design/bite/p7-evidence/light-detail-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e08978403f297dacec14d3cd532a736d3ff4e5ee"
+    },
+    {
+      "path": "design/bite/p7-evidence/light-edit-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "599e42b1f2112d5a1ce963a43e10ead49e70bead"
+    },
+    {
+      "path": "design/bite/p7-evidence/light-edit-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "16a91345df4725cec063914db6508e07c73af475"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-dark-360x640-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "936655e287baa6466d2371509692c5495b3ba2e2"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-dark-360x640-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2b97f1a7f1f6990b7f7c80478da829a5ed394bc3"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-light-360x640-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cc5a5a46cfef7acedf0cd1a1023c6d90b52369f0"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-light-360x640-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "740ad7e376bcb15f14eca9d26753e216db32eb85"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-real-dark-360x640-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c630221d4adf95b47095af37ea76fe26b2d7cf68"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-real-dark-360x640-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3fcaabca48beba1d9c0c1fc87e22995b732654a4"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-real-light-360x640-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8d1bac2bf9d1757fc8080d3405634ac4f450f5bc"
+    },
+    {
+      "path": "design/bite/p7-evidence/p6-real-light-360x640-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cce0a3203b6c079b239e73504ed2c29b648f2b5d"
+    },
+    {
+      "path": "design/bite/p7-evidence/runtime-api26.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7e87a46f5e2f0db54ba4f0d090fd327eace00c45"
+    },
+    {
+      "path": "design/bite/p7-evidence/runtime-api35.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9b385badd2b7bb42a63f5a98782ddfa691be482d"
+    },
+    {
+      "path": "design/bite/p8-evidence/contrast.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "518b80f13628371c68ae7cdd53fd8678ca6df4b9"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-detail.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fbda9c318ba204f9e27a1239d7d00eb4009dfd03"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-dishes-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8b53f9f695e1043dcb2cc6e53f21467f714c581e"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-edit.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9dd0d67e7424c7efd4c0797a6b4c8e1bdd6840e6"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-home-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "287641ffd191568440ff39f91c7f0ef70c5b5f8c"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-home.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1426d80c216ed063caabd278e4d861a5bfadb976"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-settings-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "82c2809462736509bf65f43efba937da0e261206"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-update.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ee7afe58ed809a2307c54fed5ace870a827ca464"
+    },
+    {
+      "path": "design/bite/p8-evidence/dark-visits-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "65c0c3196b8eee3a14507797106f305b6cec5777"
+    },
+    {
+      "path": "design/bite/p8-evidence/evidence.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ee28bf96f17953c5feaf7f808f1386ab6a38cbdc"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-detail.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c96c322f193f78e2b289e571db8cb0833ba90c72"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-dishes-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "43a32150164906b936dfa8f032e56ffcf23f83ef"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-edit.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c0527fe26669cc67048f3e83f71a7a729e71197e"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-home-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5c8f902d10a64233ca794b38ce75c0367552f103"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-home.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "68394e9d61df31777b294576bdcbea59a8410376"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-settings-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e5819272f7299ab717976f6f7c778445a72da75d"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-update.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "30b4a2bca800a3b2de81594962576a8d561bf58d"
+    },
+    {
+      "path": "design/bite/p8-evidence/light-visits-tail-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aaeba1baa3b0841c33aa10efea509b0c9f4604ad"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-field-font200-disabled-error-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bfd38b2d8dc66b4c165e18f752475d3f658c697"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-field-font200-disabled-normal-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "311471a3b133ef6d5a39daa8bc3db20ffe150bfa"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-field-font200-enabled-error-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bfd38b2d8dc66b4c165e18f752475d3f658c697"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-field-font200-enabled-normal-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "311471a3b133ef6d5a39daa8bc3db20ffe150bfa"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-landscape-left-bar.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b80b65bd5b7a1ee40ca018ef8e272605d34adf76"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-landscape-right-bar.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8cc917c31624d82ea8c7a9104c68fe58902f0dd0"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-update-long-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2b2b8ab656d50a6a6b0a073e6cd7f61e4cbb9f73"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-update-short-downloading.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "67c9d90bd6d1a6be77e19a886bd179120eed12ac"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-dark-update-short-idle.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4e26f3b4f23cd156304cd30e27962c2a0dde0059"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-field-font200-disabled-error-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bca5681de141df5abd3b0cab151ea711d75d8fb"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-field-font200-disabled-normal-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2aad6890f59f02743d9da8acd5e7fd3a6d915af2"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-field-font200-enabled-error-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7bca5681de141df5abd3b0cab151ea711d75d8fb"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-field-font200-enabled-normal-multiline.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2aad6890f59f02743d9da8acd5e7fd3a6d915af2"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-landscape-left-bar.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "86bc337f6fd30aa2ffe0efa09861e47827013f9b"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-landscape-right-bar.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e0de9a63fac95a49712a68f9d0d21ac28a551ba9"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-update-long-font200.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "738c131638f8ee25cfaa7d5fb2dd6ea47687b85c"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-update-short-downloading.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cc30c6c243d702d7c61d6d8b88c95f5a61ff3e16"
+    },
+    {
+      "path": "design/bite/p8-evidence/p9-light-update-short-idle.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4bcd87e5c2a4ddaa25f00a4d1ab9bb996000f230"
+    },
+    {
+      "path": "design/check_ci.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "69790b5e817ca9aec0666ec0654c9ebe1e9d58ef"
+    },
+    {
+      "path": "design/check_gh.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "15a4ef8075b7d687a9f99fca2a739a5d953523ff"
+    },
+    {
+      "path": "design/ci_jobs.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5e3fdca696629dfacd6d362b411ab614e0955a9a"
+    },
+    {
+      "path": "design/ci_log.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9a729a3eb1dd840ff2c8c840bff26adb237620f8"
+    },
+    {
+      "path": "design/codex_summary.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b7aba2c39a9c6ae8c4041aafe1408693edff8dd8"
+    },
+    {
+      "path": "design/fetch_apk.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c4ffc42b20a6ef8201e79d7c6d63c7f6d81063f2"
+    },
+    {
+      "path": "design/fix_codex_env.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bbc88420630538696b1b2440d878bc0812ee4684"
+    },
+    {
+      "path": "design/merge_pr.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9e3391458ae9d0c665645e2e82f29953d4da77dc"
+    },
+    {
+      "path": "design/pr16-review/REVIEW.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9ba5c7e8a813e50539d4a888bb90ebcc195ccc22"
+    },
+    {
+      "path": "design/pr16-testfix/NOTES.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bb6c5ceecb13e2577f086e0ae9c80cc0c2932411"
+    },
+    {
+      "path": "design/pr17-discussion/DISCUSSION.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5cf7ab5fa9d1db4f8318ad55668d0e0839ffa492"
+    },
+    {
+      "path": "design/pr17-discussion/NOTES.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2782b06aba742cf45dcceaf8f798af7ac4db1dba"
+    },
+    {
+      "path": "design/pr17-discussion/PLAN.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0359d83187ccb60aa4d72e34205625e64b204685"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-firstscreen-api26.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3a469743bdce1c9ae0e5659c1e84f763c65020a2"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-dish-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "300d42720afa2619a06eaf76130d2320a60f3b04"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-dish-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9e8ec5cb26b63ed1c61ad5722410b6fcfcce0ed6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-history-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4fbbdc965d124e0168436543321376b3664e757f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-history-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0511d2bb822bc71d6ac316601c46ab5b308a15e1"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-restaurant-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6d5d2850280efeca53081350b50f32c96163305b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-restaurant-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fdb5d23537730bb1fdf0c39e9ed2508f316c15fe"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-search-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3145afec31efb6e92f85a6eb60861449a6cf13fb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-search-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1937e3ea304a1be8fd67192843af6126966130af"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-visit-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1ef480f51ac6f463a3686396b4eca04dfab8e51a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api26/pr17-list-firstscreen-after-visit-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "81c9c65655267e6090c8a2be3f85d2139da6baed"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-firstscreen-api35.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "81ed662a03b8111080bbf3a84ce70b6fbf4df7d3"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-dish-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3d516d28926ab26967cc6e0b9eeb56ac6d546bf5"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-dish-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0ac548fab2a1fec388b765219305ac9ccd0f1838"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-history-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "371f2e8417f6f252a5bc21e1bb97b23ce6c27543"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-history-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5f96360d7e90238a96245f8b1b1e60219a789ed0"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-restaurant-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6816ad23aae65186cffee64cfaf881b822a8f968"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-restaurant-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1836eb1b37b60674dba136621b8034958d413099"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-search-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4444b1fe82fc94d552994d994f41968016fc1346"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-search-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6fd770b32e022eaea294f2c44ba37ba8f1ad25df"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-visit-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "dac2e90c27b46333e8e82cf9f5ee2172456a72d7"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-after-api35/pr17-list-firstscreen-after-visit-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5555aeea7199431ed0474cb9d71ca8cfc62d2065"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-firstscreen-api26.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "43bbf355774ab53794429e5eeeb6fb0efbd1ca99"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-dish-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ce38b469ba1821e2a3d58af7dfb09331443062e6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-dish-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a741b6bb0a061638cbadca7e9f0a6df116c6d537"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-history-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "34cbcf87714a106f48bd1ea7f3bd3e1a3c225cd4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-history-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0afcf9b5d1d568f54dfd1e51f8eef66637c4624b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-restaurant-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "47f5aa18752492a1dbb898937b1d3db792b0fabc"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-restaurant-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6d582fdfefd2fdfb06669305267e070ad930bd1b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-search-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c6d7dd719b6083c3912c627a5ba77b11f160f230"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-search-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ff40229d43d512f1dcf6eefc5b183cf88deb6995"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-visit-font1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8dc29a8453a0861cbfc49b279e6c795451db39ac"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api26/pr17-list-firstscreen-before-visit-font1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cf512b7ca9f52e874a98e59592660e20bb07831c"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-firstscreen-api35.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8ab50bab0a5cf31be2076411c1e4c6aae5777988"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-dish-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "68d55ee08273ae9d1ed04b4dcd153e8d5e8b0544"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-dish-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ae6a05926967a5154281f574ae0b858ca13617bd"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-history-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5c85fe2d7fefa263e70ad39be7277f1d7047d1fe"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-history-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c96ca1c511536705b4fa746c1e4865bb3d7c1309"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-restaurant-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "67ca31594b77c76030203cdec51d5b58816c30a3"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-restaurant-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c8080b4abc4c0790d666d7e8573b93a62c642e91"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-search-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "48d43c96999eb9bece043974eece598b6f42b617"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-search-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d6cd832cedec34864c01db9c18eab04152081f20"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-visit-font1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "53f989c21c80a7b3a719a505c191075a8d52edf4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-before-api35/pr17-list-firstscreen-before-visit-font1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7042ab076d74f40f4b2e8d49dfe348a7a3422a51"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M1-list-firstscreen.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8a8bcbf0f0d6ab3d0f0eb08bbcb7e354e924ece8"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b2955748666db04cc26e76540eaf9cef80d712d4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4cf987ccda75a470702b56fed05c981786cef57b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "869e022517022912dc493cb143b77c1e62f80ba5"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9bc0ccbfe2c6b29bb51434063d91e571901a435a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "703200340da546ae4da3f9a338e687b1e39cecf2"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c403d01f10cc1bd6bd07b14414fac0d2e8f58125"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5d573dcad5e60829194adeb06cf0f411b495ff77"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-current-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ed6739c02c545e1bc1274439386a06d3059600b7"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e2ac37f17eff16469851a22013064e5ef1ca99e3"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e352271c9fb3be29f842f4e5f0316a1f20792e7a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2b48bc4edd135813f06d5153153bd285898201c5"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4e17a29edb67c26dffd37b7e0327707d60c5a35e"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f63811678472eff824753994264e8c9e907fe296"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31942f20c58f47811b96df0006f906f5f7deeeb6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a55f533bcfc4c93adbc22e787084b995686b2c44"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-0-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "451170b8c78bcb11b34a8bdb05fb09331631c472"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-1-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "33f09ccd79b486f133e4aa4b77a557385943da0a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-1-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9a7cbddad37b90aadd0a1647b4b83f40b86311c6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-1-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a0bfaad957505758120dc786e4dc4f87ed5a7369"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-1-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "71cadea34e0a1e14cbc6584bf5c12b8fc37ab7bd"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-1-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "18a7003b3f6b1fc398c56ab67c918391e0858c80"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-1-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2ff775307e844725f48600d61569f8209f4983eb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-2-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "639e5879c155d7cd1c0354f63c9f730b9cf32264"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-2-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d4b902d846086d0d2c396b32a315995ccf5efb2f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-3-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "174f5f19a30688113ba94e92ac26ab7a5550cb85"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-full-3-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2434e52fb795a28d3af94f7510ef55ef400676c8"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "95bcc756749df4a4590c635c8894fce7328a42d6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "54b1e775ea453eb721486c74d581d777717be87f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4847bb32c2f7d60f54cc4e110c77b6efce47a1ed"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "419b0fcb2c8e46d35670f6dfd352e10e6a30e6a5"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "45c0fe9485abc20ebd1bcc32598b5910eb83e534"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bb63a8df596d256609c11513c5f7b95b022622fb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9f9cbbd21ca0d49edc58c98dbeb4a9b2210543b8"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-address-proposed-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "02a7d76cc053c61a7309b513162293a0d22d28ee"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0c7a0720c88958710b759d8ea69c8a568835222c"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "28594bef8661b111ecbb9bb01a7fa6cebe56e9b9"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "158ecfd1716bc9166e29a093b8dfff299c22d334"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c5073e00009cedcdd8cad038e1940f5fcf996375"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7b95b177cdc8664631bd184ca368f2e81d1be9cd"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "39f52b3e12690c4a310c570cd6b46669f9432840"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9ac711ebf3ecbfbce839d9af2725f69ef95b5124"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-before-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f827b62e6aadf0be1468e36cba9367aeeade7fcf"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b2955748666db04cc26e76540eaf9cef80d712d4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4cf987ccda75a470702b56fed05c981786cef57b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "63cc9244597a1f439314f94ce7b19ed1f79ced3a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bd3de77634f8bd8263a60dc995002333e4476fa6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fad6b4d90c0f5f6c987c2766a5028208c4221b64"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "45c7f9dd1c79ad4628f6ff2a99c45bb711dea1ec"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "70d4ffcbb23c0138be7ae38b866db44dc6c69964"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-current-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5c79b2cb6614aebf01b5cd69723b230ea22608b1"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b2955748666db04cc26e76540eaf9cef80d712d4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4cf987ccda75a470702b56fed05c981786cef57b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "63cc9244597a1f439314f94ce7b19ed1f79ced3a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bd3de77634f8bd8263a60dc995002333e4476fa6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fad6b4d90c0f5f6c987c2766a5028208c4221b64"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "45c7f9dd1c79ad4628f6ff2a99c45bb711dea1ec"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "70d4ffcbb23c0138be7ae38b866db44dc6c69964"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-name-proposed-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5c79b2cb6614aebf01b5cd69723b230ea22608b1"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "029edd102e407bc259bdf9a27260f8a7236714e4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "847e8f337af9d0a4532025c8e7e55bb2cf6b75f1"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a57109e87cc293417e7206e240a2c14c85f12a6b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cb04fcb9ee775f8e02b6ba03143208ff06963989"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "12bc7b359fa31cd5980c9a427fb7dc3d6ce95f04"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c0c4389cf9a9bb9052bf2df2dfbe4c46b07fbe07"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1c2c35b376e38784ee3b83a5ae0d23a6c5586700"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-pairs-footer-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7a57c5adb020f7c285edfa2497df2f5fa3adaa8b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c4636d49476f8ffbfb69e19274e4a50228645151"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3b70f5eed869a981d54690e26a996a5d24526395"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6d78a67f8945ada127dca7566d5e55b89981d1fb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "08c423869bd9afdc87098cc19c7e9805e932ffee"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9e4dd1f2843962e3322adc40aadb6490a06e788a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ee908b5a42a452ead6b12196db199bfd4b1865b7"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ace38d357e5b7effc306a175a51a4d1b458c6d35"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-current-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "95cbfc35bc1d1a1544708ef8cb66a47ae1b9a6f5"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont1.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "029edd102e407bc259bdf9a27260f8a7236714e4"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont1.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "847e8f337af9d0a4532025c8e7e55bb2cf6b75f1"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont1.3-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a57109e87cc293417e7206e240a2c14c85f12a6b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont1.3-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cb04fcb9ee775f8e02b6ba03143208ff06963989"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont1.31-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "12bc7b359fa31cd5980c9a427fb7dc3d6ce95f04"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont1.31-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c0c4389cf9a9bb9052bf2df2dfbe4c46b07fbe07"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont2.0-dark-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1c2c35b376e38784ee3b83a5ae0d23a6c5586700"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-apply-review-proposed-actualFont2.0-light-api26.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7a57c5adb020f7c285edfa2497df2f5fa3adaa8b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api26/pr17-layout-api26.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5346d66295eb9ae0558c4a82f2d5cb692602629d"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8220a7edbebdc5be9ab27360175915c3d3ea032b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3c59b249c0f2a097e5d1c4215a5fdcdc927532eb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9100d336f9796e06c7306373a7fb7fd98d2fcd8d"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ceda3820281c0c2992261b5eb5cb7f89a1e43a10"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b642c422f30fa31c77b2ef7e3d979e29e419c275"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5fbb432aa51d1daba1489ee5418c77e638fa5e1b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2acc5916aa89d443bb6a1ab8ebd54a1160d9b229"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-current-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "277cad9bfe72a267a8ec10a10534365ff9253b34"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0dbd4bc0de1bf38a2824a72ec340103682498570"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7c7fe7482761fa6e41f0b45b4bd5aeaffd32785c"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2dfc64413dbb89472e606fbd175cf830630bd3e7"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b38b997bfc1232895fb780f3e92b032495131bc3"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9b672b631da6a0afcb69c506d62192953dc02289"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a36ac2374d78eb9be2d710aa74824a1d3d5084b3"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "955a0aa27e9794da5fbdd12d240b6909cb72eb66"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-0-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "28083b23b212a068aea45724034b8f5725c16449"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-1-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9cd9e829d534703f918e4fce6d1ed7e0cf36c23d"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-1-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "458978b020a334145ca056e8c1cdec6d5cc47023"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-1-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "50ce052143579cade7a2c0316256d06a3cb1d46f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-1-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5bd595e8e761d5258a53c4c34c7afab8b5acca00"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-1-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "02e48acbc956f8f6bab7e268ca5dfec86781587f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-1-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "388af68808d238d30b2f0e50167f63d067addd15"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-2-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3c43b67902cabfe1f8abb75095ef493be3773a5d"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-2-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "267e572845c59f991196f4d50a06cea543304255"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-3-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7e537dd39f1593a5e692cb018c1c8cbd58936ff6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-full-3-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8f1f8789e3cd7a5a0709f739f402bfd650bb04bc"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b4374150db30bfb02e821234b210dad4cde12398"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a4fbb831d624639fbd1785fef5de679092b960c3"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "217deba7da5a9fcf9bf2e02444d29b79346f5666"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1526daa7765c29206d7cad7d626342577812a823"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9e70c339de78f4481c2d9397adaec5fe9e261894"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7e78031f29680bf017d02abc4464c2652f3c2d4e"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f68fe01f91e53f9d4458180b9f89a59f09bbe80a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-address-proposed-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "23d91a1ed7ff138d868639e883bea348957f920d"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c16bbaad6ed28c249c080bcb9c8232d279459e21"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3f6d010cb9a2d907dbcae2af059dafc2d97d4b9b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a4453147339775093a869bc2301992adc650fa24"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5fee64cf139ed3bb11799632a1909119f1adfbee"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "38d958cab6811d6ef6056b8fc49add62ae2c4b15"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "04dec6a907338f505db931653d00e4faecb5ccab"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3278dbfe780290f203ec154be928a2785f46ea49"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-before-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "227705a6324bae5af00796cf6a2b56468456fd2f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8220a7edbebdc5be9ab27360175915c3d3ea032b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3c59b249c0f2a097e5d1c4215a5fdcdc927532eb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "09e78a56343efd1bd45aa1299f526fbac3c46f14"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0cf41a40b082b22b685606816d683d58f011f37b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9f825baaff48e780629543a859791b9d74d59ee6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8c657e103c0fab7529a4d46c4739380b8d6d0635"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "66ab23284489874dddc6dff6268730c91785a66a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-current-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bbe1cb74a81ebce94471972ae0ddcf0907013414"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8220a7edbebdc5be9ab27360175915c3d3ea032b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3c59b249c0f2a097e5d1c4215a5fdcdc927532eb"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "09e78a56343efd1bd45aa1299f526fbac3c46f14"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0cf41a40b082b22b685606816d683d58f011f37b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9f825baaff48e780629543a859791b9d74d59ee6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8c657e103c0fab7529a4d46c4739380b8d6d0635"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "66ab23284489874dddc6dff6268730c91785a66a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-name-proposed-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bbe1cb74a81ebce94471972ae0ddcf0907013414"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "be207073f18ec44687f2799f14789186803b0ed6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "61e595c78584c28d222928b22e09b58542365a50"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "806ebda1dd7ecf53a52287e8a8d17651f87dfbb9"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6afb620a14baa72b2aa4afa0b221846abe295c28"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "26bbdd36fe0ecd9829d9366e71b06c09ad49d05b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4c2fe6d88fee424090f599cf764cbdae98563696"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9f836e62c7bae317df3b47f1cec60caa2f40d772"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-pairs-footer-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b5d570a6ddf44adf9789db9943e32cf4791ff890"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a26464158a8604bb8392af21cf280622c6a6c403"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e00a571c214c5610402cfe2bccea5e029d2bf36e"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9cd9e829d534703f918e4fce6d1ed7e0cf36c23d"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "458978b020a334145ca056e8c1cdec6d5cc47023"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "094ce86979b0d8f9b04b275ee9a61a7403085a07"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "5bd595e8e761d5258a53c4c34c7afab8b5acca00"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4dbc84231f088e4231aece726c499f6e5fa5d52a"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-current-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8687512b517948aa05e98c61d7a15a3e5bc61d0f"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont1.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "be207073f18ec44687f2799f14789186803b0ed6"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont1.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "61e595c78584c28d222928b22e09b58542365a50"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont1.3-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "806ebda1dd7ecf53a52287e8a8d17651f87dfbb9"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont1.3-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6afb620a14baa72b2aa4afa0b221846abe295c28"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont1.31-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "26bbdd36fe0ecd9829d9366e71b06c09ad49d05b"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont1.31-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4c2fe6d88fee424090f599cf764cbdae98563696"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont2.0-dark-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9f836e62c7bae317df3b47f1cec60caa2f40d772"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-apply-review-proposed-actualFont2.0-light-api35.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b5d570a6ddf44adf9789db9943e32cf4791ff890"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-api35/pr17-layout-api35.txt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fd7e240f441af82598291efffe2b58fbc44ac574"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-manifest.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "61d1eddcf37c686721fbfc26ea24ee0c0842cff1"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/M2-apply-window-font.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c724f2c25ec8d216d88c23cedfc540890e03ea4c"
+    },
+    {
+      "path": "design/pr17-discussion/evidence/SHA256SUMS",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "235f13c8568f79a0f0263bc1367db0d85514c5d7"
+    },
+    {
+      "path": "design/pr17-review/REVIEW.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "86109eb7d77a4a49720d944c04f1d9d729319bc6"
+    },
+    {
+      "path": "design/pr18-review/APK-ONLY-RELEASE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4aa86c721e11fd541f7652f91db4e91ce6b57ada"
+    },
+    {
+      "path": "design/pr18-review/CHECKPOINT.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3bd9f734105eb9210aa4872dd283794632c4ca9c"
+    },
+    {
+      "path": "design/pr18-review/F3-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3d4f1ad728785a3e5d9bdb0920379474e5bec6a0"
+    },
+    {
+      "path": "design/pr18-review/F5-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "42eec5888389db19dc8a9224d92e5fe85095ef2e"
+    },
+    {
+      "path": "design/pr18-review/F5-REVIEW-FIXTURE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "16487525c4d2428634f981ded2c056a87848fdcf"
+    },
+    {
+      "path": "design/pr18-review/F6-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4ddc4fc60b720118fddd8f9379dc71ea07ab09e7"
+    },
+    {
+      "path": "design/pr18-review/F6-REVIEW-RED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fa7a21ec99dc02e793e68f68bb66e9a0f6bb622f"
+    },
+    {
+      "path": "design/pr18-review/F7-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7c32c9994bab967f94d858d2353dbc8d5269240a"
+    },
+    {
+      "path": "design/pr18-review/F7-R2-FOLLOWUP-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "900768ba348ed0b662833b30a770fc061925ee6e"
+    },
+    {
+      "path": "design/pr18-review/F7-R2-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "03e97237443a02c87281b2c00b17e7e1c90f6475"
+    },
+    {
+      "path": "design/pr18-review/F7-R2-ORACLE-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "668e2ad771d6be1f4e159a7fdab95c5718dc4912"
+    },
+    {
+      "path": "design/pr18-review/F7-R3-OBSERVED.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0c631ac157e4335dfca19c61cf5b16f2e28e4f57"
+    },
+    {
+      "path": "design/pr18-review/STATIC-FIXES.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8b48e91ad33d3ce2b6221f2e671f6f091f76d138"
+    },
+    {
+      "path": "design/pr18-review/evidence/README.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "127c34ef4c2433698b44b1be4691411c1168fed7"
+    },
+    {
+      "path": "design/pr18-review/evidence/audit-checkpoint.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bb0e77ffa2c1504e56e682fac2d97d295266819f"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/audit-checkpoint.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6134cd8dbbe0e32ff441d249010ff5c9b910e8d8"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/bite-verifier.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "232978c65c725af1a2740ed344f2456bc309aa90"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/component-roles.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "6297c171e065d8c8038cbdbe3e0e903cf1c67280"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/diff-check.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/index-check-before-log-encoding.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "de9304f747fe9a4801e770ca0caa1702bd612944"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/p6-verifier.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b55d80006a50900c83da4e07897307de373721c2"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/python-release-guards.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4ec944cc65ea3c5243fcefafb88ecdfb8e00f346"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/release-guards.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "03a980067b3bfd4f994a4bbab497a1309851e6d5"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/results.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4147e152a8304549db429ad151e99466476b7f2f"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/staged-diff-check.log",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+    },
+    {
+      "path": "design/pr18-review/evidence/lightweight/theme-regressions.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "98c823a2b01b15d3118c0a44b154dc25f5378b48"
+    },
+    {
+      "path": "design/pr18-review/evidence/manifest.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b63ec6bebc96c21b3af650624fca9c40c0836ed0"
+    },
+    {
+      "path": "design/pr18-review/evidence/review-hashes.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "432c67b5b96fe5da1ab9d9b05dee76a3baf659f8"
+    },
+    {
+      "path": "design/pr18-review/regression/Pr18EvidenceBoundaryJvmTest.kt",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b424bdadd64222c5d62694e71f62344fde173b3d"
+    },
+    {
+      "path": "design/pr18-review/regression/run-boundary-tests.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "28565cdd6c03a1f473cf4c9b9f0f42c78143570d"
+    },
+    {
+      "path": "design/pr18-review/reviews/review-integration.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bce79d84a343cce10ab13d95baa5dd8cab6fe5b0"
+    },
+    {
+      "path": "design/pr18-review/reviews/review-theme.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "15c39930bea19dc680872e09c76da4547f472c36"
+    },
+    {
+      "path": "design/pr18-review/reviews/review-updates.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7560158f3449e7c9560433934f56a503c6568423"
+    },
+    {
+      "path": "design/pr18-review/reviews/review-validation.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "694e694629d3506664f5f694a303475cab90f3d4"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/bite-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "76a2536195a9209a9b499d607b10e8c3356e0b58"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/diff-check-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "45c15d75dbeeda3ce1ae35f7fa72628a506f8ed6"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f1-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "acf35873c77ded26cf955ff2d95b5c511634d37b"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f1-red.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "733a80adef14c29e7379ac4c171805867b439497"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f2-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8932e28d809b2c1d7e8526be1726c9bcc360b216"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f2-red.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0494776e2de2032a9fc6ba945180b72a8fda3d6b"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f4-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1833986c842a02f5b10a35be6962015f154eabd5"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f4-red.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "17e513424e52b7cde98dc168706d09b7727c06e3"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f7-local-checks.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "93c4c5e14a8a057fe5ca61f3f04ea7c80169da42"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f7-r2-followup-source-checks.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aa2bcb64d5822c1d344b1b57222fc2a8c9335011"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/f7-r2-oracle-checks.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1c599c476e4d686b3db1e6130349fbe8584064ce"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/p6-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7c52bd661e857b114a6bf341138a5c9111c91760"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/python-release-guards-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e02fb27d5929795524da7adbf3f6bb037573aa55"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/release-guards-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bd80f1ab0169e1b39cdaf731fe62c95a48889374"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/scope-audit.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "52662b46a7cac2af2623c4d9794e15f76c2f185e"
+    },
+    {
+      "path": "design/pr18-review/static-evidence/theme-all-green.json",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e4bf5725b59e7c5785cd1b3fd9113c22d086376c"
+    },
+    {
+      "path": "design/proto/DIRECTIONS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "078b7bf7bec74f139d4e0756836e19aed385cda0"
+    },
+    {
+      "path": "design/proto/DONE.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ca2ec4c3c222380f2e0deb2062a274619d15c08c"
+    },
+    {
+      "path": "design/proto/d1-ledger.html",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b833bf0819f66289445474ba1436c4a78c08be8e"
+    },
+    {
+      "path": "design/proto/d2-quiet-grid.html",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4c404fd8c9fcf32c71b95acf83e357d39be1c20f"
+    },
+    {
+      "path": "design/proto/d3-signboard.html",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2679ee4a11d4f938ea7960200753affef0601a78"
+    },
+    {
+      "path": "design/run_codex.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "161980a076497266602ff12e1702c6204abb8abe"
+    },
+    {
+      "path": "design/run_directions.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "19d5b2a11d66bcb7807e6f005075a3d2b5289f23"
+    },
+    {
+      "path": "design/run_p1.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3a0192b12c5f1bd2e9d158e7c6c106eedb394637"
+    },
+    {
+      "path": "design/run_p1_finish.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "30098fb5b615186c42f0f4b580cda1a4557e5da9"
+    },
+    {
+      "path": "design/run_p2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3ebbfe946bf77aee7d1d75907626f7e04c14c528"
+    },
+    {
+      "path": "design/run_p3.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "17bd10211d8c21677677fdd6202ec4efa8e21212"
+    },
+    {
+      "path": "design/run_p4.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "436e8257e8574ec91fbdc119bc7f73640cd4d7be"
+    },
+    {
+      "path": "design/run_p5.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "de99cf923fca55ff089453a4c3ec79729c9b63d2"
+    },
+    {
+      "path": "design/run_p6.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "bd2f423aab539f30e88e7dcafc1fc8da35be144a"
+    },
+    {
+      "path": "design/run_p7.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "50b1f7182ec4e76ad24d6e53f2dbe00ade2fda58"
+    },
+    {
+      "path": "design/run_p8.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "1731ce90db36c322ee43b6ec75626a136f6a77fc"
+    },
+    {
+      "path": "design/run_p8_review.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "8b3be1adbf831d5ead0e3df282fe1ec30284606d"
+    },
+    {
+      "path": "design/run_p9.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "05b7fd9f372283947c7261e58016ec55ab992e0f"
+    },
+    {
+      "path": "design/run_p9b.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "974680216de4f8c2ae4e659a1700500353af3a6a"
+    },
+    {
+      "path": "design/run_p9c.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "e8530521461b04c78582f41970c90ba1baf634bb"
+    },
+    {
+      "path": "design/run_parallel_codex.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "17146670a49ee35231a85aa9a13cda1228e9c954"
+    },
+    {
+      "path": "design/run_pr13_review.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "4ad0261b396ae59bb8c47a3569dea0330d5fee27"
+    },
+    {
+      "path": "design/run_pr16_cifix.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9259e9334c98a585569a5ed1defeb673a34e4762"
+    },
+    {
+      "path": "design/run_pr16_cifix2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "7b9f4d2403a9c9e1db9f3b7b537160e649e486b6"
+    },
+    {
+      "path": "design/run_pr16_cifix3.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "919d5d4684aa93e0425784dbaa54bf5e1fb74eae"
+    },
+    {
+      "path": "design/run_pr16_fix.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9684d358ec513194252110f63b82c7b07ebde842"
+    },
+    {
+      "path": "design/run_pr16_review.sh",
+      "mode": "100755",
+      "kind": "blob",
+      "git_blob": "d8f175820a33fdc6b94d5b95aa24fec05321e891"
+    },
+    {
+      "path": "design/run_pr16_testfix.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "22b69d665e5fb3aa065faee5cb9568384a7af218"
+    },
+    {
+      "path": "design/run_pr16_testfix2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "38c85a07b25ce8b902eea0b37fac7d89b0190d18"
+    },
+    {
+      "path": "design/run_pr17.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2e59fb62269efe0ac0b120896e2cb9195fde0770"
+    },
+    {
+      "path": "design/run_pr17_cifix1.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4ea424af656b7c4c0dee4e7f2f921eadd0d43ecb"
+    },
+    {
+      "path": "design/run_pr17_cifix2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "92e27dd1a23e776d8d21c2c28e29925b2a2212bc"
+    },
+    {
+      "path": "design/run_pr17_discuss.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fb7b6eae3eb1d3b8507b8c6d655657e60cb24c4b"
+    },
+    {
+      "path": "design/run_pr17_impl.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fb7620f9d379d1ffbb7aad3705d74187aac54dcc"
+    },
+    {
+      "path": "design/run_pr17_revfix.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0a5d35dfa8cdf6fef2a7d2a8e1f337a458538663"
+    },
+    {
+      "path": "design/run_pr17_revfix2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "e36a17870312ba1504eb09f6915f4a14f850c7d4"
+    },
+    {
+      "path": "design/run_pr17_review.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a5aaddf0c17d188b5ce118d0acea317375ef54c4"
+    },
+    {
+      "path": "design/run_ui2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "8e8bdfe481725e9c9b294372fba291d9efe2c5cc"
+    },
+    {
+      "path": "design/run_ui3.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fcad9820f5342ecb349df15170022f5ee723fc45"
+    },
+    {
+      "path": "design/run_ui4.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "103b257eda768b7f74c7528367b03434ed951534"
+    },
+    {
+      "path": "design/run_ui5.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bd787aba615d45eeb88b6b5b7cb4f36031af5bc9"
+    },
+    {
+      "path": "design/run_ui6.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9ee5c5e7bc835f469ac76a6e2cea0c533fc64b10"
+    },
+    {
+      "path": "design/test_agentrouter.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "03bc1521a1ba1cd15202ef7f5e424e79dc7c5eac"
+    },
+    {
+      "path": "design/test_ar_ua.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "32a87b1c7ef4328cda96b81b162c0e5aacca949f"
+    },
+    {
+      "path": "design/verify_migration.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d6116f3b12e0c75e2a37be90b55b52d3efa906f0"
+    },
+    {
+      "path": "design/verify_migration2.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3afce6c5a8af0ac5af6598bc352cd91b629b4255"
+    },
+    {
+      "path": "design/verify_migration3.sh",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "fcf47a2fbafeb9d469e2761139306b95143f1800"
+    },
+    {
+      "path": "docs/OPERATIONS.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "307595148ba5c983547eae3d3ba84b6f203a76e3"
+    },
+    {
+      "path": "docs/audit.js",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "df6d826e21cbf5481ddf89f7033a6a1d1e0d4a72"
+    },
+    {
+      "path": "docs/audit2.js",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d6a2400e6b3a4987313396706656de0cec3fa951"
+    },
+    {
+      "path": "docs/fit_pass.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "05fe0306cfb559d3e3b2a5f8ec478660ba8d2ff7"
+    },
+    {
+      "path": "docs/gen_mockups.py",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "d2cfa5888676d4794625409d35b886f87fa853e2"
+    },
+    {
+      "path": "docs/mockups/A_qingci.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ff923a0224380e0df7046e397694d9c4b1f0bf6c"
+    },
+    {
+      "path": "docs/mockups/B_shimo.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0f40d3aeee9b2a3447318a34660dbbd7edb01ab8"
+    },
+    {
+      "path": "docs/mockups/C_shenhai.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "633ca88147e4f9ddb49b576861c9573449c3d061"
+    },
+    {
+      "path": "docs/shoot.js",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "407c23555981db4bcd8a600c3c46cbbe5982a398"
+    },
+    {
+      "path": "docs/shots/d1-ledger-dark-s1.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bf2f75221c3559bc29bb0aa52b986541655d97e2"
+    },
+    {
+      "path": "docs/shots/d1-ledger-dark-s2.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0234e430bbe12bde75050f67bff0eec3d6b50a56"
+    },
+    {
+      "path": "docs/shots/d1-ledger-dark-s3.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "06501dde270c0b6e57ae9ab0177b7abc04810fde"
+    },
+    {
+      "path": "docs/shots/d1-ledger-dark-s4.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "819c8abad1549825a134154b4405ee701ca2b362"
+    },
+    {
+      "path": "docs/shots/d1-ledger-dark-s5.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a9bab9afe29b6c4746f14f3b69e0ddd91a0b44d4"
+    },
+    {
+      "path": "docs/shots/d1-ledger-dark.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "821763b88e3bc1f02c61fd26b62ab6cebfebe51a"
+    },
+    {
+      "path": "docs/shots/d1-ledger-light-s1.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "60aae55dc216f4eda5b787be81c0e6931c1c372b"
+    },
+    {
+      "path": "docs/shots/d1-ledger-light-s2.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f9275e61044c0ac56acd2368ea0ef5dffecf18e7"
+    },
+    {
+      "path": "docs/shots/d1-ledger-light-s3.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b13cc8cd3cd3dea6c94542a98f9209bf00ba4af6"
+    },
+    {
+      "path": "docs/shots/d1-ledger-light-s4.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2fd2b173969c68d63217fd578df11bbb73a2454f"
+    },
+    {
+      "path": "docs/shots/d1-ledger-light-s5.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "0929ed83235b64300f0dfc46eb1c331738472071"
+    },
+    {
+      "path": "docs/shots/d1-ledger-light.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "20743afcfe145b5bc6d765c1ac316b5b0f5117ea"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-dark-s1.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "b933f2c6f19f946d700a25f53895220a56aeaff7"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-dark-s2.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "04f64487b8790aa21db82248c4ba6180bcd89cb6"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-dark-s3.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "3b625f0d0d0213830f6a012dcdedee47b0000a0c"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-dark-s4.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "82deeea3ac64917d245ed6c9d51abf5bf5e9a06f"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-dark-s5.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a5bdf5298656534d7757e74905f288b9e6ba8a83"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-dark.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "31d469772dd6106a121cd5dee4c6de545bd47a1d"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-light-s1.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "bc04e61f354346b10d1ca0d7f7c58c9040a87327"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-light-s2.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a4e48f1f28fde124a831f74335bddc3eea675768"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-light-s3.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "532488d2e9b42a9a36864cca3489bd2e6017a01a"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-light-s4.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "a7f5cb8b4a5fce55e0039a1d20de6d43edf635d9"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-light-s5.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "4d43134bcfc3cf08530e3c9c07614102c76b69bb"
+    },
+    {
+      "path": "docs/shots/d2-quiet-grid-light.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "ffd837899c24c50a246cd8c8d07943a8ae2ad319"
+    },
+    {
+      "path": "docs/shots/d3-signboard-dark-s1.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c9d58adc18225fe06a3c9366f1a491384bbb53ba"
+    },
+    {
+      "path": "docs/shots/d3-signboard-dark-s2.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "52e17f2c4a49e6da2e5c54f71b364adfc281702b"
+    },
+    {
+      "path": "docs/shots/d3-signboard-dark-s3.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "50a1110ac53f1ddcd51b9b32f7aaf588b31393ef"
+    },
+    {
+      "path": "docs/shots/d3-signboard-dark-s4.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "9697c3aa452415b8b7dccd89f7b5e8f04acb721a"
+    },
+    {
+      "path": "docs/shots/d3-signboard-dark-s5.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1d879535b3bf71728bb6703c48109ed2927b86bd"
+    },
+    {
+      "path": "docs/shots/d3-signboard-dark.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "2f3fd388a0c2576f3a38ac423eb628ab98f4961c"
+    },
+    {
+      "path": "docs/shots/d3-signboard-light-s1.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1648bbf0e69a5f0f22bedab27e6aeb49c2f1b6e9"
+    },
+    {
+      "path": "docs/shots/d3-signboard-light-s2.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "314258cb882c7f8247bcaecc83e93399c12fc492"
+    },
+    {
+      "path": "docs/shots/d3-signboard-light-s3.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "815ee8c5a6ba0aa264b52ce1d0edaf5105ea6e41"
+    },
+    {
+      "path": "docs/shots/d3-signboard-light-s4.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "c17c5070c5ff33ef3ccea50ec7ee8f3419554c24"
+    },
+    {
+      "path": "docs/shots/d3-signboard-light-s5.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "80063b919a46a3aec964e773556aa3f1dd90cc0b"
+    },
+    {
+      "path": "docs/shots/d3-signboard-light.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1e9d8a1cec7d2850e72e768597d0d99cf1e4219f"
+    },
+    {
+      "path": "docs/shots/x.png",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1e9d8a1cec7d2850e72e768597d0d99cf1e4219f"
+    },
+    {
+      "path": "logs/p8_summary.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "f7c531438a6a32de4456dd6c8f6c3aa20b1c0f82"
+    },
+    {
+      "path": "logs/p9_summary.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "1fd167c9d91fcdfc1c0728c08d97fbf947617709"
+    },
+    {
+      "path": "logs/p9b_summary.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "aab9b284b24f508a881400106e72cc0ddd946d03"
+    },
+    {
+      "path": "logs/p9c_summary.md",
+      "mode": "100644",
+      "kind": "blob",
+      "git_blob": "cb5a0265980d23afb68169aa7e4228a42145739a"
+    }
+  ]
+}
