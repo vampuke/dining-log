@@ -229,6 +229,8 @@ class Collector:
         started = time.monotonic_ns()
         try:
             inventory = self.device.inventory()
+        except InterruptedError:
+            raise
         except Exception as error:
             event(self.root, "inventory-unavailable", error=str(error))
             return
@@ -260,6 +262,8 @@ class Collector:
                 self.copied[name] = metadata
                 event(self.root, "retained", path=name, remote_size=metadata[0], remote_mtime=metadata[1],
                       sha256=sha, elapsed_ns=time.monotonic_ns() - before)
+            except InterruptedError:
+                raise
             except Exception as error:
                 event(self.root, "pull-incomplete", path=name, error=str(error))
             finally:
@@ -282,20 +286,122 @@ def writer_lock(root):
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
+def process_identity(pid):
+    fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+    return {"pid": pid, "state": fields[0], "ppid": int(fields[1]),
+            "pgid": int(fields[2]), "sid": int(fields[3]), "start_ticks": int(fields[19])}
+
+
+def start_process(*args, **kwargs):
+    process = subprocess.Popen(*args, **kwargs, start_new_session=True)
+    try:
+        identity = process_identity(process.pid)
+        if identity["ppid"] != os.getpid() or identity["pgid"] != process.pid or identity["sid"] != process.pid:
+            raise RuntimeError("New child is not the controller's owned session/group leader")
+        process.owned_identity = identity
+    except Exception as error:
+        # Keep the handle for a failure receipt even if /proc cannot be checked.
+        process.ownership_error = str(error)
+    return process
+
+
+def process_exit(process):
+    if process.returncode is not None:
+        return process.returncode
+    # Keep the exited leader unreaped as the group's birth-identity anchor.
+    # Popen.poll()/wait() would discard that anchor before descendants stop.
+    result = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+    if result is None:
+        return None
+    return result.si_status if result.si_code == os.CLD_EXITED else -result.si_status
+
+
+def owned_members(process):
+    identity = process.owned_identity
+    anchor = process_identity(process.pid)
+    if any(anchor[key] != identity[key] for key in ("pid", "pgid", "sid", "start_ticks")):
+        raise RuntimeError("Owned leader birth identity changed; refusing group signals")
+    members = []
+    # A failed scan is not an empty group. Z/X cannot write; other states can.
+    with os.scandir("/proc") as entries:
+        for entry in entries:
+            if not entry.name.isdecimal():
+                continue
+            try:
+                member = process_identity(int(entry.name))
+            except (FileNotFoundError, ProcessLookupError):
+                continue  # Kernel confirmed this process disappeared during inquiry.
+            if member["pgid"] == identity["pgid"]:
+                if member["sid"] != identity["sid"] or member["start_ticks"] < identity["start_ticks"]:
+                    raise RuntimeError("Process group has an unverified member")
+                members.append(member)
+    return members
+
+
 def stop_process(process):
+    receipt = {"writers_stopped": process is None, "identity": None,
+               "signals": [], "members": [], "errors": [],
+               "raw_exit": process.returncode if process is not None else None,
+               "exit_before_stop": None, "exit_before_signal": None, "interrupted_signals": []}
+
+    def inquiry_error(error):
+        if isinstance(error, InterruptedError):
+            receipt["interrupted_signals"].append(error.args[0])
+        else:
+            receipt["errors"].append(str(error))
+
     if process is None:
-        return
-    # Children start in an owned process group; terminate descendants even when
-    # a wrapper exited. Return only after the log writer's pipe/file is closed.
+        return receipt
+    identity = getattr(process, "owned_identity", None)
+    receipt["identity"] = identity
+    if identity is None:
+        receipt["errors"].append(getattr(process, "ownership_error", "Missing owned birth identity"))
+        return receipt
+    started = time.monotonic()
     try:
-        os.killpg(process.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        pass
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        os.killpg(process.pid, signal.SIGKILL)
-        process.wait(timeout=5)
+        receipt["exit_before_stop"] = process_exit(process)
+        if receipt["exit_before_stop"] is not None:
+            receipt["raw_exit"] = receipt["exit_before_stop"]
+        stopped = False
+        for signum in (signal.SIGTERM, signal.SIGKILL):
+            try:
+                receipt["members"] = owned_members(process)
+                stopped = all(m["state"] in ("Z", "X") for m in receipt["members"])
+            except (OSError, RuntimeError, ValueError, IndexError) as error:
+                inquiry_error(error)
+            if stopped:
+                break
+            # Recheck the unreaped leader immediately before signalling. An
+            # absent/reused leader never authorizes signalling a numeric group.
+            anchor = process_identity(process.pid)
+            if any(anchor[key] != identity[key] for key in ("pid", "pgid", "sid", "start_ticks")):
+                raise RuntimeError("Lost owned group identity before signal")
+            if not receipt["signals"]:
+                receipt["exit_before_signal"] = process_exit(process)
+            os.killpg(identity["pgid"], signum)
+            receipt["signals"].append(int(signum))
+            deadline = time.monotonic() + 5
+            while True:
+                try:
+                    receipt["members"] = owned_members(process)
+                except (OSError, RuntimeError, ValueError, IndexError) as error:
+                    inquiry_error(error)
+                    break
+                stopped = all(m["state"] in ("Z", "X") for m in receipt["members"])
+                if stopped or time.monotonic() >= deadline:
+                    break
+                time.sleep(.05)
+            if stopped:
+                break
+        if not stopped:
+            receipt["errors"].append("Owned live members could not be verified stopped within TERM/KILL bounds")
+        # Reap only now: the leader's death alone never proves group quiescence.
+        receipt["raw_exit"] = process.wait(timeout=5)
+        receipt["writers_stopped"] = stopped and not receipt["errors"]
+    except (OSError, RuntimeError, ValueError, IndexError, subprocess.TimeoutExpired) as error:
+        inquiry_error(error)
+    receipt["elapsed_ns"] = int((time.monotonic() - started) * 1e9)
+    return receipt
 
 
 def native_sample(root, device, number, deadline=None):
@@ -313,6 +419,8 @@ def native_sample(root, device, number, deadline=None):
             path.write_bytes(result.stdout + result.stderr)
             event(root, "native", command=name, sequence=number, start_ns=start,
                   end_ns=time.monotonic_ns(), raw_exit=result.returncode, path=str(path))
+        except InterruptedError:
+            raise
         except Exception as error:
             event(root, "native-unavailable", command=name, error=str(error))
 
@@ -322,6 +430,24 @@ def run_probe(repo, root, group, api, deadline_seconds):
     gradle = logcat = None
     raw_exit, run_exit, termination = None, 1, None
     device = collector = None
+    logcat_lifecycle = {"started": False, "healthy": False, "premature_exit": None,
+                        "checks": [], "owned_teardown_requested": False}
+
+    def check_logcat(phase):
+        nonlocal termination, run_exit
+        if logcat is None:
+            return
+        status = process_exit(logcat)
+        check = {"phase": phase, "raw_exit": status, "utc_ns": time.time_ns(),
+                 "monotonic_ns": time.monotonic_ns()}
+        logcat_lifecycle["checks"].append(check)
+        event(root, "logcat-lifecycle", **check)
+        if status is not None:
+            logcat_lifecycle["premature_exit"] = status
+            termination = termination or "LIVE_LOGCAT_EXITED"
+            if run_exit == 0:
+                run_exit = 1
+
     def interrupted(signum, frame):
         raise InterruptedError(signum)
     for signum in (signal.SIGINT, signal.SIGTERM):
@@ -357,21 +483,20 @@ def run_probe(repo, root, group, api, deadline_seconds):
                     raise RuntimeError("Could not configure original full-suite IME precondition")
             device.command("logcat", "-c")
             with (root / "logcat.txt").open("wb") as log, (root / "gradle.log").open("wb") as gradle_log:
-                logcat = subprocess.Popen(device.prefix + ["logcat", "-v", "threadtime"],
-                                          stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                logcat = start_process(device.prefix + ["logcat", "-v", "threadtime"],
+                                       stdout=log, stderr=subprocess.STDOUT)
+                logcat_lifecycle["started"] = True
                 command = ["./gradlew", ":app:connectedDebugAndroidTest", "--no-daemon",
                            "-Pandroid.testInstrumentationRunnerArguments.class=" + plan["selector"]]
                 write_json(root / "command.json", {"cwd": str(Path(repo, "android")), "argv": command})
-                gradle = subprocess.Popen(command, cwd=Path(repo, "android"), stdout=gradle_log,
-                                          stderr=subprocess.STDOUT, start_new_session=True)
+                gradle = start_process(command, cwd=Path(repo, "android"), stdout=gradle_log,
+                                       stderr=subprocess.STDOUT)
                 collector = Collector(root, device)
                 deadline = time.monotonic() + deadline_seconds
                 sequence = 0
-                while gradle.poll() is None:
-                    if logcat.poll() is not None:
-                        termination = "LIVE_LOGCAT_EXITED"
-                        event(root, "logcat-exit", raw_exit=logcat.returncode)
-                        run_exit = 1
+                while process_exit(gradle) is None:
+                    check_logcat("periodic")
+                    if logcat_lifecycle["premature_exit"] is not None:
                         break
                     if time.monotonic() >= deadline:
                         termination = "BOUNDED_TIMEOUT"
@@ -382,25 +507,75 @@ def run_probe(repo, root, group, api, deadline_seconds):
                     sequence += 1
                     time.sleep(min(5, max(0, deadline - time.monotonic())))
                 if termination is None:
-                    raw_exit = gradle.wait()
+                    raw_exit = process_exit(gradle)
                     run_exit = raw_exit if raw_exit >= 0 else 128 - raw_exit
+                check_logcat("test-completed")
         except InterruptedError as error:
             termination, run_exit = f"SIGNAL_{error.args[0]}", 128 + error.args[0]
         except Exception as error:
             termination = "HARNESS_ERROR"
             event(root, "harness-error", type=type(error).__name__, error=str(error))
         finally:
-            stop_process(gradle)
+            cleanup = {"gradle": stop_process(gradle)}
             if gradle is not None and raw_exit is None:
-                raw_exit = gradle.returncode
-            if collector is not None:
-                collector.sample(time.monotonic() + 20)
-            if device is not None:
-                native_sample(root, device, 99999, time.monotonic() + 20)
-            stop_process(logcat)
-            write_json(root / "exit.json", {"raw_gradle_exit": raw_exit, "run_exit": run_exit,
-                                           "termination": termination})
-            write_json(root / "COLLECTOR_STOPPED.json", {"writers_stopped": True,
+                raw_exit = cleanup["gradle"]["raw_exit"]
+            try:
+                if collector is not None:
+                    collector.sample(time.monotonic() + 20)
+                if device is not None:
+                    native_sample(root, device, 99999, time.monotonic() + 20)
+            except Exception as error:
+                if isinstance(error, InterruptedError):
+                    termination = termination or f"SIGNAL_{error.args[0]}"
+                    if run_exit == 0:
+                        run_exit = 128 + error.args[0]
+                else:
+                    termination = termination or "HARNESS_ERROR"
+                    if run_exit == 0:
+                        run_exit = 1
+                event(root, "final-collection-error", type=type(error).__name__, error=str(error))
+            try:
+                check_logcat("before-owned-teardown")
+            except Exception as error:
+                if isinstance(error, InterruptedError):
+                    termination = termination or f"SIGNAL_{error.args[0]}"
+                    if run_exit == 0:
+                        run_exit = 128 + error.args[0]
+                else:
+                    termination = termination or "LOGCAT_STATUS_UNVERIFIED"
+                    if run_exit == 0:
+                        run_exit = 1
+                event(root, "logcat-status-error", error=str(error))
+            cleanup["logcat"] = stop_process(logcat)
+            interrupted_signals = [s for row in cleanup.values() for s in row["interrupted_signals"]]
+            if interrupted_signals and termination is None:
+                termination, run_exit = f"SIGNAL_{interrupted_signals[0]}", 128 + interrupted_signals[0]
+            logcat_stop = cleanup["logcat"]
+            # The final status check is also made immediately before the first
+            # owned signal, closing the collection-to-teardown check gap.
+            for key in ("exit_before_stop", "exit_before_signal"):
+                if logcat_stop[key] is not None:
+                    logcat_lifecycle["premature_exit"] = logcat_stop[key]
+            logcat_lifecycle["owned_teardown_requested"] = bool(logcat_stop["signals"])
+            logcat_lifecycle["healthy"] = (logcat_lifecycle["started"] and
+                logcat_lifecycle["premature_exit"] is None and bool(logcat_stop["signals"]) and
+                logcat_stop["writers_stopped"] and logcat_stop["raw_exit"] is not None)
+            if logcat is not None and not logcat_lifecycle["healthy"]:
+                termination = termination or ("LIVE_LOGCAT_EXITED" if
+                    logcat_lifecycle["premature_exit"] is not None else "LOGCAT_STATUS_UNVERIFIED")
+                if run_exit == 0:
+                    run_exit = 1
+            writers_stopped = all(row["writers_stopped"] for row in cleanup.values())
+            if not writers_stopped:
+                termination = termination or "OWNED_CLEANUP_FAILED"
+                if run_exit == 0:
+                    run_exit = 1
+            write_json(root / "cleanup.json", cleanup)
+            write_json(root / "exit.json", {"raw_gradle_exit": raw_exit,
+                                           "raw_logcat_exit": logcat_stop["raw_exit"],
+                                           "logcat_lifecycle": logcat_lifecycle,
+                                           "run_exit": run_exit, "termination": termination})
+            write_json(root / "COLLECTOR_STOPPED.json", {"writers_stopped": writers_stopped,
                                                          "utc_ns": time.time_ns()})
     return run_exit
 
@@ -434,12 +609,19 @@ def finish(repo, root, archive, group):
     # sealing; upload only the resulting immutable archive and its digest.
     with writer_lock(root):
         marker = root / "COLLECTOR_STOPPED.json"
-        if not marker.exists():
-            if (root / "RUN_STARTED.json").exists():
+        if not marker.exists() or not json.loads(marker.read_text()).get("writers_stopped"):
+            if marker.exists() or (root / "RUN_STARTED.json").exists():
                 # Never archive a possibly live logcat/Gradle child after a hard
                 # runner interruption. Retain an immutable guard receipt only.
-                result = inspect_results(root / "no-completed-reports", selected_cases(group), None)
+                exit_path = root / "exit.json"
+                exits = json.loads(exit_path.read_text()) if exit_path.exists() else {}
+                result = inspect_results(root / "no-completed-reports", selected_cases(group),
+                                         exits.get("raw_gradle_exit"))
+                cleanup_path = root / "cleanup.json"
                 result.update(evidence_kind="UNSEALED_INTERRUPTED_ATTEMPT",
+                              exits=exits,
+                              stopped_marker=json.loads(marker.read_text()) if marker.exists() else None,
+                              cleanup=json.loads(cleanup_path.read_text()) if cleanup_path.exists() else {},
                               limitation="No stopped-writer receipt; live evidence was not archived")
                 write_json(Path(archive).parent / "unsealed-attempt.json", result)
                 print(json.dumps({"classification": result["classification"], "counts": result["counts"],
@@ -474,6 +656,9 @@ def finish(repo, root, archive, group):
         if len(apks) != 2 or exits.get("termination") is not None:
             result["classification"] = "INVALID_EXECUTION"
             result["invalid_reasons"].append("Missing exact app/test APK pair or interrupted harness")
+        if exits.get("raw_logcat_exit") is None or exits.get("logcat_lifecycle", {}).get("healthy") is not True:
+            result["classification"] = "INVALID_EXECUTION"
+            result["invalid_reasons"].append("Missing/unhealthy continuous logcat lifecycle")
         write_json(root / "results.json", result)
     seal(root, archive)
     print(json.dumps({"classification": result["classification"], "counts": result["counts"],

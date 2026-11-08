@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 """UNIT FIXTURES ONLY: none of these XML/ADB samples are Android results."""
 import importlib.util
+import ctypes
 import json
+import os
 from pathlib import Path
+import signal
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
 import xml.etree.ElementTree as ET
 import zlib
@@ -261,6 +267,448 @@ class DiagnosticInterfaceFixtures(unittest.TestCase):
         self.assertEqual(previous, archive.read_bytes())
         archive.unlink()
         archive.with_suffix(archive.suffix + ".sha256").unlink()
+
+
+INTERFACE_KIND = "PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID"
+
+
+def linux_process(pid):
+    # Independent kernel observation, not the controller's cleanup predicate.
+    fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+    return {"pid": pid, "state": fields[0], "ppid": int(fields[1]),
+            "pgid": int(fields[2]), "sid": int(fields[3]), "start_ticks": int(fields[19])}
+
+
+class LinuxLifecycleFixtures(unittest.TestCase):
+    """Real owned Linux children; every output is an interface fixture, not Android."""
+    def setUp(self):
+        evidence = os.environ.get("PR18_INTERFACE_EVIDENCE")
+        self.root = Path(tempfile.mkdtemp(prefix=self._testMethodName + "-", dir=evidence))
+        self.preserve = evidence is not None
+        self.children = []
+        # Reap orphaned fixture grandchildren ourselves, including zombies.
+        self.libc = ctypes.CDLL(None, use_errno=True)
+        previous = ctypes.c_int()
+        if self.libc.prctl(37, ctypes.byref(previous), 0, 0, 0) != 0:
+            raise RuntimeError("Fixture cannot read Linux subreaper setting")
+        self.subreaper = previous.value
+        if self.libc.prctl(36, 1, 0, 0, 0) != 0:
+            raise RuntimeError("Fixture cannot own/reap its orphaned descendants")
+
+    def tearDown(self):
+        import shutil
+        for process, identity, child in self.children:
+            # Fixture-only identity checks; never signal by process name.
+            for pid, birth in ((child["pid"], child["start_ticks"]),
+                               (process.pid, identity["start_ticks"])):
+                try:
+                    current = linux_process(pid)
+                    if current["start_ticks"] == birth and current["state"] not in ("Z", "X"):
+                        fd = os.pidfd_open(pid)
+                        try:
+                            signal.pidfd_send_signal(fd, signal.SIGKILL)
+                        finally:
+                            os.close(fd)
+                except (FileNotFoundError, ProcessLookupError):
+                    pass
+            process.wait(timeout=3)
+            if process.stdout:
+                process.stdout.close()
+            deadline = time.monotonic() + 3
+            while True:
+                try:
+                    pid, _ = os.waitpid(-process.pid, os.WNOHANG)
+                    if pid == 0:
+                        if time.monotonic() >= deadline:
+                            raise RuntimeError("Fixture descendants were not reaped")
+                        time.sleep(.01)
+                except ChildProcessError:
+                    break
+        self.libc.prctl(36, self.subreaper, 0, 0, 0)
+        if not self.preserve:
+            shutil.rmtree(self.root)
+
+    def writer_group(self, leader_exits=False, grandchild=False):
+        script = '''
+import os, signal, sys, time
+from pathlib import Path
+writer = os.fork()
+if writer == 0:
+    if sys.argv[3] == "grandchild" and os.fork() != 0:
+        os._exit(0)
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    with Path(sys.argv[1]).open("ab", buffering=0) as stream:
+        stream.write(b"PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID\\n")
+        os.write(1, (str(os.getpid()) + "\\n").encode())
+        while True:
+            stream.write(b"owned-writer\\n")
+            time.sleep(.01)
+while not Path(sys.argv[2]).exists():
+    time.sleep(.01)
+os._exit(0)
+'''
+        output, exit_trigger = self.root / "writer.txt", self.root / "leader-exit"
+        leader = subprocess.Popen([sys.executable, "-B", "-c", script, str(output),
+                                   str(exit_trigger), "grandchild" if grandchild else "child"],
+                                  stdout=subprocess.PIPE, start_new_session=True)
+        identity = linux_process(leader.pid)
+        # The fixture supplies birth credentials captured while its owned leader
+        # is unreaped. Production must capture these at its own Popen sites.
+        leader.owned_identity = identity
+        import select
+        if not select.select([leader.stdout], [], [], 3)[0]:
+            raise RuntimeError("Writer fixture readiness timeout (not assertion RED)")
+        child = linux_process(int(leader.stdout.readline()))
+        self.children.append((leader, identity, child))
+        if leader_exits:
+            exit_trigger.touch()
+            deadline = time.monotonic() + 3
+            while linux_process(leader.pid)["state"] != "Z":
+                if time.monotonic() >= deadline:
+                    raise RuntimeError("Leader fixture exit timeout (not assertion RED)")
+                time.sleep(.01)
+        return leader, child, output
+
+    def assert_writer_stopped(self, child, output, returned, elapsed):
+        before = output.stat().st_size
+        try:
+            observed = linux_process(child["pid"])
+        except FileNotFoundError:
+            observed = None
+        deadline = time.monotonic() + .12
+        while time.monotonic() < deadline and output.stat().st_size == before:
+            time.sleep(.005)
+        after = output.stat().st_size
+        receipt = {"evidence_kind": INTERFACE_KIND, "child": child, "observed": observed,
+                   "returned": returned, "returned_seconds": elapsed,
+                   "bytes_at_return": before, "bytes_after_observation": after}
+        diagnostics.write_json(self.root / "observation.json", receipt)
+        self.assertTrue(observed is None or observed["state"] in ("Z", "X"),
+                        f"Owned writer remains live after cleanup: {receipt}")
+        self.assertEqual(before, after, "Owned writer continued writing after cleanup returned")
+
+    def test_c1_term_resistant_child_stops_after_leader_exits(self):
+        leader, child, output = self.writer_group()
+        before = time.monotonic()
+        returned = diagnostics.stop_process(leader)
+        self.assert_writer_stopped(child, output, returned, time.monotonic() - before)
+
+    def test_c1_exited_parent_and_term_resistant_grandchild(self):
+        leader, child, output = self.writer_group(leader_exits=True, grandchild=True)
+        before = time.monotonic()
+        returned = diagnostics.stop_process(leader)
+        self.assert_writer_stopped(child, output, returned, time.monotonic() - before)
+
+    def test_c1_unowned_process_is_never_signalled(self):
+        leader, child, output = self.writer_group()
+        del leader.owned_identity
+        with patch.object(diagnostics.os, "killpg", wraps=os.killpg) as kill:
+            returned = diagnostics.stop_process(leader)
+        diagnostics.write_json(self.root / "observation.json", {
+            "evidence_kind": INTERFACE_KIND, "returned": returned, "signals": kill.call_count})
+        self.assertEqual(0, kill.call_count, "Missing birth credentials must not authorize signals")
+        self.assertIsInstance(returned, dict)
+        self.assertFalse(returned["writers_stopped"])
+
+    def test_c1_failed_process_inquiry_cannot_claim_writers_stopped(self):
+        leader, child, output = self.writer_group()
+        with patch.object(diagnostics.os, "scandir", side_effect=PermissionError("fixture inquiry failure")):
+            returned = diagnostics.stop_process(leader)
+        diagnostics.write_json(self.root / "observation.json", {
+            "evidence_kind": INTERFACE_KIND, "returned": returned})
+        self.assertIsInstance(returned, dict, "Cleanup must retain a verifiable failure receipt")
+        self.assertFalse(returned["writers_stopped"])
+        self.assertTrue(returned["errors"])
+
+    def test_c1_reaped_leader_refuses_group_signal_and_keeps_known_raw_exit(self):
+        leader, child, output = self.writer_group(leader_exits=True)
+        self.assertEqual(0, leader.wait(timeout=3))
+        with patch.object(diagnostics.os, "killpg", wraps=os.killpg) as kill:
+            returned = diagnostics.stop_process(leader)
+        diagnostics.write_json(self.root / "observation.json", {
+            "evidence_kind": INTERFACE_KIND, "returned": returned, "signals": kill.call_count})
+        self.assertFalse(returned["writers_stopped"])
+        self.assertEqual(0, kill.call_count)
+        self.assertEqual(0, returned["raw_exit"], "Known raw leader exit must survive identity-check failure")
+
+    def test_c1_zombie_only_group_is_complete_without_signals(self):
+        process = diagnostics.start_process([sys.executable, "-B", "-c", "import sys; sys.exit(0)"])
+        identity = linux_process(process.pid)
+        self.children.append((process, identity, identity))
+        deadline = time.monotonic() + 3
+        while linux_process(process.pid)["state"] != "Z":
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Zombie fixture exit timeout")
+            time.sleep(.01)
+        returned = diagnostics.stop_process(process)
+        diagnostics.write_json(self.root / "observation.json", {"evidence_kind": INTERFACE_KIND, "returned": returned})
+        self.assertTrue(returned["writers_stopped"])
+        self.assertEqual([], returned["signals"])
+        self.assertEqual(0, returned["raw_exit"])
+
+    def test_c1_cleanup_does_not_signal_unrelated_group(self):
+        other = diagnostics.start_process([sys.executable, "-B", "-c", "import time; time.sleep(60)"])
+        identity = linux_process(other.pid)
+        self.children.append((other, identity, identity))
+        leader, child, output = self.writer_group()
+        returned = diagnostics.stop_process(leader)
+        self.assertTrue(returned["writers_stopped"])
+        self.assertEqual(identity["start_ticks"], linux_process(other.pid)["start_ticks"])
+        self.assertIsNone(diagnostics.process_exit(other), "Unrelated process group must remain live")
+
+    def wait_fixture_exit(self, role):
+        process = self.probe_processes[role]
+        deadline = time.monotonic() + 3
+        while linux_process(process.pid)["state"] != "Z":
+            if time.monotonic() >= deadline:
+                raise RuntimeError(f"{role} fixture did not exit (not assertion RED)")
+            time.sleep(.01)
+
+    def exit_fixture(self, role):
+        (self.root / (role + "-exit")).touch()
+        self.wait_fixture_exit(role)
+
+    def probe_fixture(self, hook, logcat_exit=7, gradle_exit=0, stop_override=None,
+                      deadline=10, signal_site=None):
+        self.probe_processes = {}
+        real_popen, real_collector, real_sleep = subprocess.Popen, diagnostics.Collector, time.sleep
+        plan = {"evidence_kind": INTERFACE_KIND, "expected_case_ids": diagnostics.selected_cases("flow"),
+                "android_source_sha256": {}, "selector": ",".join(diagnostics.selected_cases("flow"))}
+        owner = self
+
+        class Device(FixtureDevice):
+            prefix = ["PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID-NO-ADB"]
+            signalled = False
+
+            def interrupt_once(self, site):
+                if signal_site == site and not self.signalled:
+                    self.signalled = True
+                    os.kill(os.getpid(), signal.SIGINT)
+
+            def inventory(self):
+                self.interrupt_once("inventory")
+                return super().inventory()
+
+            def pull(self, name, destination):
+                self.interrupt_once("pull")
+                return super().pull(name, destination)
+
+            def command(self, *args):
+                if args == ("shell", "dumpsys window windows"):
+                    self.interrupt_once("native")
+                output = b"26\n" if args == ("shell", "getprop ro.build.version.sdk") else INTERFACE_KIND.encode()
+                return subprocess.CompletedProcess(args, 0, output, b"")
+
+        class ControlledCollector(real_collector):
+            samples = 0
+
+            def sample(self, deadline=None):
+                super().sample(deadline)
+                self.samples += 1
+                hook(self.samples)
+
+        def popen(argv, **kwargs):
+            if argv[0] == Device.prefix[0]:
+                role, code = "logcat", logcat_exit
+            elif argv[0] == "./gradlew":
+                role, code = "gradle", gradle_exit
+            else:
+                raise RuntimeError(f"Forbidden fixture subprocess argv: {argv}")
+            script = '''
+import sys, time
+from pathlib import Path
+print("PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID", flush=True)
+while not Path(sys.argv[1]).exists():
+    time.sleep(.005)
+sys.exit(int(sys.argv[2]))
+'''
+            process = real_popen([sys.executable, "-B", "-c", script,
+                                  str(owner.root / (role + "-exit")), str(code)],
+                                 stdout=kwargs["stdout"], stderr=kwargs["stderr"],
+                                 start_new_session=kwargs["start_new_session"])
+            identity = linux_process(process.pid)
+            owner.children.append((process, identity, identity))
+            owner.probe_processes[role] = process
+            return process
+
+        live = self.root / "live"
+        handlers = {signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)}
+        from contextlib import ExitStack
+        try:
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(diagnostics, "source_plan", return_value=plan))
+                stack.enter_context(patch.object(diagnostics.subprocess, "check_output", return_value=b"fixture\tdevice\n"))
+                stack.enter_context(patch.object(diagnostics, "AdbDevice", return_value=Device()))
+                stack.enter_context(patch.object(diagnostics, "Collector", ControlledCollector))
+                stack.enter_context(patch.object(diagnostics.subprocess, "Popen", side_effect=popen))
+                stack.enter_context(patch.object(diagnostics.time, "sleep", side_effect=lambda s: real_sleep(min(s, .01))))
+                if stop_override is not None:
+                    stack.enter_context(patch.object(diagnostics, "stop_process", side_effect=stop_override))
+                status = diagnostics.run_probe(self.root, live, "flow", 26, deadline)
+        finally:
+            for signum, handler in handlers.items():
+                signal.signal(signum, handler)
+        exits = json.loads((live / "exit.json").read_text())
+        diagnostics.write_json(self.root / "observation.json", {
+            "evidence_kind": INTERFACE_KIND, "controller_exit": status, "exits": exits,
+            "children": {role: p.returncode for role, p in self.probe_processes.items()}})
+        return status, exits, live
+
+    def early_logcat_hook(self, count):
+        if count == 1:
+            self.exit_fixture("logcat")
+            self.exit_fixture("gradle")
+
+    def test_c2_logcat_exit_7_before_gradle_exit_0_is_failure(self):
+        status, exits, live = self.probe_fixture(self.early_logcat_hook)
+        self.assertNotEqual(0, status, "Lost logcat stream cannot yield run_exit=0")
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertEqual(7, exits["raw_logcat_exit"])
+        self.assertEqual("LIVE_LOGCAT_EXITED", exits["termination"])
+        self.assertTrue((live / "device/receipt.txt").exists())
+        self.assertIn(INTERFACE_KIND, (live / "logcat.txt").read_text())
+
+    def test_c2_clean_early_logcat_exit_is_failure(self):
+        status, exits, live = self.probe_fixture(self.early_logcat_hook, logcat_exit=0)
+        self.assertNotEqual(0, status, "Even exit0 before owned teardown loses continuous collection")
+        self.assertEqual(0, exits["raw_logcat_exit"])
+        self.assertEqual("LIVE_LOGCAT_EXITED", exits["termination"])
+
+    def test_c2_logcat_loss_during_final_collection_is_failure(self):
+        def hook(count):
+            self.exit_fixture("gradle" if count == 1 else "logcat")
+        status, exits, live = self.probe_fixture(hook, logcat_exit=0)
+        self.assertNotEqual(0, status, "Final collection is still part of continuous logcat lifetime")
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertEqual(0, exits["raw_logcat_exit"])
+        self.assertEqual("LIVE_LOGCAT_EXITED", exits["termination"])
+
+    def test_c2_nonzero_gradle_exit_is_preserved_with_logcat_loss(self):
+        status, exits, live = self.probe_fixture(self.early_logcat_hook, gradle_exit=9)
+        self.assertEqual(9, status)
+        self.assertEqual(9, exits["raw_gradle_exit"])
+        self.assertEqual("LIVE_LOGCAT_EXITED", exits["termination"])
+
+    def test_c2_finish_rejects_missing_or_unhealthy_logcat_lifecycle(self):
+        live = self.root / "live"
+        reports = live / "build/outputs/androidTest-results/connected"
+        reports.mkdir(parents=True)
+        expected = diagnostics.selected_cases("flow")
+        fixture_report(reports, expected)
+        for directory in ("debug", "androidTest/debug"):
+            apk = live / "build/outputs/apk" / directory / "fixture.apk"
+            apk.parent.mkdir(parents=True)
+            apk.write_text(INTERFACE_KIND)
+        diagnostics.write_json(live / "COLLECTOR_STOPPED.json", {"writers_stopped": True})
+        diagnostics.write_json(live / "plan.json", {"expected_case_ids": expected, "android_source_sha256": {}})
+        for variant, extra in (("missing", {}), ("early-exit", {
+                "raw_logcat_exit": 0, "logcat_lifecycle": {"healthy": False, "premature_exit": 0}})):
+            with self.subTest(variant=variant):
+                diagnostics.write_json(live / "exit.json", {
+                    "raw_gradle_exit": 0, "run_exit": 0, "termination": None, **extra})
+                archive = self.root / variant / "evidence.tar.gz"
+                with patch("builtins.print"):
+                    status = diagnostics.finish(self.root, live, archive, "flow")
+                result = json.loads((live / "results.json").read_text())
+                self.assertNotEqual(0, status, "Exact case/XML pass cannot stand in for collector health")
+                self.assertEqual("INVALID_EXECUTION", result["classification"])
+                self.assertEqual(4, result["counts"]["passed"])
+
+    def test_c2_normal_owned_logcat_term_is_healthy(self):
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        status, exits, live = self.probe_fixture(hook)
+        self.assertEqual(0, status)
+        self.assertIsNone(exits["termination"])
+        self.assertEqual(-signal.SIGTERM, exits["raw_logcat_exit"])
+        self.assertTrue(exits["logcat_lifecycle"]["healthy"])
+        self.assertIsNone(exits["logcat_lifecycle"]["premature_exit"])
+
+    def test_c1_failed_cleanup_receipt_blocks_run_and_archive(self):
+        real_stop = diagnostics.stop_process
+        def stop(process):
+            receipt = real_stop(process)
+            if process is self.probe_processes.get("gradle"):
+                receipt["writers_stopped"] = False
+                receipt["errors"].append("Explicit fixture: process inquiry cannot be verified")
+            return receipt
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        status, exits, live = self.probe_fixture(hook, stop_override=stop)
+        self.assertNotEqual(0, status)
+        self.assertEqual("OWNED_CLEANUP_FAILED", exits["termination"])
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertFalse(json.loads((live / "COLLECTOR_STOPPED.json").read_text())["writers_stopped"])
+        archive = self.root / "final/evidence.tar.gz"
+        with patch("builtins.print"):
+            result = diagnostics.finish(self.root, live, archive, "flow")
+        self.assertEqual(1, result)
+        self.assertFalse(archive.exists())
+        attempt = json.loads((archive.parent / "unsealed-attempt.json").read_text())
+        self.assertEqual(0, attempt["raw_gradle_exit"])
+        self.assertEqual(4, attempt["counts"]["missing"])
+        self.assertIn("Explicit fixture: process inquiry cannot be verified",
+                      attempt.get("cleanup", {}).get("gradle", {}).get("errors", []))
+        self.assertTrue((live / "logcat.txt").exists())
+
+    def test_c2_timeout_and_signal_statuses_remain_nonzero(self):
+        for signum, code in ((None, 124), (signal.SIGINT, 130), (signal.SIGTERM, 143)):
+            with self.subTest(signum=signum):
+                # Separate live roots and process handles for each controlled run.
+                original = self.root
+                self.root = original / str(code)
+                self.root.mkdir()
+                try:
+                    fired = False
+                    def hook(count):
+                        nonlocal fired
+                        if signum is not None and not fired:
+                            fired = True
+                            os.kill(os.getpid(), signum)
+                    status, exits, live = self.probe_fixture(hook, deadline=.05 if signum is None else 10)
+                    self.assertEqual(code, status)
+                    self.assertEqual("BOUNDED_TIMEOUT" if signum is None else f"SIGNAL_{signum}", exits["termination"])
+                    self.assertEqual(-signal.SIGTERM, exits["raw_gradle_exit"])
+                    self.assertTrue(exits["logcat_lifecycle"]["healthy"])
+                finally:
+                    self.root = original
+
+    def test_c3_sigint_in_collector_or_native_call_cannot_be_swallowed(self):
+        for site in ("inventory", "pull", "native"):
+            with self.subTest(site=site):
+                original = self.root
+                self.root = original / site
+                self.root.mkdir()
+                try:
+                    def hook(count):
+                        if count == 1:
+                            self.exit_fixture("gradle")
+                    status, exits, live = self.probe_fixture(hook, signal_site=site)
+                    self.assertEqual(130, status, "Collector/native exception handling swallowed SIGINT")
+                    self.assertEqual("SIGNAL_2", exits["termination"])
+                finally:
+                    self.root = original
+
+    def test_c3_sigint_during_owned_cleanup_keeps_signal_exit(self):
+        real_stop, real_scandir = diagnostics.stop_process, os.scandir
+        fired = False
+        def inquiry(path):
+            nonlocal fired
+            if not fired:
+                fired = True
+                os.kill(os.getpid(), signal.SIGINT)
+            return real_scandir(path)
+        def stop(process):
+            with patch.object(diagnostics.os, "scandir", side_effect=inquiry):
+                return real_stop(process)
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        status, exits, live = self.probe_fixture(hook, stop_override=stop)
+        self.assertEqual(130, status, "Owned cleanup must not turn SIGINT into generic exit1")
+        self.assertEqual("SIGNAL_2", exits["termination"])
 
 
 if __name__ == "__main__":

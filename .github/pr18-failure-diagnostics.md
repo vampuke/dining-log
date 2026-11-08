@@ -47,6 +47,7 @@ with a comma-separated `class#method[variant]` argument. Local Python checks:
 
 ```sh
 python3 -B .github/scripts/test_pr18_failure_diagnostics.py
+python3 -B -m unittest discover -s .github/scripts -p 'test_*.py'
 python3 -B .github/scripts/pr18-failure-diagnostics.py plan --group flow --api 26
 ```
 
@@ -74,12 +75,21 @@ fill in the unlogged third geometry snapshot. Only original test capture paths
 produce images; the collector never captures a protected screen or turns a
 protected probe receipt into screenshot success.
 
-Gradle's raw process exit, timeout/signal/harness state, XML/HTML/UTP outputs,
+Gradle and logcat's raw process exits, timeout/signal/harness state, XML/HTML/UTP outputs,
 app and test APKs with SHA256, and the source plan are retained. Result validation
 requires the exact selected class/method/variant IDs once each, suite-counter
 agreement and no skipped tests. It retains failed/error/skipped/missing counts,
 duplicates, unexpected cases, raw exits and full failure XML. Missing reports
 cannot become RED execution or GREEN. Failures retain nonzero workflow steps.
+
+**C2 — continuous logcat lifecycle.** Status checks cover the running test, test
+completion, final collection and the boundary immediately before the first owned
+teardown signal. Early exit, including exit 0, invalidates collection even when
+Gradle and every selected XML case pass. `exit.json` retains `raw_logcat_exit`,
+timestamped lifecycle checks and the premature exit alongside the raw Gradle
+exit and termination reason. A TERM/KILL requested for owned teardown is recorded
+separately and does not itself mean premature loss. `finish` requires a healthy
+lifecycle receipt as well as the existing exact case/XML/APK/source checks.
 
 Only after the collector, logcat and Gradle client stop does the final step copy
 reports/APKs and seal a SHA256-manifested tar archive. A live writer lock or
@@ -89,6 +99,36 @@ interrupted run without a stopped-writer receipt retains only a small immutable
 invalid-attempt receipt; it does not archive potentially live evidence. A hard runner kill that prevents shutdown is invalid
 diagnostics, not success; the helper cannot guarantee artifact retention after
 the runner itself is destroyed.
+
+**C1 — owned group cleanup.** Each new Linux session/group records its leader's
+PID, PGID, SID and `/proc` birth ticks. `waitid(WNOWAIT)` retains an exited
+leader's identity anchor until cleanup; the leader exiting never proves that
+its descendants stopped. Cleanup checks the group's members, allows only
+non-writing zombie/dead states, and uses bounded TERM (5 seconds), KILL
+(5 seconds) and leader wait (5 seconds). Before any group signal it rechecks
+the captured leader identity. No name-based or unrelated-group signal is used.
+An unexpectedly reaped/reused leader, failed inquiry or surviving member leaves
+`writers_stopped=false` and a nonzero job. `cleanup.json` retains identities,
+member states, signals, raw exits, elapsed time and errors. Without verified
+cleanup, `finish` copies no build outputs and seals no live evidence; its
+`unsealed-attempt.json` retains the exit/lifecycle and cleanup failure receipts.
+
+**C3 — cancellation propagation.** Interface validation additionally reproduced
+SIGINT swallowed by inventory, pull and native-command exception handlers, and
+SIGINT reduced to exit 1 during cleanup. Interruptions now reach the controller's
+signal handling or remain recorded during cleanup: SIGINT/SIGTERM retain
+130/143, timeout retains 124. Ordinary unavailable-device/file samples remain
+recorded collection errors. Case identities and XML acceptance remain unchanged.
+
+The 22 existing diagnostic test methods/assertions are retained, with 17 added
+Linux lifecycle/interface methods. C1/C2/C3 assertion RED then GREEN logs and
+fixtures are retained outside the product tree at
+`/tmp/dining-publish-20261108/android-diag-cleanup-fix-r1-evidence`, labelled
+`PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID`. These checks establish controller
+interfaces only. The earlier review's initial logcat fixture setup error and
+initial archive-audit error remain excluded from RED evidence. No Android build,
+device case, font/window/geometry/focus/callback behavior or upload delivery was
+executed here; fresh independent review of the committed candidate is still due.
 
 ## Observed facts and remaining hypotheses
 
