@@ -23,6 +23,38 @@ export function requireCandidateJobs(jobs) {
   }
 }
 
+export function acceptanceWaiver(value = 'false', tag, mode) {
+  requireValue(mode === 'apk-only' || mode === 'full', 'production_mode must be exactly apk-only or full');
+  requireValue(value === 'false' || value === 'true', 'accept_known_issues must be exactly true or false');
+  if (value === 'false') return null;
+  requireValue(tag === 'v0.8.3' && mode === 'apk-only', 'Known-issues waiver is only for v0.8.3 apk-only');
+  return {
+    id: 'v0.8.3-apk-only-known-issues',
+    owner_instruction: '先发布，后面再修复',
+    approved_commit: 'be8aaf8d60aa5513227a102d4cdbfcb2377b778d',
+    scope: [
+      'API26/35 font200 complete-flow starting-screen/isolation failure; product cause unproven',
+      'Landscape record/tab native-touch geometry/visibility failures',
+      'API35 change-password dialog focused-owner-window failure; authentication/crypto bug not proven',
+      'API26 FIRST-VISIT FIELD COLLAPSING failure; not a foldable-screen bug',
+      'Capacity history query wall p95 147ms vs 100ms; cause unproven; no full 6000-object result',
+    ],
+    original_ci: 'https://github.com/vampuke/dining-log/actions/runs/42447691734',
+    diagnostic_ci: 'https://github.com/vampuke/dining-log/actions/runs/42466949156',
+  };
+}
+
+export function requireCandidate(candidate, jobs, commit, tag, mode, value = 'false') {
+  const waiver = acceptanceWaiver(value, tag, mode);
+  requireValue(candidate?.head_sha === commit && candidate.head_branch === 'master' && candidate.event === 'push',
+    'No matching exact-master push CI candidate');
+  if (!waiver) {
+    requireValue(candidate.status === 'completed' && candidate.conclusion === 'success',
+      'This master commit has no successful completed regular CI candidate');
+    requireCandidateJobs(jobs);
+  }
+}
+
 export function requireIncreasingTag(tag, previousTag) {
   const old = /^v(\d+)\.(\d+)\.(\d+)$/.exec(previousTag);
   requireValue(old, 'Previous stable release does not have a supported version tag');

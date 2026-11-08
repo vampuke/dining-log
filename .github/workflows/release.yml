@@ -19,6 +19,11 @@ on:
         options:
           - apk-only
           - full
+      accept_known_issues:
+        description: Owner-authorized one-release UI/capacity acceptance waiver for v0.8.3 apk-only
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -42,6 +47,7 @@ jobs:
       RELEASE_COMMIT: ${{ inputs.commit_sha }}
       RELEASE_TAG: ${{ inputs.release_tag }}
       PRODUCTION_MODE: ${{ inputs.production_mode }}
+      ACCEPT_KNOWN_ISSUES: ${{ inputs.accept_known_issues }}
       WRANGLER_SEND_METRICS: 'false'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -75,7 +81,7 @@ jobs:
             apk-only|full) ;;
             *) echo 'production_mode must be exactly apk-only or full' >&2; exit 1 ;;
           esac
-      - name: Validate source, unused tag and successful master/API 26/35 candidate
+      - name: Validate source, unused tag and exact master candidate acceptance
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/scripts/validate-release.mjs
