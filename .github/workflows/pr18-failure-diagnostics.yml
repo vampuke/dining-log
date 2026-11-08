@@ -20,10 +20,11 @@ jobs:
       matrix:
         api: [26, 35]
         group: [flow, landscape, password, conflict, fold]
-    env:
-      PR18_DIAGNOSTIC_LIVE: ${{ runner.temp }}/pr18-failure-live-${{ matrix.api }}-${{ matrix.group }}
-      PR18_DIAGNOSTIC_ARCHIVE: ${{ runner.temp }}/pr18-failure-final-${{ matrix.api }}-${{ matrix.group }}/evidence.tar.gz
     steps:
+      - name: Initialize private diagnostic paths
+        run: |
+          printf '%s\n' "PR18_DIAGNOSTIC_LIVE=$RUNNER_TEMP/pr18-failure-live-${{ matrix.api }}-${{ matrix.group }}" >> "$GITHUB_ENV"
+          printf '%s\n' "PR18_DIAGNOSTIC_ARCHIVE=$RUNNER_TEMP/pr18-failure-final-${{ matrix.api }}-${{ matrix.group }}/evidence.tar.gz" >> "$GITHUB_ENV"
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0

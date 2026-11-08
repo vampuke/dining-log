@@ -8,6 +8,19 @@ The complete acceptance contract remains 20 classes / 109 methods / 190 cases
 per API, including the original 17 classes / 93 methods / 174 case floor.
 The Python interface tests add no instrumentation cases.
 
+Run `42462903322` at `426b170002cd55f978e24cd05224700a50577e9a`
+failed workflow validation before any jobs or artifacts: `runner.temp` is not
+supported in job-level `env`. The first shell step now initializes the same
+private API/group live and archive paths from `RUNNER_TEMP` and publishes them
+through `GITHUB_ENV` before checkout or any consumer can fail. Always-finalize
+and upload paths, including `unsealed-attempt.json`, retain their exact values.
+One focused stdlib regression adds path-publication coverage for all ten matrix
+entries; every preceding test method remains intact. Actual AssertionError
+RED/GREEN logs and native actionlint 1.7.12 results are in
+`/tmp/dining-publish-20261108/diagnostic-workflow-context-r1-evidence`.
+Actionlint checked workflow/expressions with external shellcheck/pyflakes disabled;
+local validation does not establish Actions execution or Android acceptance.
+
 ## Review checkpoint and bounded command
 
 After parent/source review, the parent can push the reviewed commit to the
@@ -172,7 +185,7 @@ signal handling or remain recorded during cleanup: SIGINT/SIGTERM retain
 130/143, timeout retains 124. Ordinary unavailable-device/file samples remain
 recorded collection errors. Case identities and XML acceptance remain unchanged.
 
-There are **59 diagnostic test methods**: the original 22 and all c61's 39 retain
+The preceding collector checkpoint has **59 diagnostic test methods**: the original 22 and all c61's 39 retain
 their complete method ASTs/assertions; R2's seven methods remain complete (46),
 with 13 R3 additions. The R2 natural-exit helper now releases 0/7 before the first
 freeze, where autonomous exit is possible, and requires no unauthorized fatal

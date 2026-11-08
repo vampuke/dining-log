@@ -269,6 +269,47 @@ class DiagnosticInterfaceFixtures(unittest.TestCase):
         archive.with_suffix(archive.suffix + ".sha256").unlink()
 
 
+class WorkflowContextFixtures(unittest.TestCase):
+    def test_private_paths_are_initialized_before_all_consumers(self):
+        workflow = (Path(__file__).resolve().parents[2] /
+                    ".github/workflows/pr18-failure-diagnostics.yml").read_text()
+        job, steps = workflow.split("    steps:\n", 1)
+        self.assertNotRegex(job, r"\$\{\{\s*runner\b",
+                            "runner context is unsupported in jobs.<job_id>.env")
+        initializer, consumers = steps.split("      - ", 2)[1:]
+        self.assertNotIn("        if:", initializer)
+        self.assertIn("        run: |\n", initializer,
+                      "Initialize private paths before checkout can fail")
+        script = "\n".join(line[10:] for line in
+                           initializer.split("        run: |\n", 1)[1].splitlines())
+        self.assertIn('--live "$PR18_DIAGNOSTIC_LIVE"', consumers)
+        self.assertIn('--archive "$PR18_DIAGNOSTIC_ARCHIVE"', consumers)
+        upload = consumers.split("          path: |\n", 1)[1].split(
+            "          if-no-files-found:", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="pr18-workflow-context-fixture-") as temp:
+            runner_temp, github_env = Path(temp) / "runner temp", Path(temp) / "github-env"
+            for api in (26, 35):
+                for group in diagnostics.METHODS:
+                    with self.subTest(api=api, group=group):
+                        rendered = script.replace("${{ matrix.api }}", str(api)).replace(
+                            "${{ matrix.group }}", group)
+                        github_env.write_text("")
+                        result = subprocess.run(["bash", "-e", "-c", rendered],
+                            env={"RUNNER_TEMP": str(runner_temp), "GITHUB_ENV": str(github_env)},
+                            capture_output=True, text=True, timeout=5)
+                        self.assertEqual(0, result.returncode, result.stderr)
+                        published = dict(line.split("=", 1) for line in github_env.read_text().splitlines())
+                        archive = runner_temp / f"pr18-failure-final-{api}-{group}/evidence.tar.gz"
+                        self.assertEqual(published, {
+                            "PR18_DIAGNOSTIC_LIVE": str(runner_temp / f"pr18-failure-live-{api}-{group}"),
+                            "PR18_DIAGNOSTIC_ARCHIVE": str(archive)})
+                        paths = upload.replace("${{ runner.temp }}", str(runner_temp)).replace(
+                            "${{ matrix.api }}", str(api)).replace("${{ matrix.group }}", group)
+                        self.assertEqual([line.strip() for line in paths.splitlines()],
+                                         [str(archive), str(archive) + ".sha256",
+                                          str(archive.parent / "unsealed-attempt.json")])
+
+
 INTERFACE_KIND = "PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID"
 
 
