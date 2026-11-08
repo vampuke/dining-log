@@ -148,6 +148,10 @@ internal class Pr18Evidence(
     private val evidenceCase = UUID.randomUUID().toString()
     private var captureStep = 0
     var stateReceipt: (() -> String)? = null
+    // PR18_GATE_A_BEGIN
+    internal val uiCausalProbeCase get() = evidenceCase
+    internal var uiCausalProbe: Pr18UiCausalProbe? = null
+    // PR18_GATE_A_END
     fun observedPalette(style: ThemeStyle, dark: Boolean) { renderedStyle = style; renderedDark = dark }
     val actualFont get() = compose.activity.resources.configuration.fontScale
     private val folder get() = ApplicationProvider.getApplicationContext<Context>()
@@ -869,6 +873,9 @@ internal class Pr18Evidence(
     }
 
     fun diagnose(name: String, failure: Throwable) {
+        // PR18_GATE_A_BEGIN
+        uiCausalProbe?.failure(name)
+        // PR18_GATE_A_END
         record("FAIL case=$name type=${failure.javaClass.name} message=${failure.message}")
         runCatching {
             if (compose.activity.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE != 0)

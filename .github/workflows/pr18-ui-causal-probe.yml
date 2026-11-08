@@ -1,0 +1,86 @@
+name: PR18 Gate A Passive Native Causal Probe
+on:
+  push:
+    branches: [verify/pr18-ui-causal-probe-r1-20261108]
+  workflow_dispatch:
+    inputs:
+      reviewed_candidate_sha:
+        description: Exact candidate SHA already reviewed and pushed by the parent
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: pr18-ui-causal-probe-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  gate-a-api26:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Initialize diagnostic paths and retain setup-only receipt
+        run: |
+          set -euo pipefail
+          printf '%s\n' "PR18_GATE_A_LIVE=$RUNNER_TEMP/pr18-ui-causal-probe-live" >> "$GITHUB_ENV"
+          printf '%s\n' "PR18_GATE_A_ARCHIVE=$RUNNER_TEMP/pr18-ui-causal-probe-final/evidence.tar.gz" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/pr18-ui-causal-probe-final"
+          printf '{"evidence_kind":"DIAGNOSTIC_MODIFIED_INSTRUMENTATION","state":"SETUP_ONLY_NOT_NATIVE","candidate_sha":"%s","run_id":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/pr18-ui-causal-probe-final/setup-attempt.json"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Bind reviewed diagnostic ref and exact approved collector
+        env:
+          PR18_REVIEWED_CANDIDATE: ${{ inputs.reviewed_candidate_sha }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/verify/pr18-ui-causal-probe-r1-20261108
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            test "$PR18_REVIEWED_CANDIDATE" = "$GITHUB_SHA"
+          fi
+          git fetch --no-tags origin e08702a890bd59d1a80b7232da8f28f2bd2533ad
+          python3 -B .github/scripts/test_pr18_ui_causal_probe.py
+          python3 -B .github/scripts/pr18-ui-causal-probe.py plan --output "$RUNNER_TEMP/pr18-ui-causal-probe-final/preflight-source-manifest.json"
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - name: Install original pinned SDK packages
+        run: |
+          set -euo pipefail
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Enable KVM on the capable Actions runner
+        run: |
+          set -euo pipefail
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run four original f7 cases at actual API26 (font100 then font200, 25-minute bound)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 26
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: python3 -B .github/scripts/pr18-ui-causal-probe.py run --live "$PR18_GATE_A_LIVE" --timeout-seconds 1500
+      - name: Preserve original outcomes, evaluate stop table and seal stopped-writer evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          python3 -B .github/scripts/pr18-ui-causal-probe.py finish --live "$PR18_GATE_A_LIVE" --archive "$PR18_GATE_A_ARCHIVE"
+      - name: Retain modified-instrumentation diagnostic or incomplete-attempt evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr18-gate-a-DIAGNOSTIC_MODIFIED_INSTRUMENTATION-api26-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/pr18-ui-causal-probe-final/evidence.tar.gz
+            ${{ runner.temp }}/pr18-ui-causal-probe-final/evidence.tar.gz.sha256
+            ${{ runner.temp }}/pr18-ui-causal-probe-final/unsealed-attempt.json
+            ${{ runner.temp }}/pr18-ui-causal-probe-final/setup-attempt.json
+            ${{ runner.temp }}/pr18-ui-causal-probe-final/preflight-source-manifest.json
+          if-no-files-found: error
+          retention-days: 14

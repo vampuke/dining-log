@@ -27,6 +27,14 @@ import top.alanvampuke.dininglog.data.Pr18PreferenceFile
 import top.alanvampuke.dininglog.feature.components.BackgroundArgb
 import top.alanvampuke.dininglog.feature.ProductViewModel
 import top.alanvampuke.dininglog.feature.theme.*
+// PR18_GATE_A_BEGIN
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalSavedStateRegistryOwner
+import androidx.compose.ui.platform.LocalView
+import androidx.lifecycle.HasDefaultViewModelProviderFactory
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+// PR18_GATE_A_END
 
 internal fun pr18Release(code: Int = BuildConfig.VERSION_CODE + 1, name: String = "下一版本",
     bytes: ByteArray = "PR18 controlled package fixture".toByteArray()) = AppRelease(code, name,
@@ -225,6 +233,18 @@ internal class Pr18Runtime(
         val content: @androidx.compose.runtime.Composable () -> Unit = {
             MainActivityContent(evidence.compose.activity, store, account, auth, refresh, repository, security,
                 uiPreferences, updates, manager, { permissionRequests += it })
+            // PR18_GATE_A_BEGIN
+            val probe = evidence.uiCausalProbe
+            if (probe != null) {
+                val owner = LocalViewModelStoreOwner.current
+                val registryOwner = LocalSavedStateRegistryOwner.current
+                val view = LocalView.current
+                val native = LocalDensity.current
+                val extras = (owner as? HasDefaultViewModelProviderFactory)?.defaultViewModelCreationExtras
+                SideEffect { probe.compositionBoundary(this@Pr18Runtime, owner, registryOwner, extras,
+                    view, native.fontScale, native.density) }
+            }
+            // PR18_GATE_A_END
         }
         if (adaptive) evidence.renderAdaptiveProduction(content) else evidence.renderProduction(content)
     }

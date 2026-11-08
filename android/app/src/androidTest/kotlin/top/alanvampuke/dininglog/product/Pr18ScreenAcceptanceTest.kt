@@ -32,19 +32,37 @@ class Pr18ScreenAcceptanceTest(private val style: ThemeStyle, private val dark: 
     @get:Rule val compose = createAndroidComposeRule<P9VisualActivity>()
     private lateinit var evidence: Pr18Evidence
     private var runtime: Pr18Runtime? = null
-    @Before fun prepare() { evidence = Pr18Evidence(compose, style, dark); evidence.configure(1f) }
-    @After fun restore() { evidence.close(); runtime?.close() }
+    @Before fun prepare() { evidence = Pr18Evidence(compose, style, dark); evidence.configure(1f); evidence.uiCausalProbe = Pr18UiCausalProbe.openIfSelected(evidence) }
+    @After fun restore() { try { evidence.close(); runtime?.close() } finally { evidence.uiCausalProbe?.close(); evidence.uiCausalProbe = null } }
 
     private fun launch(font: Float, authenticated: Boolean = true, adaptive: Boolean = false): Pair<Pr18Runtime, ProductViewModel?> {
         if (runtime != null) {
+            // PR18_GATE_A_BEGIN
+            evidence.uiCausalProbe?.terminal(runtime!!)
+            // PR18_GATE_A_END
             evidence.renderRaw {}; runtime!!.close(); runtime = null
+            // PR18_GATE_A_BEGIN
+            evidence.uiCausalProbe?.disposedBeforeClear()
+            // PR18_GATE_A_END
             compose.activityRule.scenario.onActivity { it.viewModelStore.clear() }
+            // PR18_GATE_A_BEGIN
+            evidence.uiCausalProbe?.afterClear()
+            // PR18_GATE_A_END
         }
         evidence.configure(font)
+        // PR18_GATE_A_BEGIN
+        evidence.uiCausalProbe?.configurationComplete()
+        // PR18_GATE_A_END
         val next = Pr18Runtime(ApplicationProvider.getApplicationContext<Context>(), enabled = false, style = style,
             choice = if (dark) ThemeChoice.DARK else ThemeChoice.LIGHT, authenticated = authenticated)
+        // PR18_GATE_A_BEGIN
+        evidence.uiCausalProbe?.beforeRender(next)
+        // PR18_GATE_A_END
         runtime = next; next.render(evidence, adaptive)
         val vm = if (authenticated) next.model(evidence) else null
+        // PR18_GATE_A_BEGIN
+        evidence.uiCausalProbe?.afterRender(next, vm)
+        // PR18_GATE_A_END
         evidence.stateReceipt = { compose.runOnIdle {
             val current = compose.activity.viewModelStore.get("product:pr18-owner:${next.account.generation}") as? ProductViewModel
             "expectedVm=${vm?.let { System.identityHashCode(it) }} currentVm=${current?.let { System.identityHashCode(it) }} " +
