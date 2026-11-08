@@ -710,6 +710,180 @@ sys.exit(int(sys.argv[2]))
         self.assertEqual(130, status, "Owned cleanup must not turn SIGINT into generic exit1")
         self.assertEqual("SIGNAL_2", exits["termination"])
 
+    def finish_probe_fixture(self, live):
+        reports = live / "build/outputs/androidTest-results/connected"
+        reports.mkdir(parents=True)
+        fixture_report(reports, diagnostics.selected_cases("flow"))
+        for directory in ("debug", "androidTest/debug"):
+            apk = live / "build/outputs/apk" / directory / "fixture.apk"
+            apk.parent.mkdir(parents=True)
+            apk.write_text(INTERFACE_KIND)
+        archive = self.root / "sealed/evidence.tar.gz"
+        with patch("builtins.print"):
+            status = diagnostics.finish(self.root, live, archive, "flow")
+        result = json.loads((live / "results.json").read_text())
+        diagnostics.write_json(self.root / "finish-observation.json", {
+            "evidence_kind": INTERFACE_KIND, "finish_exit": status,
+            "result": result, "archive_exists": archive.exists()})
+        self.assertEqual(4, result["counts"]["passed"])
+        self.assertEqual(0, result["counts"]["missing"])
+        return status, result
+
+    def assert_first_signal_natural_exit_fails(self, code):
+        import ast
+        # Preempt at the actual signal line, after the last status inquiry.
+        # The trace belongs only to this interface fixture; killpg stays real.
+        tree = ast.parse(Path(diagnostics.__file__).read_text())
+        stop = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "stop_process")
+        signal_line, = [n.lineno for n in ast.walk(stop) if isinstance(n, ast.Call) and
+                        isinstance(n.func, ast.Attribute) and n.func.attr == "killpg"]
+        timeline = []
+        def trace(frame, event, arg):
+            if (event == "line" and frame.f_code is diagnostics.stop_process.__code__ and
+                    frame.f_lineno == signal_line and not timeline and
+                    frame.f_locals["process"] is self.probe_processes.get("logcat")):
+                self.assertIsNone(frame.f_locals["receipt"]["exit_before_signal"])
+                self.exit_fixture("logcat")
+                process = self.probe_processes["logcat"]
+                waited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                timeline.append({"action": "natural-exit-before-first-real-killpg",
+                                 "kernel": linux_process(process.pid),
+                                 "wait_pid": waited.si_pid, "wait_code": waited.si_code,
+                                 "wait_status": waited.si_status, "monotonic_ns": time.monotonic_ns()})
+            return trace
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        previous_trace = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            status, exits, live = self.probe_fixture(hook, logcat_exit=code)
+        finally:
+            sys.settrace(previous_trace)
+        finish_status, result = self.finish_probe_fixture(live)
+        cleanup = json.loads((live / "cleanup.json").read_text())["logcat"]
+        diagnostics.write_json(self.root / "first-signal-observation.json", {
+            "evidence_kind": INTERFACE_KIND, "timeline": timeline, "cleanup": cleanup,
+            "controller_exit": status, "finish_exit": finish_status,
+            "classification": result["classification"]})
+        self.assertEqual(1, len(timeline), "Fixture must force the first-signal scheduling window")
+        self.assertEqual("Z", timeline[0]["kernel"]["state"])
+        self.assertEqual(os.CLD_EXITED, timeline[0]["wait_code"])
+        self.assertEqual(code, timeline[0]["wait_status"])
+        self.assertEqual(self.probe_processes["logcat"].pid, timeline[0]["wait_pid"])
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertEqual(code, exits["raw_logcat_exit"])
+        self.assertIsNone(cleanup["exit_before_stop"])
+        self.assertIsNone(cleanup["exit_before_signal"])
+        self.assertEqual([signal.SIGTERM], cleanup["signals"], "Real TERM to the zombie group succeeded")
+        self.assertTrue(cleanup["writers_stopped"])
+        self.assertTrue((live / "device/frame.png").exists())
+        self.assertIn(INTERFACE_KIND, (live / "logcat.txt").read_text())
+        self.assertNotEqual("COMPLETE_PASS", result["classification"],
+                            "First-signal natural exit was misclassified COMPLETE_PASS")
+        self.assertNotEqual(0, status)
+        self.assertNotEqual(0, finish_status)
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+
+    def test_c2_first_signal_window_natural_exit_0_is_failure(self):
+        self.assert_first_signal_natural_exit_fails(0)
+
+    def test_c2_first_signal_window_natural_exit_7_is_failure(self):
+        self.assert_first_signal_natural_exit_fails(7)
+
+    def probe_signal_fixture(self, mode="term", gradle_exit=0, hook=None, deadline=10):
+        real_popen = subprocess.Popen
+        def launch(argv, **kwargs):
+            # Change only the fixture child's startup, never wait/kill/health.
+            self.assertEqual([sys.executable, "-B", "-c"], argv[:3])
+            argv = list(argv)
+            if Path(kwargs["stdout"].name).name == "logcat.txt":
+                if mode == "kill":
+                    argv[3] = "import signal\nsignal.signal(signal.SIGTERM, signal.SIG_IGN)\n" + argv[3]
+                elif mode == "handled-exit0":
+                    argv[3] = ("import signal, sys\nsignal.signal(signal.SIGTERM, "
+                               "lambda *args: sys.exit(0))\n" + argv[3])
+            return real_popen(argv, **kwargs)
+        def ready_hook(count):
+            if count == 1:
+                # The child's printed readiness follows signal-handler setup.
+                end = time.monotonic() + 3
+                while INTERFACE_KIND not in (self.root / "live/logcat.txt").read_text():
+                    self.assertLess(time.monotonic(), end, "Fixture child readiness timeout")
+                    time.sleep(.005)
+            if hook is not None:
+                hook(count)
+            elif count == 1:
+                self.exit_fixture("gradle")
+        with patch.object(diagnostics.subprocess, "Popen", side_effect=launch):
+            return self.probe_fixture(ready_hook, gradle_exit=gradle_exit, deadline=deadline)
+
+    def assert_signal_teardown_passes(self, mode, signum):
+        status, exits, live = self.probe_signal_fixture(mode)
+        finish_status, result = self.finish_probe_fixture(live)
+        cleanup = json.loads((live / "cleanup.json").read_text())["logcat"]
+        self.assertEqual(-signum, self.probe_processes["logcat"].returncode)
+        self.assertEqual(-signum, exits["raw_logcat_exit"])
+        self.assertIn(signum, cleanup["signals"])
+        self.assertEqual(self.probe_processes["logcat"].owned_identity, cleanup["identity"])
+        self.assertTrue(cleanup["writers_stopped"])
+        self.assertTrue(exits["logcat_lifecycle"]["healthy"])
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertEqual(0, status)
+        self.assertEqual(0, finish_status)
+        self.assertEqual("COMPLETE_PASS", result["classification"], "Labelled interface fixture only")
+
+    def test_c2_os_wait_proven_term_teardown_can_finish_pass(self):
+        self.assert_signal_teardown_passes("term", signal.SIGTERM)
+
+    def test_c2_os_wait_proven_kill_teardown_can_finish_pass(self):
+        self.assert_signal_teardown_passes("kill", signal.SIGKILL)
+
+    def test_c2_term_handler_exit_zero_is_unproven_and_fails(self):
+        status, exits, live = self.probe_signal_fixture("handled-exit0")
+        finish_status, result = self.finish_probe_fixture(live)
+        cleanup = json.loads((live / "cleanup.json").read_text())["logcat"]
+        self.assertEqual([signal.SIGTERM], cleanup["signals"])
+        self.assertEqual(0, self.probe_processes["logcat"].returncode)
+        self.assertEqual(0, exits["raw_logcat_exit"])
+        self.assertNotEqual("COMPLETE_PASS", result["classification"],
+                            "Signal delivery alone does not prove the child's exit cause")
+        self.assertNotEqual(0, status)
+        self.assertNotEqual(0, finish_status)
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+
+    def test_c1_exited_body_owned_descendants_cleanup_is_bounded(self):
+        leader, child, output = self.writer_group(leader_exits=True, grandchild=True)
+        before = time.monotonic()
+        receipt = diagnostics.stop_process(leader)
+        elapsed = time.monotonic() - before
+        self.assert_writer_stopped(child, output, receipt, elapsed)
+        self.assertTrue(receipt["writers_stopped"])
+        self.assertEqual(0, receipt["raw_exit"], "Completed body raw exit must survive descendant teardown")
+        self.assertEqual([signal.SIGTERM, signal.SIGKILL], receipt["signals"])
+        self.assertLess(elapsed, 20, "TERM/KILL/wait total 15s plus 5s scheduling margin")
+
+    def test_c2_nonzero_body_and_cancellation_cannot_finish_pass(self):
+        for code in (9, 124, 130, 143):
+            with self.subTest(code=code):
+                original = self.root
+                self.root = original / str(code)
+                self.root.mkdir()
+                try:
+                    def hook(count):
+                        if count == 1 and code in (130, 143):
+                            os.kill(os.getpid(), signal.SIGINT if code == 130 else signal.SIGTERM)
+                    status, exits, live = self.probe_signal_fixture(
+                        gradle_exit=9 if code == 9 else 0,
+                        hook=None if code == 9 else hook, deadline=.1 if code == 124 else 10)
+                    finish_status, result = self.finish_probe_fixture(live)
+                    self.assertEqual(code, status)
+                    self.assertEqual(9 if code == 9 else -signal.SIGTERM, exits["raw_gradle_exit"])
+                    self.assertNotEqual(0, finish_status)
+                    self.assertNotEqual("COMPLETE_PASS", result["classification"])
+                finally:
+                    self.root = original
+
 
 if __name__ == "__main__":
     unittest.main()

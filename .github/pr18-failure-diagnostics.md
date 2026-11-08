@@ -91,6 +91,17 @@ exit and termination reason. A TERM/KILL requested for owned teardown is recorde
 separately and does not itself mean premature loss. `finish` requires a healthy
 lifecycle receipt as well as the existing exact case/XML/APK/source checks.
 
+The last status inquiry and the first signal have a scheduling window. A child
+can exit naturally in that window, remain a zombie, and still allow `killpg`
+to succeed. Continuous logcat health therefore requires the owned child's real
+wait result to show death by a teardown signal actually sent by the controller,
+with the birth identity anchored until group cleanup completes. Signal delivery
+or a nonempty signal list alone is insufficient. Natural exit 0/7, a handler
+returning exit 0, or an unproven exit fails closed and cannot become
+`COMPLETE_PASS`; raw exits and partial evidence remain retained. This proof is
+specific to continuous logcat health: an already completed body may retain raw
+exit 0 while its owned descendants still require cleanup.
+
 Only after the collector, logcat and Gradle client stop does the final step copy
 reports/APKs and seal a SHA256-manifested tar archive. A live writer lock or
 missing stopped-writer receipt prevents sealing. Upload reads only that immutable

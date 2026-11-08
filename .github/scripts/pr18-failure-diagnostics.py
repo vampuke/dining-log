@@ -551,15 +551,21 @@ def run_probe(repo, root, group, api, deadline_seconds):
             if interrupted_signals and termination is None:
                 termination, run_exit = f"SIGNAL_{interrupted_signals[0]}", 128 + interrupted_signals[0]
             logcat_stop = cleanup["logcat"]
-            # The final status check is also made immediately before the first
-            # owned signal, closing the collection-to-teardown check gap.
+            # Status inquiries cannot close the check/first-signal scheduling
+            # window: killpg can succeed even after the child became a zombie.
             for key in ("exit_before_stop", "exit_before_signal"):
                 if logcat_stop[key] is not None:
                     logcat_lifecycle["premature_exit"] = logcat_stop[key]
+            # stop_process keeps the owned birth anchor until group quiescence
+            # and obtains raw_exit from this child's wait(). Require OS evidence
+            # of death by a signal we sent, not merely successful signal delivery.
+            controlled_exit = logcat_stop["raw_exit"] in [-s for s in logcat_stop["signals"]]
+            if logcat_stop["raw_exit"] is not None and logcat_stop["raw_exit"] >= 0:
+                logcat_lifecycle["premature_exit"] = logcat_stop["raw_exit"]
             logcat_lifecycle["owned_teardown_requested"] = bool(logcat_stop["signals"])
             logcat_lifecycle["healthy"] = (logcat_lifecycle["started"] and
-                logcat_lifecycle["premature_exit"] is None and bool(logcat_stop["signals"]) and
-                logcat_stop["writers_stopped"] and logcat_stop["raw_exit"] is not None)
+                logcat_lifecycle["premature_exit"] is None and controlled_exit and
+                logcat_stop["writers_stopped"])
             if logcat is not None and not logcat_lifecycle["healthy"]:
                 termination = termination or ("LIVE_LOGCAT_EXITED" if
                     logcat_lifecycle["premature_exit"] is not None else "LOGCAT_STATUS_UNVERIFIED")
