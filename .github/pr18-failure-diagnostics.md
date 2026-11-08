@@ -91,16 +91,53 @@ exit and termination reason. A TERM/KILL requested for owned teardown is recorde
 separately and does not itself mean premature loss. `finish` requires a healthy
 lifecycle receipt as well as the existing exact case/XML/APK/source checks.
 
-The last status inquiry and the first signal have a scheduling window. A child
-can exit naturally in that window, remain a zombie, and still allow `killpg`
-to succeed. Continuous logcat health therefore requires the owned child's real
-wait result to show death by a teardown signal actually sent by the controller,
-with the birth identity anchored until group cleanup completes. Signal delivery
-or a nonempty signal list alone is insufficient. Natural exit 0/7, a handler
-returning exit 0, or an unproven exit fails closed and cannot become
-`COMPLETE_PASS`; raw exits and partial evidence remain retained. This proof is
-specific to continuous logcat health: an already completed body may retain raw
-exit 0 while its owned descendants still require cleanup.
+The a612 protocol was rejected: a child could self-TERM before controller TERM,
+or self-KILL before controller KILL, become a zombie, and still allow `killpg`
+to succeed with the same negative wait exit. Matching signal numbers is not a
+causal proof. R3 freezes the owned group with SIGSTOP only at existing teardown,
+after body completion/deadline/cancellation and final collection. It requires a
+fresh real `waitid(WSTOPPED)` acknowledgement (`CLD_STOPPED`, `SIGSTOP`, owned
+leader PID), verifies stopped/dead members and birth/parent identity, then queues
+TERM while the leader is stopped. CONT permits pending default TERM handling.
+Survivors require a second complete freeze/acknowledgement before KILL; there is
+no CONT after KILL. STOP/CONT are separate from the fatal `signals` list.
+
+A frozen child cannot execute exit/self-signal between the stop acknowledgement
+and fatal submission. The receipt retains freeze member states, kernel stop and
+exit wait events, submission timestamps and raw exit. Health checks require all
+of those records, group quiescence and a matching signal exit. Missing stop/exit
+wait evidence, absent/255 raw exit, natural 0/7, early/final loss, failed freeze,
+and TERM handler exit0 fail closed. Safe failure KILL may prove writers stopped
+and permit an invalid archive; it never certifies healthy collection. Completed
+Gradle body exit0 remains separate and is never rewritten by logcat shutdown.
+
+This is an autonomous-execution exclusion protocol for C1's private group, not
+exclusive signal provenance against external actors. External SIGKILL/SIGCONT,
+pending signals, parent death, ptrace, or an adversarial TERM handler after CONT
+can exceed this proof. Parent/birth mismatch and observed resumption fail closed;
+unobserved external races cannot be excluded. Descendants must remain within
+the owned private session/group; this is not containment of escaping processes.
+
+| Locally observed protocol state | Result |
+| --- | --- |
+| Self-TERM before first freeze / self-KILL before second freeze, kernel Z/CLD_KILLED | run/finish reject, raw Gradle 0 retained |
+| Released self-signal instruction after handshake, before TERM or second KILL | child stays T, no exit wait; normal interface stop |
+| Default TERM / TERM-resistant KILL | kernel stop and exit waits, healthy interface receipt |
+| TERM handler exit0 | raw 0 retained, unhealthy / INVALID_EXECUTION |
+| STOP dropped / stop acknowledgement absent / wait inquiry denied | failure KILL, unhealthy / INVALID_EXECUTION |
+| Timeout / SIGINT / SIGTERM / body exit9 | 124 / 130 / 143 / 9 retained; finish rejects |
+
+The real Linux adb **37.0.1-15733141** client (binary SHA256
+`a902be8f45c6c62e76c9efaf6947a0fa747c9cabd89a2ac8e0d16ecb30b3ed01`)
+also continuously drained a controller-created loopback adb transport, then
+completed the SIGSTOP/waitid/TERM/CONT protocol with stable output after stopping.
+The fixture speaks adb host framing and classic shell streaming and requires
+ongoing labelled output before teardown; a no-device error cannot satisfy it.
+This is `PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID`, with no device, emulator,
+API, Android logcat or instrumentation evidence. The test skips explicitly when
+adb is absent. Actual Actions adb and real API26/API35 normal-stop receipts are
+mandatory gates and remain **unverified**; the local client result does not
+authorize device collection or imply real-device support has been proved.
 
 Only after the collector, logcat and Gradle client stop does the final step copy
 reports/APKs and seal a SHA256-manifested tar archive. A live writer lock or
@@ -115,12 +152,16 @@ the runner itself is destroyed.
 PID, PGID, SID and `/proc` birth ticks. `waitid(WNOWAIT)` retains an exited
 leader's identity anchor until cleanup; the leader exiting never proves that
 its descendants stopped. Cleanup checks the group's members, allows only
-non-writing zombie/dead states, and uses bounded TERM (5 seconds), KILL
-(5 seconds) and leader wait (5 seconds). Before any group signal it rechecks
-the captured leader identity. No name-based or unrelated-group signal is used.
-An unexpectedly reaped/reused leader, failed inquiry or surviving member leaves
+non-writing zombie/dead states. Each freeze has a one-second acknowledgement
+budget, TERM and KILL each have five-second member budgets, and leader wait has
+a five-second budget (17 seconds plus inquiry/scheduling for normal teardown).
+Failure cleanup can add a verified-group KILL/member budget and leader wait,
+five seconds each. Before any group signal it rechecks the captured leader
+identity including the controller parent. No name-based or unrelated-group signal is used.
+An unexpectedly reaped/reused leader, unverified member inquiry or surviving member leaves
 `writers_stopped=false` and a nonzero job. `cleanup.json` retains identities,
-member states, signals, raw exits, elapsed time and errors. Without verified
+member states, freezes, stop/exit waits, fatal submissions, signals, raw exits,
+elapsed time and errors. Without verified
 cleanup, `finish` copies no build outputs and seals no live evidence; its
 `unsealed-attempt.json` retains the exit/lifecycle and cleanup failure receipts.
 
@@ -131,15 +172,20 @@ signal handling or remain recorded during cleanup: SIGINT/SIGTERM retain
 130/143, timeout retains 124. Ordinary unavailable-device/file samples remain
 recorded collection errors. Case identities and XML acceptance remain unchanged.
 
-The 22 existing diagnostic test methods/assertions are retained, with 17 added
-Linux lifecycle/interface methods. C1/C2/C3 assertion RED then GREEN logs and
-fixtures are retained outside the product tree at
-`/tmp/dining-publish-20261108/android-diag-cleanup-fix-r1-evidence`, labelled
-`PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID`. These checks establish controller
-interfaces only. The earlier review's initial logcat fixture setup error and
-initial archive-audit error remain excluded from RED evidence. No Android build,
-device case, font/window/geometry/focus/callback behavior or upload delivery was
-executed here; fresh independent review of the committed candidate is still due.
+There are **59 diagnostic test methods**: the original 22 and all c61's 39 retain
+their complete method ASTs/assertions; R2's seven methods remain complete (46),
+with 13 R3 additions. The R2 natural-exit helper now releases 0/7 before the first
+freeze, where autonomous exit is possible, and requires no unauthorized fatal
+signal plus a failed kernel acknowledgement. Its positive helper additionally
+requires kernel stop records. The exact old/new helper ASTs, assertion mapping,
+durable RED/GREEN commands/stdout/stderr/exits and source snapshots are at
+`/tmp/dining-publish-20261108/android-diag-causal-stop-r3-evidence/scratch`.
+The original39, Android acceptance and source/selection/XML/APK/seal guards were
+not relaxed. Additional early/final/255 checks retain already-failing behavior;
+they are coverage, not newly claimed RED fixes. These tests establish local
+controller interfaces only. No Android build, device case, font/window/geometry/
+focus/callback behavior or upload delivery was executed here. The original
+Android failure remains open; a NEW independent review is still due.
 
 ## Observed facts and remaining hypotheses
 

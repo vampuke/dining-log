@@ -731,22 +731,23 @@ sys.exit(int(sys.argv[2]))
 
     def assert_first_signal_natural_exit_fails(self, code):
         import ast
-        # Preempt at the actual signal line, after the last status inquiry.
-        # The trace belongs only to this interface fixture; killpg stays real.
+        # Preempt at the actual first freeze signal, after the last inquiry.
+        # An acknowledged frozen child cannot run to natural exit before TERM.
+        # Force the equivalent race at the new freeze boundary; killpg stays real.
         tree = ast.parse(Path(diagnostics.__file__).read_text())
-        stop = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "stop_process")
+        stop = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "freeze_owned")
         signal_line, = [n.lineno for n in ast.walk(stop) if isinstance(n, ast.Call) and
                         isinstance(n.func, ast.Attribute) and n.func.attr == "killpg"]
         timeline = []
         def trace(frame, event, arg):
-            if (event == "line" and frame.f_code is diagnostics.stop_process.__code__ and
+            if (event == "line" and frame.f_code is diagnostics.freeze_owned.__code__ and
                     frame.f_lineno == signal_line and not timeline and
                     frame.f_locals["process"] is self.probe_processes.get("logcat")):
                 self.assertIsNone(frame.f_locals["receipt"]["exit_before_signal"])
                 self.exit_fixture("logcat")
                 process = self.probe_processes["logcat"]
                 waited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
-                timeline.append({"action": "natural-exit-before-first-real-killpg",
+                timeline.append({"action": "natural-exit-before-first-real-freeze-killpg",
                                  "kernel": linux_process(process.pid),
                                  "wait_pid": waited.si_pid, "wait_code": waited.si_code,
                                  "wait_status": waited.si_status, "monotonic_ns": time.monotonic_ns()})
@@ -775,7 +776,10 @@ sys.exit(int(sys.argv[2]))
         self.assertEqual(code, exits["raw_logcat_exit"])
         self.assertIsNone(cleanup["exit_before_stop"])
         self.assertIsNone(cleanup["exit_before_signal"])
-        self.assertEqual([signal.SIGTERM], cleanup["signals"], "Real TERM to the zombie group succeeded")
+        self.assertEqual([], cleanup["signals"], "No fatal signal authorized without live stop proof")
+        self.assertFalse(cleanup["controlled_exit"])
+        self.assertEqual(code, cleanup["freezes"][0]["leader_exit"])
+        self.assertFalse(cleanup["freezes"][0]["confirmed"])
         self.assertTrue(cleanup["writers_stopped"])
         self.assertTrue((live / "device/frame.png").exists())
         self.assertIn(INTERFACE_KIND, (live / "logcat.txt").read_text())
@@ -803,6 +807,14 @@ sys.exit(int(sys.argv[2]))
                 elif mode == "handled-exit0":
                     argv[3] = ("import signal, sys\nsignal.signal(signal.SIGTERM, "
                                "lambda *args: sys.exit(0))\n" + argv[3])
+                elif mode in ("self-term", "self-kill"):
+                    setup = "import os, signal\n"
+                    if mode == "self-kill":
+                        setup += "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+                    argv[3] = setup + argv[3].replace(
+                        "sys.exit(int(sys.argv[2]))",
+                        "os.kill(os.getpid(), signal.SIGTERM)" if mode == "self-term" else
+                        "os.kill(os.getpid(), signal.SIGKILL)")
             return real_popen(argv, **kwargs)
         def ready_hook(count):
             if count == 1:
@@ -825,6 +837,12 @@ sys.exit(int(sys.argv[2]))
         self.assertEqual(-signum, self.probe_processes["logcat"].returncode)
         self.assertEqual(-signum, exits["raw_logcat_exit"])
         self.assertIn(signum, cleanup["signals"])
+        self.assertTrue(cleanup["controlled_exit"])
+        self.assertEqual(len(cleanup["signals"]), len(cleanup["freezes"]))
+        for freeze in cleanup["freezes"]:
+            self.assertTrue(freeze["confirmed"])
+            self.assertEqual(os.CLD_STOPPED, freeze["leader_stop"]["code"])
+            self.assertEqual(signal.SIGSTOP, freeze["leader_stop"]["status"])
         self.assertEqual(self.probe_processes["logcat"].owned_identity, cleanup["identity"])
         self.assertTrue(cleanup["writers_stopped"])
         self.assertTrue(exits["logcat_lifecycle"]["healthy"])
@@ -883,6 +901,336 @@ sys.exit(int(sys.argv[2]))
                     self.assertNotEqual("COMPLETE_PASS", result["classification"])
                 finally:
                     self.root = original
+
+    def assert_self_signal_before_freeze_fails(self, second=False):
+        real_killpg = os.killpg
+        timeline = []
+        stops = 0
+        uses_freeze = hasattr(diagnostics, "freeze_owned")
+        def delivery(pgid, signum):
+            nonlocal stops
+            process = self.probe_processes.get("logcat")
+            if process is not None and pgid == process.pid:
+                if signum == signal.SIGSTOP:
+                    stops += 1
+                target = ((signum == signal.SIGSTOP and stops == (2 if second else 1))
+                          if uses_freeze else signum == (signal.SIGKILL if second else signal.SIGTERM))
+                if target and not timeline:
+                    self.exit_fixture("logcat")
+                    waited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                    timeline.append({"kernel": linux_process(process.pid), "wait_pid": waited.si_pid,
+                                     "wait_code": waited.si_code, "wait_status": waited.si_status,
+                                     "before_requested_signal": int(signum)})
+            return real_killpg(pgid, signum)
+        with patch.object(diagnostics.os, "killpg", side_effect=delivery):
+            status, exits, live = self.probe_signal_fixture("self-kill" if second else "self-term")
+        finish_status, result = self.finish_probe_fixture(live)
+        cleanup = json.loads((live / "cleanup.json").read_text())["logcat"]
+        diagnostics.write_json(self.root / "causal-observation.json", {
+            "evidence_kind": INTERFACE_KIND, "timeline": timeline, "cleanup": cleanup,
+            "exits": exits, "controller_exit": status, "finish_exit": finish_status,
+            "classification": result["classification"]})
+        self.assertEqual(1, len(timeline))
+        self.assertEqual("Z", timeline[0]["kernel"]["state"])
+        self.assertEqual(os.CLD_KILLED, timeline[0]["wait_code"])
+        self.assertEqual(signal.SIGKILL if second else signal.SIGTERM, timeline[0]["wait_status"])
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertEqual(-timeline[0]["wait_status"], exits["raw_logcat_exit"])
+        self.assertNotEqual("COMPLETE_PASS", result["classification"],
+                            "Already self-signalled child was falsely certified as controlled stop")
+        self.assertNotEqual(0, status)
+        self.assertNotEqual(0, finish_status)
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+
+    def test_c2_causal_self_term_before_first_freeze_is_failure(self):
+        self.assert_self_signal_before_freeze_fails()
+
+    def test_c2_causal_self_kill_before_second_freeze_is_failure(self):
+        self.assert_self_signal_before_freeze_fails(second=True)
+
+    def test_c2_missing_kernel_wait_receipt_cannot_certify_health(self):
+        real_stop = diagnostics.stop_process
+        def lose_wait(process):
+            receipt = real_stop(process)
+            if process is self.probe_processes.get("logcat"):
+                for freeze in receipt.get("freezes", []):
+                    freeze["leader_stop"] = None
+            return receipt
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        status, exits, live = self.probe_fixture(hook, stop_override=lose_wait)
+        finish_status, result = self.finish_probe_fixture(live)
+        self.assertNotEqual(0, status, "Missing kernel stop wait evidence was certified healthy")
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+        self.assertNotEqual(0, finish_status)
+        self.assertEqual("INVALID_EXECUTION", result["classification"])
+
+    def test_c2_absent_raw_stop_exit_cannot_certify_health(self):
+        real_stop = diagnostics.stop_process
+        def lose_exit(process):
+            receipt = real_stop(process)
+            if process is self.probe_processes.get("logcat"):
+                receipt["raw_exit"] = None
+            return receipt
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        status, exits, live = self.probe_fixture(hook, stop_override=lose_exit)
+        finish_status, result = self.finish_probe_fixture(live)
+        self.assertNotEqual(0, status, "Absent raw exit was certified healthy")
+        self.assertIsNone(exits["raw_logcat_exit"])
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+        self.assertNotEqual(0, finish_status)
+        self.assertEqual("INVALID_EXECUTION", result["classification"])
+
+    def test_c2_missing_exit_wait_receipt_cannot_certify_health(self):
+        real_stop = diagnostics.stop_process
+        def lose_exit_wait(process):
+            receipt = real_stop(process)
+            if process is self.probe_processes.get("logcat"):
+                receipt.pop("exit_wait", None)
+            return receipt
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        status, exits, live = self.probe_fixture(hook, stop_override=lose_exit_wait)
+        finish_status, result = self.finish_probe_fixture(live)
+        self.assertNotEqual(0, status, "Signal number without exit wait evidence was certified healthy")
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+        self.assertNotEqual(0, finish_status)
+        self.assertEqual("INVALID_EXECUTION", result["classification"])
+
+    def assert_frozen_submission_blocks_self_exit(self, second=False):
+        real_killpg = os.killpg
+        observed = []
+        def delivery(pgid, signum):
+            process = self.probe_processes.get("logcat")
+            if process is not None and pgid == process.pid and signum == (
+                    signal.SIGKILL if second else signal.SIGTERM):
+                # Release an actual child's self-signal instruction AFTER the
+                # last controller inquiry, BEFORE the real fatal signal syscall.
+                (self.root / "logcat-exit").touch()
+                before = linux_process(process.pid)
+                time.sleep(.12)
+                waited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                observed.append({"before": before, "after": linux_process(process.pid),
+                                 "exit_wait": None if waited is None else list(waited),
+                                 "signal": int(signum)})
+            return real_killpg(pgid, signum)
+        with patch.object(diagnostics.os, "killpg", side_effect=delivery):
+            status, exits, live = self.probe_signal_fixture("self-kill" if second else "self-term")
+        finish_status, result = self.finish_probe_fixture(live)
+        diagnostics.write_json(self.root / "frozen-window-observation.json", {
+            "evidence_kind": INTERFACE_KIND, "observed": observed, "exits": exits,
+            "controller_exit": status, "finish_exit": finish_status,
+            "classification": result["classification"]})
+        self.assertEqual(1, len(observed))
+        self.assertEqual("T", observed[0]["before"]["state"],
+                         "Child could run after last inquiry and before fatal signal submission")
+        self.assertEqual("T", observed[0]["after"]["state"])
+        self.assertIsNone(observed[0]["exit_wait"], "Frozen child ran its self-signal instruction")
+        self.assertEqual(0, status)
+        self.assertEqual(0, finish_status)
+        self.assertTrue(exits["logcat_lifecycle"]["healthy"])
+
+    def test_c2_first_frozen_submission_excludes_autonomous_self_term(self):
+        self.assert_frozen_submission_blocks_self_exit()
+
+    def test_c2_second_frozen_submission_excludes_autonomous_self_kill(self):
+        self.assert_frozen_submission_blocks_self_exit(second=True)
+
+    def assert_freeze_fault_fails(self, fault):
+        real_killpg, real_waitid = os.killpg, os.waitid
+        def delivery(pgid, signum):
+            if fault == "dropped-stop" and signum == signal.SIGSTOP:
+                return None  # Delivery return success cannot be a stop proof.
+            return real_killpg(pgid, signum)
+        def waitid(idtype, pid, options):
+            if options & os.WSTOPPED:
+                if fault == "wait-denied":
+                    raise PermissionError("PURE_SUBPROCESS_INTERFACE_FIXTURE_NOT_ANDROID wait denied")
+                if fault == "no-ack":
+                    return None
+            return real_waitid(idtype, pid, options)
+        def hook(count):
+            if count == 1:
+                self.exit_fixture("gradle")
+        with patch.object(diagnostics.os, "killpg", side_effect=delivery), \
+                patch.object(diagnostics.os, "waitid", side_effect=waitid):
+            status, exits, live = self.probe_fixture(hook)
+        finish_status, result = self.finish_probe_fixture(live)
+        cleanup = json.loads((live / "cleanup.json").read_text())["logcat"]
+        diagnostics.write_json(self.root / "freeze-fault-observation.json", {
+            "evidence_kind": INTERFACE_KIND, "fault": fault, "cleanup": cleanup,
+            "exits": exits, "controller_exit": status, "finish_exit": finish_status})
+        self.assertNotEqual(0, status, "Unacknowledged or failed freeze was certified healthy")
+        self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+        self.assertEqual(0, exits["raw_gradle_exit"])
+        self.assertNotEqual(0, finish_status)
+        self.assertEqual("INVALID_EXECUTION", result["classification"])
+        self.assertTrue(cleanup["errors"])
+        self.assertTrue(cleanup["writers_stopped"], "Safe failure KILL must still stop verified owned writers")
+
+    def test_c2_dropped_stop_does_not_prove_kernel_freeze(self):
+        self.assert_freeze_fault_fails("dropped-stop")
+
+    def test_c2_no_kernel_stop_acknowledgement_is_failure(self):
+        self.assert_freeze_fault_fails("no-ack")
+
+    def test_c2_kernel_freeze_inquiry_denied_is_failure(self):
+        self.assert_freeze_fault_fails("wait-denied")
+
+    def test_c1_every_owned_leader_credential_and_parent_is_required(self):
+        for key in ("pid", "ppid", "pgid", "sid", "start_ticks"):
+            with self.subTest(key=key):
+                process = diagnostics.start_process([sys.executable, "-B", "-c", "import time; time.sleep(60)"])
+                identity = linux_process(process.pid)
+                self.children.append((process, identity, identity))
+                process.owned_identity = dict(process.owned_identity)
+                process.owned_identity[key] += 1
+                with patch.object(diagnostics.os, "killpg", wraps=os.killpg) as kill:
+                    receipt = diagnostics.stop_process(process)
+                diagnostics.write_json(self.root / (key + "-ownership.json"), {
+                    "evidence_kind": INTERFACE_KIND, "receipt": receipt, "signal_count": kill.call_count})
+                self.assertEqual(0, kill.call_count, "Changed owned credentials authorized a numeric group")
+                self.assertFalse(receipt["writers_stopped"])
+                self.assertIsNone(diagnostics.process_exit(process))
+
+    def test_c2_early_and_final_self_term_and_exit_255_remain_failure(self):
+        for phase, mode, code in (("early", "self-term", -15), ("final", "self-term", -15),
+                                  ("early", "term", 255)):
+            with self.subTest(phase=phase, code=code):
+                original = self.root
+                self.root = original / (phase + str(code)); self.root.mkdir()
+                try:
+                    def hook(count):
+                        if count == 1:
+                            if phase == "early":
+                                self.exit_fixture("logcat")
+                            self.exit_fixture("gradle")
+                        elif phase == "final":
+                            self.exit_fixture("logcat")
+                    if code == 255:
+                        status, exits, live = self.probe_fixture(hook, logcat_exit=255)
+                    else:
+                        status, exits, live = self.probe_signal_fixture(mode, hook=hook)
+                    finish_status, result = self.finish_probe_fixture(live)
+                    self.assertNotEqual(0, status)
+                    self.assertEqual(0, exits["raw_gradle_exit"])
+                    self.assertEqual(code, exits["raw_logcat_exit"])
+                    self.assertFalse(exits["logcat_lifecycle"]["healthy"])
+                    self.assertNotEqual(0, finish_status)
+                    self.assertEqual("INVALID_EXECUTION", result["classification"])
+                finally:
+                    self.root = original
+
+    def test_c2_real_adb_loopback_stream_has_kernel_proven_normal_stop(self):
+        import shutil, socket, threading
+        adb = shutil.which("adb")
+        if adb is None:
+            self.skipTest("Real adb client unavailable; API26/35 normal-stop remains unverified")
+        requests, errors, connections = [], [], []
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0)); server.listen(); server.settimeout(.1)
+        done = threading.Event()
+        def exact(connection, size):
+            data = b""
+            while len(data) < size:
+                part = connection.recv(size - len(data))
+                if not part:
+                    raise EOFError()
+                data += part
+            return data
+        def serve(connection):
+            try:
+                with connection:
+                    while not done.is_set():
+                        request = exact(connection, int(exact(connection, 4), 16)).decode()
+                        requests.append(request)
+                        if request.endswith(":features") or request == "host:features":
+                            connection.sendall(b"OKAY0000")  # Classic shell protocol, no device claims.
+                        elif request == "host:version":
+                            connection.sendall(b"OKAY00040029")
+                        elif request.startswith("host:tport:"):
+                            connection.sendall(b"OKAY" + struct.pack("<Q", 1))
+                        elif request.startswith("host:transport:"):
+                            connection.sendall(b"OKAY")
+                        elif request.startswith("shell:") or request.startswith("shell,v2,"):
+                            connection.sendall(b"OKAY")
+                            while not done.wait(.01):
+                                payload = (INTERFACE_KIND + " loopback-adb-client-stream\n").encode()
+                                if request.startswith("shell,v2,"):
+                                    payload = struct.pack("<BI", 1, len(payload)) + payload
+                                connection.sendall(payload)
+                            return
+                        else:
+                            raise RuntimeError("Unsupported fixture adb request: " + request)
+            except (EOFError, ConnectionError, OSError):
+                pass  # Controller stopping the real client closes its transport.
+            except Exception as error:
+                errors.append(str(error))
+        def accept():
+            while not done.is_set():
+                try:
+                    connection, _ = server.accept()
+                except socket.timeout:
+                    continue
+                except OSError:
+                    return
+                connection.settimeout(2)
+                thread = threading.Thread(target=serve, args=(connection,), daemon=True)
+                connections.append((connection, thread)); thread.start()
+        thread = threading.Thread(target=accept, daemon=True); thread.start()
+        output = self.root / "real-adb-stream.txt"
+        try:
+            with output.open("wb") as stream:
+                command = [adb, "-H", "127.0.0.1", "-P", str(server.getsockname()[1]),
+                           "-s", "PURE_LOOPBACK_TRANSPORT_NOT_DEVICE", "logcat", "-v", "threadtime"]
+                process = diagnostics.start_process(command, stdout=stream, stderr=subprocess.STDOUT)
+                identity = linux_process(process.pid); self.children.append((process, identity, identity))
+                deadline = time.monotonic() + 5
+                while output.stat().st_size < len(INTERFACE_KIND) * 3:
+                    if diagnostics.process_exit(process) is not None or time.monotonic() >= deadline:
+                        raise RuntimeError("ADB fixture setup failed: " + output.read_text())
+                    time.sleep(.01)
+                self.assertIsNone(diagnostics.process_exit(process), "Device/transport error is not normal stop")
+                before = output.stat().st_size; time.sleep(.05)
+                self.assertGreater(output.stat().st_size, before, "Real adb client must continuously drain transport")
+                receipt = diagnostics.stop_process(process)
+            before = output.stat().st_size; time.sleep(.12)
+            version_out, version_err = self.root / "adb-version.stdout.txt", self.root / "adb-version.stderr.txt"
+            version_command = {"argv": [adb, "version"], "timeout_seconds": 3, "timed_out": False,
+                               "stdout": str(version_out), "stderr": str(version_err)}
+            diagnostics.write_json(self.root / "adb-version.command.json", version_command)
+            with version_out.open("wb") as stdout, version_err.open("wb") as stderr:
+                try:
+                    version = subprocess.run([adb, "version"], stdout=stdout, stderr=stderr, timeout=3)
+                    version_command["exit"] = version.returncode
+                except subprocess.TimeoutExpired:
+                    version_command.update(timed_out=True, exit=124)
+                    raise
+                finally:
+                    diagnostics.write_json(self.root / "adb-version.command.json", version_command)
+            diagnostics.write_json(self.root / "real-adb-observation.json", {
+                "evidence_kind": INTERFACE_KIND, "device_evidence": False, "argv": command,
+                "adb_realpath": str(Path(adb).resolve()), "adb_sha256": diagnostics.digest(adb),
+                "version_stdout": version_out.read_text(), "version_stderr": version_err.read_text(),
+                "version_exit": version.returncode, "requests": requests, "fixture_errors": errors,
+                "cleanup": receipt, "bytes_at_stop": before, "bytes_after": output.stat().st_size})
+            self.assertFalse(errors)
+            self.assertIn(INTERFACE_KIND, output.read_text())
+            self.assertTrue(any("logcat" in request for request in requests))
+            self.assertTrue(receipt.get("freezes"), "Real adb normal-stop lacks kernel freeze evidence")
+            self.assertTrue(receipt["controlled_exit"])
+            self.assertTrue(receipt["writers_stopped"])
+            self.assertEqual(-signal.SIGTERM, receipt["raw_exit"])
+            self.assertEqual(before, output.stat().st_size)
+        finally:
+            done.set(); server.close(); thread.join(timeout=2)
+            for connection, worker in connections:
+                connection.close(); worker.join(timeout=2)
 
 
 if __name__ == "__main__":

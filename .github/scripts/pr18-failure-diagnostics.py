@@ -319,7 +319,8 @@ def process_exit(process):
 def owned_members(process):
     identity = process.owned_identity
     anchor = process_identity(process.pid)
-    if any(anchor[key] != identity[key] for key in ("pid", "pgid", "sid", "start_ticks")):
+    if (anchor["ppid"] != os.getpid() or
+            any(anchor[key] != identity[key] for key in ("pid", "ppid", "pgid", "sid", "start_ticks"))):
         raise RuntimeError("Owned leader birth identity changed; refusing group signals")
     members = []
     # A failed scan is not an empty group. Z/X cannot write; other states can.
@@ -338,11 +339,56 @@ def owned_members(process):
     return members
 
 
+def freeze_owned(process, receipt):
+    """Exclude autonomous child execution before a teardown signal submission.
+
+    SIGSTOP success is not proof. Require a fresh child wait stop event and a
+    stopped group observation. External SIGCONT/SIGKILL remain outside this
+    private-group protocol's provenance guarantee.
+    """
+    row = {"requested_ns": time.monotonic_ns(), "confirmed": False,
+           "leader_stop": None, "leader_exit": None, "members": []}
+    receipt["freezes"].append(row)
+    owned_members(process)  # Authorize the group before any signal.
+    alive = process_exit(process) is None
+    # Consume an old stop notification; it cannot acknowledge our new request.
+    if alive:
+        os.waitid(os.P_PID, process.pid, os.WSTOPPED | os.WNOHANG)
+    os.killpg(process.owned_identity["pgid"], signal.SIGSTOP)
+    deadline = time.monotonic() + 1
+    while True:
+        if alive and row["leader_stop"] is None:
+            waited = os.waitid(os.P_PID, process.pid,
+                               os.WSTOPPED | os.WEXITED | os.WNOHANG | os.WNOWAIT)
+            if waited is not None:
+                if waited.si_code != os.CLD_STOPPED or waited.si_status != signal.SIGSTOP:
+                    row["leader_exit"] = process_exit(process)
+                    raise RuntimeError("Leader died before kernel freeze acknowledgement")
+                row["leader_stop"] = {"pid": waited.si_pid, "code": waited.si_code,
+                                      "status": waited.si_status, "observed_ns": time.monotonic_ns()}
+                # Only consume WSTOPPED, never reap a dead group anchor.
+                os.waitid(os.P_PID, process.pid, os.WSTOPPED | os.WNOHANG)
+        row["members"] = owned_members(process)
+        leader = next((m for m in row["members"] if m["pid"] == process.pid), None)
+        all_frozen = bool(row["members"]) and all(m["state"] in ("T", "Z", "X") for m in row["members"])
+        leader_frozen = (not alive or (row["leader_stop"] is not None and
+                         row["leader_stop"]["pid"] == process.pid and leader is not None and
+                         leader["state"] == "T"))
+        if all_frozen and leader_frozen:
+            row.update(confirmed=True, confirmed_ns=time.monotonic_ns())
+            return row
+        if time.monotonic() >= deadline:
+            raise RuntimeError("No kernel-confirmed owned freeze within one second")
+        time.sleep(.01)
+
+
 def stop_process(process):
     receipt = {"writers_stopped": process is None, "identity": None,
                "signals": [], "members": [], "errors": [],
                "raw_exit": process.returncode if process is not None else None,
-               "exit_before_stop": None, "exit_before_signal": None, "interrupted_signals": []}
+               "exit_before_stop": None, "exit_before_signal": None, "interrupted_signals": [],
+               "freezes": [], "fatal_attempts": [], "resumes": [], "controlled_exit": False,
+               "exit_wait": None}
 
     def inquiry_error(error):
         if isinstance(error, InterruptedError):
@@ -371,15 +417,25 @@ def stop_process(process):
                 inquiry_error(error)
             if stopped:
                 break
-            # Recheck the unreaped leader immediately before signalling. An
-            # absent/reused leader never authorizes signalling a numeric group.
-            anchor = process_identity(process.pid)
-            if any(anchor[key] != identity[key] for key in ("pid", "pgid", "sid", "start_ticks")):
-                raise RuntimeError("Lost owned group identity before signal")
+            frozen = freeze_owned(process, receipt)
+            # The leader cannot run exit/self-signal between this handshake and
+            # submission. Revalidate membership and the private group's anchor.
+            receipt["members"] = owned_members(process)
+            if any(m["state"] not in ("T", "Z", "X") for m in receipt["members"]):
+                raise RuntimeError("Owned group resumed after freeze acknowledgement")
             if not receipt["signals"]:
                 receipt["exit_before_signal"] = process_exit(process)
+            attempt = {"signal": int(signum), "freeze_index": len(receipt["freezes"]) - 1,
+                       "leader_stopped": frozen["leader_stop"] is not None and
+                           process_exit(process) is None, "submitted_ns": time.monotonic_ns()}
             os.killpg(identity["pgid"], signum)
             receipt["signals"].append(int(signum))
+            receipt["fatal_attempts"].append(attempt)
+            if signum == signal.SIGTERM:
+                # Pending default TERM takes effect when continued. Handlers
+                # may run: a handler's normal exit still remains unproven.
+                os.killpg(identity["pgid"], signal.SIGCONT)
+                receipt["resumes"].append(time.monotonic_ns())
             deadline = time.monotonic() + 5
             while True:
                 try:
@@ -396,12 +452,60 @@ def stop_process(process):
         if not stopped:
             receipt["errors"].append("Owned live members could not be verified stopped within TERM/KILL bounds")
         # Reap only now: the leader's death alone never proves group quiescence.
+        waited = os.waitid(os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT)
+        if waited is not None:
+            receipt["exit_wait"] = {"pid": waited.si_pid, "code": waited.si_code,
+                                    "status": waited.si_status, "observed_ns": time.monotonic_ns()}
         receipt["raw_exit"] = process.wait(timeout=5)
         receipt["writers_stopped"] = stopped and not receipt["errors"]
+        receipt["controlled_exit"] = controlled_stop_proven(receipt)
     except (OSError, RuntimeError, ValueError, IndexError, subprocess.TimeoutExpired) as error:
         inquiry_error(error)
+        # Failure cleanup is never a health proof. Only signal after fresh C1
+        # authorization. Seal only if a later complete member inquiry proves
+        # quiescence; failed freeze/exit evidence still invalidates health.
+        try:
+            members = owned_members(process)
+            if any(m["state"] not in ("Z", "X") for m in members):
+                os.killpg(identity["pgid"], signal.SIGKILL)
+            deadline = time.monotonic() + 5
+            while True:
+                receipt["members"] = owned_members(process)
+                quiescent = all(m["state"] in ("Z", "X") for m in receipt["members"])
+                if quiescent or time.monotonic() >= deadline:
+                    break
+                time.sleep(.01)
+            receipt["raw_exit"] = process.wait(timeout=5)
+            receipt["writers_stopped"] = quiescent
+        except (OSError, RuntimeError, ValueError, IndexError, subprocess.TimeoutExpired) as cleanup_error:
+            inquiry_error(cleanup_error)
     receipt["elapsed_ns"] = int((time.monotonic() - started) * 1e9)
     return receipt
+
+
+def controlled_stop_proven(receipt):
+    """Validate the retained kernel handshake, submission, and exit evidence."""
+    try:
+        raw, identity, waited = receipt["raw_exit"], receipt["identity"], receipt["exit_wait"]
+        if (type(raw) is not int or raw not in (-signal.SIGTERM, -signal.SIGKILL) or
+                not receipt["writers_stopped"] or receipt["errors"] or waited is None or
+                waited["pid"] != identity["pid"] or waited["code"] != os.CLD_KILLED or
+                waited["status"] != -raw):
+            return False
+        for attempt in receipt["fatal_attempts"]:
+            freeze = receipt["freezes"][attempt["freeze_index"]]
+            stop = freeze["leader_stop"]
+            if (attempt["leader_stopped"] and attempt["signal"] == -raw and
+                    attempt["signal"] in receipt["signals"] and freeze["confirmed"] and
+                    stop is not None and stop["pid"] == identity["pid"] and
+                    stop["code"] == os.CLD_STOPPED and stop["status"] == signal.SIGSTOP and
+                    stop["observed_ns"] <= freeze["confirmed_ns"] <= attempt["submitted_ns"] <= waited["observed_ns"] and
+                    any(m["pid"] == identity["pid"] and m["state"] == "T" for m in freeze["members"]) and
+                    all(m["state"] in ("T", "Z", "X") for m in freeze["members"])):
+                return True
+    except (KeyError, TypeError, IndexError):
+        pass
+    return False
 
 
 def native_sample(root, device, number, deadline=None):
@@ -551,15 +655,12 @@ def run_probe(repo, root, group, api, deadline_seconds):
             if interrupted_signals and termination is None:
                 termination, run_exit = f"SIGNAL_{interrupted_signals[0]}", 128 + interrupted_signals[0]
             logcat_stop = cleanup["logcat"]
-            # Status inquiries cannot close the check/first-signal scheduling
-            # window: killpg can succeed even after the child became a zombie.
+            # A stopped leader wait acknowledgement closes autonomous execution
+            # in the fatal submission interval; delivery success alone does not.
             for key in ("exit_before_stop", "exit_before_signal"):
                 if logcat_stop[key] is not None:
                     logcat_lifecycle["premature_exit"] = logcat_stop[key]
-            # stop_process keeps the owned birth anchor until group quiescence
-            # and obtains raw_exit from this child's wait(). Require OS evidence
-            # of death by a signal we sent, not merely successful signal delivery.
-            controlled_exit = logcat_stop["raw_exit"] in [-s for s in logcat_stop["signals"]]
+            controlled_exit = controlled_stop_proven(logcat_stop)
             if logcat_stop["raw_exit"] is not None and logcat_stop["raw_exit"] >= 0:
                 logcat_lifecycle["premature_exit"] = logcat_stop["raw_exit"]
             logcat_lifecycle["owned_teardown_requested"] = bool(logcat_stop["signals"])
