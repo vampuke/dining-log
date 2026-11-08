@@ -42,7 +42,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             cd android
             mkdir -p app/build/outputs/p4-screenshots
             # UTP uninstalls test APKs at the end, removing app-owned external
