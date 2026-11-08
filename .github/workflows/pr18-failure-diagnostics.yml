@@ -1,0 +1,73 @@
+name: PR18 Original Failure Diagnostics
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - verify/pr18-failure-diagnostics-20261108
+permissions:
+  contents: read
+concurrency:
+  group: pr18-failure-diagnostics-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  # Diagnostic only. ci.yml/android-ui.yml retain every FULL release gate.
+  failure-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        api: [26, 35]
+        group: [flow, landscape, password, conflict, fold]
+    env:
+      PR18_DIAGNOSTIC_LIVE: ${{ runner.temp }}/pr18-failure-live-${{ matrix.api }}-${{ matrix.group }}
+      PR18_DIAGNOSTIC_ARCHIVE: ${{ runner.temp }}/pr18-failure-final-${{ matrix.api }}-${{ matrix.group }}/evidence.tar.gz
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Check labelled diagnostic interface fixtures
+        run: python3 -B .github/scripts/test_pr18_failure_diagnostics.py
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: false
+      - name: Install original pinned SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run exact original method and all declared variants (bounded 25 minutes)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: python3 -B .github/scripts/pr18-failure-diagnostics.py run --group ${{ matrix.group }} --api ${{ matrix.api }} --live "$PR18_DIAGNOSTIC_LIVE" --timeout-seconds 1500
+      - name: Assert exact device case IDs and seal stopped-writer evidence
+        if: always()
+        run: >-
+          python3 -B .github/scripts/pr18-failure-diagnostics.py finish
+          --group ${{ matrix.group }} --api ${{ matrix.api }}
+          --live "$PR18_DIAGNOSTIC_LIVE" --archive "$PR18_DIAGNOSTIC_ARCHIVE"
+      - name: Retain immutable diagnostic archive or interrupted-attempt receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr18-original-failure-api${{ matrix.api }}-${{ matrix.group }}-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/pr18-failure-final-${{ matrix.api }}-${{ matrix.group }}/evidence.tar.gz
+            ${{ runner.temp }}/pr18-failure-final-${{ matrix.api }}-${{ matrix.group }}/evidence.tar.gz.sha256
+            ${{ runner.temp }}/pr18-failure-final-${{ matrix.api }}-${{ matrix.group }}/unsealed-attempt.json
+          if-no-files-found: error
+          retention-days: 14
