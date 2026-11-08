@@ -41,6 +41,9 @@ import top.alanvampuke.dininglog.feature.theme.*
     val tag = if (isSearch && kind == RecordKind.RESTAURANT) "screen:search" else "screen:${kind.name.lowercase()}:list"
     var expandedFilters by rememberSaveable(kind) { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
+    // Ink & Paper: one header switch drives every history row's time format,
+    // like the design preview's timeToggle. Classic keeps per-row toggling.
+    var historyAbsolute by rememberSaveable { mutableStateOf(false) }
     ScreenFrame(tag, bottomBar, floatingBottomBar = true) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("record-list"), state = listState,
             contentPadding = PaddingValues(start = LocalGridDimensions.current.edge, top = 8.dp, end = LocalGridDimensions.current.edge, bottom = 8.dp + padding.calculateBottomPadding()),
@@ -64,7 +67,11 @@ import top.alanvampuke.dininglog.feature.theme.*
                         BiteButton(callback, modifier.testTag("add")) { Text("新增餐厅") }
                     } })
                 } else {
-                    PageHeader(title, onBack, trailing = onAdd?.let { callback -> { modifier ->
+                    PageHeader(title, onBack, trailing = if (kind == RecordKind.REVISION && inkPaper) { { modifier ->
+                        BiteTextButton(onClick = { historyAbsolute = !historyAbsolute }, modifier = modifier.testTag("history-time-toggle")) {
+                            Text(if (historyAbsolute) "相对时间" else "绝对时间", style = QuietGridText.caption)
+                        }
+                    } } else onAdd?.let { callback -> { modifier ->
                         BiteButton(callback, modifier.testTag("add")) {
                             Text(if (kind == RecordKind.DISH) "新增菜品" else if (kind == RecordKind.VISIT) "新增到店" else "新增")
                         }
@@ -87,10 +94,12 @@ import top.alanvampuke.dininglog.feature.theme.*
                     if (kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         // Thresholds were invisible: the top tier is minRating 46
                         // and the low tier maxRating 31, and the dish verdicts are
-                        // "惊艳"/"踩雷" rather than the restaurant ones. Put both
-                        // the right label and the threshold on the chip itself.
-                        val topLabel = if (kind == RecordKind.DISH) "惊艳 ★4.6+" else "封神必吃 ★4.6+"
-                        val lowLabel = if (kind == RecordKind.DISH) "踩雷 ★3.1−" else "踩雷预警 ★3.1−"
+                        // "惊艳"/"踩雷" rather than the restaurant ones. Classic
+                        // keeps the threshold on the chip itself; Ink & Paper
+                        // shows the bare label and leaves the thresholds in the
+                        // filter panel ("评分档位" line below).
+                        val topLabel = (if (kind == RecordKind.DISH) "惊艳" else "封神必吃") + if (inkPaper) "" else " ★4.6+"
+                        val lowLabel = (if (kind == RecordKind.DISH) "踩雷" else "踩雷预警") + if (inkPaper) "" else " ★3.1−"
                         val quick = listOf("全部" to ListFilters(), topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
                             lowLabel to filters.copy(minRating = null, maxRating = 31, unrated = false))
                         if (inkPaper) quick.forEach { (label, next) -> SegmentItem(label, filters == next, true) { onFilters(next) } }
@@ -140,7 +149,8 @@ import top.alanvampuke.dininglog.feature.theme.*
                 val emptyTag = when { state.isOffline || state.localScope -> "cache-empty"; isSearch && state.error == null -> "no-results"; else -> "empty-state" }
                 GridText(text, Modifier.fillMaxWidth().testTag(emptyTag), color = LocalQuietGridColors.current.secondary)
             }
-            items(state.items, key = { it.ref.id }) { record -> RecordRow(record, onRecord, tilt = if (state.items.indexOf(record) % 2 == 0) -1f else 1f) }
+            items(state.items, key = { it.ref.id }) { record -> RecordRow(record, onRecord, tilt = if (state.items.indexOf(record) % 2 == 0) -1f else 1f,
+                historyAbsolute = if (kind == RecordKind.REVISION && inkPaper) historyAbsolute else null) }
             if (state.hasMore) item { BiteButton(onClick = onMore, enabled = !state.isLoadingMore && !state.isRefreshing,
                 modifier = Modifier.fillMaxWidth().testTag("load-more")) { Text(if (state.isLoadingMore) "正在加载更多…" else "加载更多") } }
         }
@@ -155,7 +165,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     // Ink & Paper: one quiet line instead of the three-cell stats box.
     // These aggregates cover only the loaded results, including any filters.
     if (LocalThemeStyle.current.isInkPaper) {
-        GridText("已加载 ${records.size} 家 · 均分 $avg · 菜品 $dishes", Modifier.fillMaxWidth().testTag("loaded-stats"),
+        GridText("${records.size} 家 · 均分 $avg · 菜品 $dishes", Modifier.fillMaxWidth().testTag("loaded-stats"),
             style = QuietGridText.metadata, color = c.secondary)
         return
     }
@@ -170,7 +180,8 @@ import top.alanvampuke.dininglog.feature.theme.*
         }
     }
 }
-@Composable fun RecordRow(record: RecordSummary, onRecord: (RecordSummary) -> Unit, tilt: Float = 0f, number: Int? = null) {
+@Composable fun RecordRow(record: RecordSummary, onRecord: (RecordSummary) -> Unit, tilt: Float = 0f, number: Int? = null,
+    historyAbsolute: Boolean? = null) {
     val c = LocalQuietGridColors.current
     val large = LocalDensity.current.fontScale > 1.3f
     val history = record.ref.kind == RecordKind.REVISION
@@ -178,13 +189,13 @@ import top.alanvampuke.dininglog.feature.theme.*
     val body: @Composable () -> Unit = {
         if (large) {
             if (number != null) Sticker("%02d".format(number), c.butter)
-            RowText(record)
+            RowText(record, historyAbsolute)
             if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) {
                 Score(record.fields["rating_tenths"]); VerdictSticker(record.fields["rating_tenths"], record.ref.kind == RecordKind.DISH)
             }
         } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
             if (number != null) Sticker("%02d".format(number), c.butter)
-            Column(Modifier.weight(1f)) { RowText(record) }
+            Column(Modifier.weight(1f)) { RowText(record, historyAbsolute) }
             if (record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Score(record.fields["rating_tenths"])
                 VerdictSticker(record.fields["rating_tenths"], record.ref.kind == RecordKind.DISH)
@@ -207,8 +218,11 @@ import top.alanvampuke.dininglog.feature.theme.*
         body()
     }
 }
-@Composable private fun RowText(record: RecordSummary) {
-    var absolute by rememberSaveable(record.ref.id) { mutableStateOf(false) }
+@Composable private fun RowText(record: RecordSummary, historyAbsolute: Boolean? = null) {
+    // Ink & Paper: the list header switch drives every row (historyAbsolute
+    // != null); classic keeps the per-row toggle on the time text itself.
+    var localAbsolute by rememberSaveable(record.ref.id) { mutableStateOf(false) }
+    val absolute = historyAbsolute ?: localAbsolute
     val large = LocalDensity.current.fontScale > 1.3f
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"),
@@ -239,7 +253,7 @@ import top.alanvampuke.dininglog.feature.theme.*
     if (secondary.isNotEmpty()) GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary,
         style = QuietGridText.metadata, maxLines = if (large) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
     if (record.ref.kind == RecordKind.REVISION) {
-        HistoryTimeText(record.updatedAt, absolute, { absolute = !absolute },
+        HistoryTimeText(record.updatedAt, absolute, if (historyAbsolute == null) ({ localAbsolute = !localAbsolute }) else null,
             Modifier.testTag("history-time:${record.ref.id}"),
             if (absolute) Modifier.testTag("history-absolute:${record.ref.id}")
             else Modifier.testTag("history-relative:${record.ref.id}"))

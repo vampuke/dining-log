@@ -83,7 +83,16 @@ fun Modifier.revisedStamp(color: Color): Modifier {
 @Composable fun BitePanel(modifier: Modifier = Modifier, fill: Color = LocalQuietGridColors.current.surface,
     content: @Composable ColumnScope.() -> Unit) {
     val c = LocalQuietGridColors.current
-    Column(modifier.fillMaxWidth().brutalBox(fill, c.border, c.shadow).padding(14.dp),
+    // Ink & Paper drops the white card: a default-filled panel becomes a flat
+    // row on the paper background, separated from the next block by a 1px
+    // divider. Panels with an explicit fill (e.g. the paper ticket) keep it.
+    val inkPaper = LocalThemeStyle.current.isInkPaper
+    val resolvedFill = if (inkPaper && fill == c.surface) Color.Transparent else fill
+    val divider = if (inkPaper && fill == c.surface) Modifier.drawBehind {
+        val y = size.height - 0.5.dp.toPx()
+        drawLine(c.border, Offset(0f, y), Offset(size.width, y), 1.dp.toPx())
+    } else Modifier
+    Column(modifier.fillMaxWidth().brutalBox(resolvedFill, c.border, c.shadow).then(divider).padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
 }
 @Composable fun Sticker(text: String, fill: Color, modifier: Modifier = Modifier, tilt: Float = 0f, dieCut: Boolean = false, maxLines: Int = Int.MAX_VALUE) {
@@ -213,9 +222,12 @@ val LocalFieldForeground = staticCompositionLocalOf<Color?> { null }
     val supportingSlot: (@Composable () -> Unit)? = supportingText?.let { content ->
         { Box(Modifier.fillMaxWidth(), propagateMinConstraints = true) { content() } }
     }
+    // Ink & Paper is an underline-only field: the container stays transparent
+    // so only the 1dp rule drawn below shows. Classic keeps the white card.
+    val container = if (LocalThemeStyle.current.isInkPaper) Color.Transparent else c.surface
     val fieldColors = OutlinedTextFieldDefaults.colors(focusedTextColor = c.ink, unfocusedTextColor = c.ink,
-        disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = c.surface,
-        unfocusedContainerColor = c.surface, disabledContainerColor = c.surface, errorContainerColor = c.surface,
+        disabledTextColor = c.secondary, errorTextColor = c.ink, focusedContainerColor = container,
+        unfocusedContainerColor = container, disabledContainerColor = container, errorContainerColor = container,
         focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
         disabledBorderColor = Color.Transparent, errorBorderColor = Color.Transparent,
         focusedLabelColor = c.ink, unfocusedLabelColor = c.secondary, disabledLabelColor = c.secondary,

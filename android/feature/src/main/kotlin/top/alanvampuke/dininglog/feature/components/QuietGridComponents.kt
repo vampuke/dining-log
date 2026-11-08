@@ -327,10 +327,13 @@ fun fieldPlaceholder(field: String): String = when (field) {
 }
 @Composable fun SegmentItem(label: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val c = LocalQuietGridColors.current
-    Box(Modifier.heightIn(min = 48.dp).clip(CircleShape)
+    // A capsule hugs the text: low height and horizontal padding keep the
+    // box clearly wider than tall, so CircleShape reads as a capsule
+    // instead of collapsing into a disc on two-character labels.
+    Box(Modifier.heightIn(min = 32.dp).clip(CircleShape)
         .background(if (selected) c.ink else Color.Transparent)
         .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
-        .padding(horizontal = 14.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+        .padding(horizontal = 14.dp, vertical = 4.dp), contentAlignment = Alignment.Center) {
         Text(label, color = if (selected) c.bg else c.secondary, style = MaterialTheme.typography.labelLarge)
     }
 }

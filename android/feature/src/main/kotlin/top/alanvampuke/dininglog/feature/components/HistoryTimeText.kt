@@ -18,15 +18,17 @@ import top.alanvampuke.dininglog.core.relativeTime
 import top.alanvampuke.dininglog.feature.theme.LocalQuietGridColors
 import top.alanvampuke.dininglog.feature.theme.QuietGridText
 
-@Composable fun HistoryTimeText(iso: String, absolute: Boolean, onToggle: () -> Unit,
+@Composable fun HistoryTimeText(iso: String, absolute: Boolean, onToggle: (() -> Unit)?,
     modifier: Modifier = Modifier, textModifier: Modifier = Modifier) {
     // A nested clickable consumes the time action independently of its card.
     // Large fonts may wrap the full timestamp inside the minimum 48dp target.
+    // A null onToggle renders plain text: Ink & Paper puts the switch in an
+    // explicit button next to the title instead.
     val large = LocalDensity.current.fontScale > 1.3f
-    Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp)
-        .clickable(role = Role.Button,
+    val toggleModifier = if (onToggle != null) Modifier.clickable(role = Role.Button,
             onClickLabel = if (absolute) "切换为相对时间" else "切换为绝对时间", onClick = onToggle)
-        .semantics { stateDescription = if (absolute) "绝对时间" else "相对时间" },
+        .semantics { stateDescription = if (absolute) "绝对时间" else "相对时间" } else Modifier
+    Box(modifier.heightIn(min = 48.dp).widthIn(min = 48.dp).then(toggleModifier),
         contentAlignment = Alignment.CenterStart) {
         GridText(if (absolute) formatAbsoluteTime(iso) else relativeTime(iso), textModifier,
             style = QuietGridText.date, color = LocalQuietGridColors.current.secondary,
