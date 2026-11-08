@@ -1,6 +1,8 @@
 name: Design Capture
 on:
   workflow_dispatch:
+  push:
+    branches: [capture/design-screenshots]
 permissions:
   contents: read
 concurrency:
