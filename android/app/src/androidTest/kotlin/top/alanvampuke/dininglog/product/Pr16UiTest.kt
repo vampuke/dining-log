@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.time.Instant
+import kotlin.math.roundToInt
 import javax.crypto.spec.SecretKeySpec
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -39,6 +40,60 @@ class Pr16UiTest {
     @Test fun invalidFirstVisitDateIsRevealedAfterFoldingAndSavingAndStaysVisibleWhenFoldedAgain() {
         lateinit var fixture: EditorFixture
         compose.runOnIdle { fixture = EditorFixture() }
+        val foldCase = java.util.UUID.randomUUID().toString()
+        fun foldDiagnostic(stage: String) {
+            fun record(value: String) {
+                val line = "pr16 method=invalidFirstVisitDateIsRevealedAfterFoldingAndSavingAndStaysVisibleWhenFoldedAgain " +
+                    "case=$foldCase stage=$stage $value"
+                android.util.Log.i("DiningP4", line)
+                val folder = requireNotNull(compose.activity.getExternalFilesDir("p4-screenshots")).apply { mkdirs() }
+                java.io.File(folder, "pr16-fold-$foldCase.txt").appendText("$line\n")
+            }
+            val toggle = compose.onNodeWithTag("first-visit-toggle").fetchSemanticsNode()
+            val label = toggle.config.getOrElse(SemanticsProperties.Text) { emptyList() }.joinToString { it.text }
+            val state = when (label) { "收起" -> "expanded"; "展开详情" -> "collapsed"; else -> "unknown-label" }
+            val clipped = toggle.boundsInRoot
+            // Exactly the default physical performClick point in Compose 1.8.2:
+            // clipped origin plus half the rounded visibleSize (no repositioning).
+            val point = clipped.topLeft + androidx.compose.ui.geometry.Offset(
+                clipped.width.roundToInt() / 2f, clipped.height.roundToInt() / 2f)
+            record("label=$label observedState=$state full=${pr18FullBounds(toggle)} windowClipped=${toggle.boundsInWindow} " +
+                "touchPointRoot=$point touchPointWindow=${point + toggle.positionInWindow - toggle.positionInRoot} " +
+                "${pr18TouchDetails(toggle)}")
+            compose.runOnIdle {
+                record("visitId=${fixture.vm.editor.value.input?.firstVisit?.id} visit=${fixture.vm.editor.value.input?.firstVisit} " +
+                    "errors=${fixture.vm.editor.value.errors} submissions=${fixture.repository.submissions} " +
+                    "actualFont=${compose.activity.resources.configuration.fontScale} settledClock=${compose.mainClock.currentTime} " +
+                    "activityWindow=${System.identityHashCode(compose.activity.window)}")
+            }
+            val automation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation
+            val flags = automation.serviceInfo.flags
+            try {
+                automation.serviceInfo = automation.serviceInfo.apply {
+                    this.flags = this.flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+                }
+                automation.windows.forEach { window ->
+                    val bounds = android.graphics.Rect().also { window.getBoundsInScreen(it) }
+                    record("windowId=${window.id} type=${window.type} boundsScreen=$bounds active=${window.isActive} " +
+                        "focused=${window.isFocused} rootVisible=${window.root?.isVisibleToUser}")
+                }
+            } finally { automation.serviceInfo = automation.serviceInfo.apply { this.flags = flags } }
+            compose.onAllNodes(isRoot(), true).fetchSemanticsNodes().forEach { root ->
+                val view = (root.root as androidx.compose.ui.platform.ViewRootForTest).view
+                compose.runOnIdle {
+                    val insets = androidx.core.view.ViewCompat.getRootWindowInsets(view)
+                    val screen = IntArray(2).also { view.getLocationOnScreen(it) }
+                    val window = IntArray(2).also { view.getLocationInWindow(it) }
+                    record("rootId=${root.id} view=${System.identityHashCode(view)} full=${pr18FullBounds(root)} " +
+                        "clipped=${root.boundsInRoot} screenOrigin=${screen.toList()} windowOrigin=${window.toList()} " +
+                        "imeVisible=${insets?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())} " +
+                        "imeInsets=${insets?.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())} focus=${view.findFocus()}")
+                }
+            }
+            record("focusedSemantics=${compose.onAllNodes(isFocused(), true).fetchSemanticsNodes().map { it.config }}")
+            val roots = compose.onAllNodes(isRoot(), true)
+            for (index in roots.fetchSemanticsNodes().indices) record("tree root=$index ${roots[index].printToString()}")
+        }
         try {
             compose.setContent { QuietGridTheme(true) {
                 val state by fixture.vm.editor.collectAsState()
@@ -51,8 +106,26 @@ class Pr16UiTest {
             compose.onNodeWithTag("field:first-visit-date").performTextReplacement("2026-13-45")
             compose.onNodeWithText("YYYY-MM-DD", useUnmergedTree = true).assertExists()
             scrollEditor("first-visit-toggle")
+            foldDiagnostic("before-original-fold-touch")
+            android.util.Log.i("DiningP4", "pr16 fold-before ${pr18TouchDetails(compose.onNodeWithTag("first-visit-toggle").fetchSemanticsNode())} " +
+                "field=${compose.onNodeWithTag("field:first-visit-date").fetchSemanticsNode().config}")
             compose.onNodeWithTag("first-visit-toggle").performClick()
-            compose.onNodeWithTag("field:first-visit-date").assertDoesNotExist()
+            compose.runOnIdle {
+                android.util.Log.i("DiningP4", "pr16 fold-after errors=${fixture.vm.editor.value.errors} " +
+                    "visit=${fixture.vm.editor.value.input?.firstVisit} submissions=${fixture.repository.submissions}")
+            }
+            android.util.Log.i("DiningP4", "pr16 fold-after ${pr18TouchDetails(compose.onNodeWithTag("first-visit-toggle").fetchSemanticsNode())}")
+            compose.mainClock.advanceTimeByFrame()
+            compose.waitForIdle()
+            foldDiagnostic("after-original-fold-touch-settled")
+            try {
+                compose.onNodeWithTag("field:first-visit-date").assertDoesNotExist()
+            } catch (failure: Throwable) {
+                runCatching { foldDiagnostic("failure-tree-absence") }.onFailure {
+                    android.util.Log.i("DiningP4", "pr16 fold-diagnostic-failure case=$foldCase message=${it.message}")
+                }
+                throw failure
+            }
             compose.onNodeWithTag("save").performClick()
             compose.runOnIdle {
                 assertEquals(0, fixture.repository.submissions)

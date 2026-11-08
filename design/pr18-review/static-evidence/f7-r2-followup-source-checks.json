@@ -1,0 +1,982 @@
+{
+  "base": "1c2496d7a52bff73738501deaaa40a8c8766d891",
+  "branch": "fix/pr18-f7",
+  "ancestors": [
+    "1c2496d7a52bff73738501deaaa40a8c8766d891",
+    "1179d867097be5f240090c49a2ae01308d776f91",
+    "d9aa69e2da62ce6534ab5160655ccddbda01ff9f"
+  ],
+  "source_only": true,
+  "runtime_green": false,
+  "checks": [
+    "PASS all named source cases and other Kotlin fixtures byte-identical",
+    "PASS 103 original assertion/check/require calls retained in three edited sources",
+    "PASS original waitUntil calls retained; vertical expose and physical injection checks byte-identical",
+    "PASS own-window PixelCopy and requireValid byte-identical; no secure fallback or flag change",
+    "PASS measured target, font/configuration, text-fit, overlays/owner/IME/Pr16/entry/callback/transport/install gates retained",
+    "PASS exact original dialog font list restored; Screen restoration blocked by file scope",
+    "PASS executable merged exact labels, nested physical touch, full text and final-line source gates",
+    "PASS normal actual palette/geometry/pixel/encoding/readback/hash gates and unprotected flags",
+    "PASS git diff --check and allowed three source files plus narrow evidence docs",
+    "PASS 40 exact original HTML stacks, 16 selected REDs, selected measurement quotations/hashes",
+    "PASS original archive hashes, original HTML 174/20/0 per API, identical 174 names and baseline, original build95/0/0",
+    "PASS missing original PNG member independently confirmed despite receipt",
+    "PASS six pinned Compose source member/JAR identities",
+    "PASS proposed normal pixel thresholds checked against four existing real R1 PNGs; not candidate runtime"
+  ],
+  "sources": {
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt": {
+      "base_sha256": "afe175e1154a14c1e87922a0149771d8e473b62ddfc34053a9db2a64dda60ba1",
+      "sha256": "be82bd09dc2955186af452111658ce48a70934f482337abeb797025f36eaf8a0",
+      "balanced_kotlin_lexically": true,
+      "retained_original_assertion_check_require_calls": 53,
+      "current_assertion_check_require_calls": 63
+    },
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt": {
+      "base_sha256": "32cc6f1b0deb166c4392365acc98bea2ce7c2d6819b6cbf12b4991a59c381640",
+      "sha256": "405104010154b9562dcc03438e57469231c2a2cb3c6cd84ed7a1b18abab12f46",
+      "balanced_kotlin_lexically": true,
+      "retained_original_assertion_check_require_calls": 31,
+      "current_assertion_check_require_calls": 39
+    },
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18WindowCapture.kt": {
+      "base_sha256": "6957993bf3e991d5a759b93ed346e76997adec00ab534f17f277ac119e492c95",
+      "sha256": "2d7c31f647a4d32e40caff622fb261089fbae2e8920f5346da9d14729cde539c",
+      "balanced_kotlin_lexically": true,
+      "retained_original_assertion_check_require_calls": 19,
+      "current_assertion_check_require_calls": 31
+    }
+  },
+  "prior_red": {
+    "selected16_full_stacks": [
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[INK_PAPER-dark=false]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #56176 at (l=450.0, t=218.0, r=985.0, b=4159.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-15067374'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[INK_PAPER-dark=true]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #57471 at (l=450.0, t=218.0, r=985.0, b=4159.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-658968'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[QUIET_GRID-dark=false]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #58778 at (l=450.0, t=218.0, r=985.0, b=4159.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-15658735'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[QUIET_GRID-dark=true]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #60145 at (l=450.0, t=218.0, r=985.0, b=4159.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-658712'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=false]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #56240 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=true]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #57535 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=false]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #58846 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 35,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=true]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #60213 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "5dde9f3f541708a569c40bfd717a11d7d02b2ae3f0232a4549bf41a54b715804"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[INK_PAPER-dark=false]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #56388 at (l=450.0, t=198.0, r=985.0, b=4120.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-15067374'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[INK_PAPER-dark=true]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #57673 at (l=450.0, t=198.0, r=985.0, b=4120.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-658968'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[QUIET_GRID-dark=false]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #58970 at (l=450.0, t=198.0, r=985.0, b=4120.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-15658735'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts[QUIET_GRID-dark=true]",
+        "method": "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])\nSemantics of the node:\nNode #60338 at (l=450.0, t=198.0, r=985.0, b=4120.0)px, Tag: 'compare:address:1'\nQuietGridForegroundArgb = '-658712'\nText = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 30 siblings\nSelector used: (TestTag = 'compare:address:1')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts(Pr18DialogAcceptanceTest.kt:244)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=false]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #56452 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=true]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #57737 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=false]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #59038 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      },
+      {
+        "api": 26,
+        "class": "top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest",
+        "title": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=true]",
+        "method": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+        "stack": "java.lang.AssertionError: Failed to assert the following: (Text + EditableText = [稍后])\nSemantics of the node:\nNode #60406 at (l=646.0, t=1303.0, r=798.0, b=1429.0)px, Tag: 'update-close'\nFocused = 'false'\nRole = 'Button'\nActions = [OnClick, RequestFocus]\nMergeDescendants = 'true'\nHas 1 child, 4 siblings\nSelector used: (TestTag = 'update-close')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals(Assertions.kt:181)\nat androidx.compose.ui.test.AssertionsKt.assertTextEquals$default(Assertions.kt:177)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:159)\n",
+        "html": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+        "html_sha256": "49b20154eb68db2f67feda3026ec80a39bc0ec8680da869a6bfc8bd31479519f"
+      }
+    ],
+    "matched40_original_html": true,
+    "measurement_slices": [
+      {
+        "api": 35,
+        "path": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-35/outputs/p4-screenshots/p4-screenshots/pr18-measurements-api35.txt",
+        "sha256": "50e2fcdabd65e0d0ce9ac002c0dbc93385ad2baed1152bd9ecb7d402c45194b4",
+        "lines": [
+          {
+            "line": 1799,
+            "text": "style=INK_PAPER dark=false requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1837.0, 945.0, -1781.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=-2012.0"
+          },
+          {
+            "line": 1800,
+            "text": "style=INK_PAPER dark=false requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 899.0, 945.0, 2842.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=724.0"
+          },
+          {
+            "line": 1859,
+            "text": "style=INK_PAPER dark=false requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3234.0, 945.0, -3160.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=-3421.0"
+          },
+          {
+            "line": 1860,
+            "text": "style=INK_PAPER dark=false requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 1050.0, 945.0, 4565.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 1919,
+            "text": "style=INK_PAPER dark=false requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2742.0, 985.0, -2668.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=-2930.0"
+          },
+          {
+            "line": 1920,
+            "text": "style=INK_PAPER dark=false requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1051.0, 985.0, 3828.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 1967,
+            "text": "style=INK_PAPER dark=false requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -5155.0, 985.0, -5054.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=-5373.0"
+          },
+          {
+            "line": 1968,
+            "text": "style=INK_PAPER dark=false requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1308.0, 985.0, 5249.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=1090.0"
+          },
+          {
+            "line": 1969,
+            "text": "style=INK_PAPER dark=false requestedFont=2.0 actualFont=2.0 api=35 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 2081,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #56177 at (l=450.0, t=4175.0, r=786.0, b=4325.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #56179 at (l=482.0, t=4196.0, r=754.0, b=4304.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #56182 at (l=-128.0, t=4399.0, r=2.0, b=4493.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-9739689'"
+            ]
+          },
+          {
+            "line": 2282,
+            "text": "style=INK_PAPER dark=false requestedFont=1.0 actualFont=1.0 api=35 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          },
+          {
+            "line": 4560,
+            "text": "style=INK_PAPER dark=true requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1837.0, 945.0, -1781.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=-2012.0"
+          },
+          {
+            "line": 4561,
+            "text": "style=INK_PAPER dark=true requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 899.0, 945.0, 2842.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=724.0"
+          },
+          {
+            "line": 4620,
+            "text": "style=INK_PAPER dark=true requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3234.0, 945.0, -3160.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=-3421.0"
+          },
+          {
+            "line": 4621,
+            "text": "style=INK_PAPER dark=true requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 1050.0, 945.0, 4565.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 4680,
+            "text": "style=INK_PAPER dark=true requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2742.0, 985.0, -2668.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=-2930.0"
+          },
+          {
+            "line": 4681,
+            "text": "style=INK_PAPER dark=true requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1051.0, 985.0, 3828.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 4728,
+            "text": "style=INK_PAPER dark=true requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -5155.0, 985.0, -5054.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=-5373.0"
+          },
+          {
+            "line": 4729,
+            "text": "style=INK_PAPER dark=true requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1308.0, 985.0, 5249.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=1090.0"
+          },
+          {
+            "line": 4730,
+            "text": "style=INK_PAPER dark=true requestedFont=2.0 actualFont=2.0 api=35 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 4842,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #57472 at (l=450.0, t=4175.0, r=786.0, b=4325.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #57474 at (l=482.0, t=4196.0, r=754.0, b=4304.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #57477 at (l=-128.0, t=4399.0, r=2.0, b=4493.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-5002858'"
+            ]
+          },
+          {
+            "line": 5043,
+            "text": "style=INK_PAPER dark=true requestedFont=1.0 actualFont=1.0 api=35 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          },
+          {
+            "line": 7321,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1837.0, 945.0, -1781.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=-2012.0"
+          },
+          {
+            "line": 7322,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 899.0, 945.0, 2842.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=724.0"
+          },
+          {
+            "line": 7381,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3234.0, 945.0, -3160.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=-3421.0"
+          },
+          {
+            "line": 7382,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 1050.0, 945.0, 4565.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 7441,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2742.0, 985.0, -2668.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=-2930.0"
+          },
+          {
+            "line": 7442,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1051.0, 985.0, 3828.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 7489,
+            "text": "style=QUIET_GRID dark=false requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -5277.0, 985.0, -5176.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=-5495.0"
+          },
+          {
+            "line": 7490,
+            "text": "style=QUIET_GRID dark=false requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1308.0, 985.0, 5249.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=1090.0"
+          },
+          {
+            "line": 7491,
+            "text": "style=QUIET_GRID dark=false requestedFont=2.0 actualFont=2.0 api=35 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 7603,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #58779 at (l=450.0, t=4175.0, r=786.0, b=4325.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #58781 at (l=482.0, t=4196.0, r=754.0, b=4304.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #58784 at (l=-128.0, t=4399.0, r=2.0, b=4493.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-11449536'"
+            ]
+          },
+          {
+            "line": 7802,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=35 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          },
+          {
+            "line": 10064,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1837.0, 945.0, -1781.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=-2012.0"
+          },
+          {
+            "line": 10065,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.0 actualFont=1.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 899.0, 945.0, 2842.0) viewport=Rect.fromLTRB(74.0, 175.0, 1006.0, 1237.0) verticalDeltaPx=724.0"
+          },
+          {
+            "line": 10124,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3234.0, 945.0, -3160.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=-3421.0"
+          },
+          {
+            "line": 10125,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.3 actualFont=1.3 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 1050.0, 945.0, 4565.0) viewport=Rect.fromLTRB(74.0, 187.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 10184,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2742.0, 985.0, -2668.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=-2930.0"
+          },
+          {
+            "line": 10185,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.31 actualFont=1.31 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1051.0, 985.0, 3828.0) viewport=Rect.fromLTRB(74.0, 188.0, 1006.0, 1237.0) verticalDeltaPx=863.0"
+          },
+          {
+            "line": 10232,
+            "text": "style=QUIET_GRID dark=true requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -5277.0, 985.0, -5176.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=-5495.0"
+          },
+          {
+            "line": 10233,
+            "text": "style=QUIET_GRID dark=true requestedFont=2.0 actualFont=2.0 api=35 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1308.0, 985.0, 5249.0) viewport=Rect.fromLTRB(74.0, 218.0, 1006.0, 1189.0) verticalDeltaPx=1090.0"
+          },
+          {
+            "line": 10234,
+            "text": "style=QUIET_GRID dark=true requestedFont=2.0 actualFont=2.0 api=35 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 10346,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #60146 at (l=450.0, t=4175.0, r=786.0, b=4325.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #60148 at (l=482.0, t=4196.0, r=754.0, b=4304.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #60151 at (l=-128.0, t=4399.0, r=2.0, b=4493.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-2896965'"
+            ]
+          },
+          {
+            "line": 10545,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.0 actualFont=1.0 api=35 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          }
+        ]
+      },
+      {
+        "api": 26,
+        "path": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/outputs/p4-screenshots/p4-screenshots/pr18-measurements-api26.txt",
+        "sha256": "468ced9d650ef6fb0b6e8fa00f7364e97b5856d0eee407362e4e2f3f806a1a67",
+        "lines": [
+          {
+            "line": 1835,
+            "text": "style=INK_PAPER dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1697.0, 945.0, -1650.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=-1859.0"
+          },
+          {
+            "line": 1836,
+            "text": "style=INK_PAPER dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 814.0, 945.0, 2748.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=652.0"
+          },
+          {
+            "line": 1895,
+            "text": "style=INK_PAPER dark=false requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3035.0, 945.0, -2976.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-3208.0"
+          },
+          {
+            "line": 1896,
+            "text": "style=INK_PAPER dark=false requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 934.0, 945.0, 4436.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=761.0"
+          },
+          {
+            "line": 1955,
+            "text": "style=INK_PAPER dark=false requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2547.0, 985.0, -2486.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-2720.0"
+          },
+          {
+            "line": 1956,
+            "text": "style=INK_PAPER dark=false requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 936.0, 985.0, 3700.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=763.0"
+          },
+          {
+            "line": 2003,
+            "text": "style=INK_PAPER dark=false requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -4859.0, 985.0, -4776.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=-5057.0"
+          },
+          {
+            "line": 2004,
+            "text": "style=INK_PAPER dark=false requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1145.0, 985.0, 5067.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=947.0"
+          },
+          {
+            "line": 2005,
+            "text": "style=INK_PAPER dark=false requestedFont=2.0 actualFont=2.0 api=26 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 2117,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #56389 at (l=450.0, t=4136.0, r=786.0, b=4286.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #56391 at (l=482.0, t=4157.0, r=754.0, b=4265.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #56394 at (l=-128.0, t=4360.0, r=2.0, b=4437.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-9739689'"
+            ]
+          },
+          {
+            "line": 2318,
+            "text": "style=INK_PAPER dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          },
+          {
+            "line": 4514,
+            "text": "style=INK_PAPER dark=true requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1697.0, 945.0, -1650.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=-1859.0"
+          },
+          {
+            "line": 4515,
+            "text": "style=INK_PAPER dark=true requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 814.0, 945.0, 2748.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=652.0"
+          },
+          {
+            "line": 4574,
+            "text": "style=INK_PAPER dark=true requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3035.0, 945.0, -2976.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-3208.0"
+          },
+          {
+            "line": 4575,
+            "text": "style=INK_PAPER dark=true requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 934.0, 945.0, 4436.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=761.0"
+          },
+          {
+            "line": 4634,
+            "text": "style=INK_PAPER dark=true requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2547.0, 985.0, -2486.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-2720.0"
+          },
+          {
+            "line": 4635,
+            "text": "style=INK_PAPER dark=true requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 936.0, 985.0, 3700.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=763.0"
+          },
+          {
+            "line": 4682,
+            "text": "style=INK_PAPER dark=true requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -4859.0, 985.0, -4776.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=-5057.0"
+          },
+          {
+            "line": 4683,
+            "text": "style=INK_PAPER dark=true requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1145.0, 985.0, 5067.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=947.0"
+          },
+          {
+            "line": 4684,
+            "text": "style=INK_PAPER dark=true requestedFont=2.0 actualFont=2.0 api=26 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 4796,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #57674 at (l=450.0, t=4136.0, r=786.0, b=4286.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #57676 at (l=482.0, t=4157.0, r=754.0, b=4265.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #57679 at (l=-128.0, t=4360.0, r=2.0, b=4437.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-5002858'"
+            ]
+          },
+          {
+            "line": 4997,
+            "text": "style=INK_PAPER dark=true requestedFont=1.0 actualFont=1.0 api=26 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          },
+          {
+            "line": 7193,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1795.0, 945.0, -1748.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=-1957.0"
+          },
+          {
+            "line": 7194,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 814.0, 945.0, 2748.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=652.0"
+          },
+          {
+            "line": 7253,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3133.0, 945.0, -3074.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-3306.0"
+          },
+          {
+            "line": 7254,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 934.0, 945.0, 4436.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=761.0"
+          },
+          {
+            "line": 7313,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2645.0, 985.0, -2584.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-2818.0"
+          },
+          {
+            "line": 7314,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 936.0, 985.0, 3700.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=763.0"
+          },
+          {
+            "line": 7361,
+            "text": "style=QUIET_GRID dark=false requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -5094.0, 985.0, -5011.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=-5292.0"
+          },
+          {
+            "line": 7362,
+            "text": "style=QUIET_GRID dark=false requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1145.0, 985.0, 5067.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=947.0"
+          },
+          {
+            "line": 7363,
+            "text": "style=QUIET_GRID dark=false requestedFont=2.0 actualFont=2.0 api=26 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 7475,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #58971 at (l=450.0, t=4136.0, r=786.0, b=4286.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #58973 at (l=482.0, t=4157.0, r=754.0, b=4265.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #58976 at (l=-128.0, t=4360.0, r=2.0, b=4437.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-11449536'"
+            ]
+          },
+          {
+            "line": 7678,
+            "text": "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          },
+          {
+            "line": 9856,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -1795.0, 945.0, -1748.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=-1957.0"
+          },
+          {
+            "line": 9857,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.0 actualFont=1.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 814.0, 945.0, 2748.0) viewport=Rect.fromLTRB(74.0, 162.0, 1006.0, 1138.0) verticalDeltaPx=652.0"
+          },
+          {
+            "line": 9916,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(541.0, -3133.0, 945.0, -3074.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-3306.0"
+          },
+          {
+            "line": 9917,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.3 actualFont=1.3 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(541.0, 934.0, 945.0, 4436.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=761.0"
+          },
+          {
+            "line": 9976,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -2645.0, 985.0, -2584.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=-2818.0"
+          },
+          {
+            "line": 9977,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.31 actualFont=1.31 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 936.0, 985.0, 3700.0) viewport=Rect.fromLTRB(74.0, 173.0, 1006.0, 1138.0) verticalDeltaPx=763.0"
+          },
+          {
+            "line": 10024,
+            "text": "style=QUIET_GRID dark=true requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=local_input full=Rect.fromLTRB(450.0, -5094.0, 985.0, -5011.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=-5292.0"
+          },
+          {
+            "line": 10025,
+            "text": "style=QUIET_GRID dark=true requestedFont=2.0 actualFont=2.0 api=26 density=2.625 comparison-scroll tag=compare:address:1 full=Rect.fromLTRB(450.0, 1145.0, 985.0, 5067.0) viewport=Rect.fromLTRB(74.0, 198.0, 1006.0, 1090.0) verticalDeltaPx=947.0"
+          },
+          {
+            "line": 10026,
+            "text": "style=QUIET_GRID dark=true requestedFont=2.0 actualFont=2.0 api=26 density=2.625 FAIL case=conflict type=java.lang.AssertionError message=Failed to assert the following: (Text + EditableText = [中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。])"
+          },
+          {
+            "line": 10138,
+            "context": [
+              "       |  |  | Text = '[中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经过桥边的咖啡店后向右转。中山路沿江街区，经…]'",
+              "       |  |  | Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #60339 at (l=450.0, t=4136.0, r=786.0, b=4286.0)px, Tag: 'expand:compare:address:1'",
+              "       |  |  | Focused = 'false'",
+              "       |  |  | Role = 'Button'",
+              "       |  |  | Actions = [OnClick, RequestFocus]",
+              "       |  |  | MergeDescendants = 'true'",
+              "       |  |  |  |-Node #60341 at (l=482.0, t=4157.0, r=754.0, b=4265.0)px",
+              "       |  |  |    Text = '[展开全文]'",
+              "       |  |  |    Actions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]",
+              "       |  |  |-Node #60344 at (l=-128.0, t=4360.0, r=2.0, b=4437.0)px",
+              "       |  |  | QuietGridForegroundArgb = '-2896965'"
+            ]
+          },
+          {
+            "line": 10337,
+            "text": "style=QUIET_GRID dark=true requestedFont=1.0 actualFont=1.0 api=26 density=2.625 update-pair stage=IDLE contentDp=288.0 horizontal=true page=Rect.fromLTRB(42.0, 1303.0, 614.0, 1429.0) close=Rect.fromLTRB(646.0, 1303.0, 798.0, 1429.0) panel=Rect.fromLTRB(0.0, 0.0, 840.0, 1471.0) bottomGapDp=16.0"
+          }
+        ]
+      }
+    ],
+    "counts": [
+      {
+        "api": 35,
+        "tests": 174,
+        "failures": 20,
+        "skipped": 0,
+        "same174_as_integrated_baseline": true,
+        "archive_sha256": "d3c2695c0da660207db7202c5582dad6934707a57f06f48c919f6c39e14485f8"
+      },
+      {
+        "api": 26,
+        "tests": 174,
+        "failures": 20,
+        "skipped": 0,
+        "same174_as_integrated_baseline": true,
+        "archive_sha256": "1e4868df82d54cf0703b98657cd7319f6fb4653197d47bf2d2999008b8998b29"
+      }
+    ],
+    "same174_cases_both_apis": true,
+    "build": {
+      "tests": 95,
+      "failures": 0,
+      "skipped": 0,
+      "modules": [
+        {
+          "path": "core/build/reports/tests/test/index.html",
+          "tests": 58,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "path": "data/build/reports/tests/testDebugUnitTest/index.html",
+          "tests": 22,
+          "failures": 0,
+          "skipped": 0
+        },
+        {
+          "path": "feature/build/reports/tests/testDebugUnitTest/index.html",
+          "tests": 15,
+          "failures": 0,
+          "skipped": 0
+        }
+      ]
+    },
+    "missing_png": {
+      "api": 26,
+      "filename": "pr18-flow-restaurants-quiet_grid-light-actualFont1.0-api26.png",
+      "original_archive_sha256": "1e4868df82d54cf0703b98657cd7319f6fb4653197d47bf2d2999008b8998b29",
+      "zip_matching_members": [],
+      "original_receipts": [
+        "style=QUIET_GRID dark=false requestedFont=1.0 actualFont=1.0 api=26 density=2.625 screenshot=pr18-flow-restaurants-quiet_grid-light-actualFont1.0-api26.png pixels=945x1680"
+      ],
+      "cause": "unknown; downstream delivery is unverified; no collection/CI change"
+    },
+    "f7-r2-followup-real-red.json": {
+      "path": "/tmp/dining-release-20261107/f7-r2-followup-real-red.json",
+      "sha256": "5348992c1bf669d0544ceb604b1436b90881bf98079170867ae68e4669020efe"
+    },
+    "verified-full-stacks-42372736617.json": {
+      "path": "/tmp/dining-release-20261107/verified-full-stacks-42372736617.json",
+      "sha256": "e0f219ab6a98f87bcc178faf1197520bbe1b365997beb301b98b2baadfcbc762"
+    },
+    "f7-r1-ci-result.json": {
+      "path": "/tmp/dining-release-20261107/f7-r1-ci-result.json",
+      "sha256": "892523e127910ebb734326bd45d6cd4539003f0c8f35a47f319dd6b96a2b051c"
+    }
+  },
+  "scope_conflict": {
+    "file": "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ScreenAcceptanceTest.kt",
+    "lines": [
+      254,
+      286
+    ],
+    "status": "blocked_pending_scope_clarification",
+    "reason": "two added 1.5f entries at pinned HEAD are outside permitted files; Screen left byte-identical",
+    "unchanged_sha256": "bdd4b1b8b6b0220de44dbd245e672357dc5d2b1885001aa469a4f918da84cba9"
+  },
+  "all_named_source_cases": {
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/auth/AndroidAuthTest.kt": [
+      "realAndroidKeystoreRoundTripCorruptionAndMissingKeyReturnLogin",
+      "loginLightLargeFontShowsPersistent429AndPasswordToggle",
+      "registrationDarkLargeFontKeepsInputsAndSubmitReachable",
+      "recoveryLightLargeFontKeepsRecoveryInputAndSubmitReachable",
+      "loginDarkLargeFontKeepsSubmitReachable",
+      "registrationLightLargeFontKeepsSubmitReachable",
+      "recoveryDarkUsesApprovedTokens"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6SmallScreenEndToEndTest.kt": [
+      "realApiRecordsFitTheSmallFirstScreenAndTheMinimalEditorSavesInBothThemes"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6UiTest.kt": [
+      "first360By640DpScreenShowsAtLeastThreeCompleteRecordItemsInBothThemes",
+      "selectedTabsPaintMeasuredContrastAndChangeTheirActualSilhouettesInBothThemes",
+      "emptyOptionalAddressReviewAndNoteAreOmittedAndMinimalEditorCanSave",
+      "bothTabReselectionsKeepTheSameBackStackEntryAndScrollToTop",
+      "centeredAddCreatesARestaurantFromEitherTab",
+      "systemRemoveAnimationsIsObservedAndDarkNavigationFramesNeverPaintWhite",
+      "actualAdaptiveRoundAndMonochromeIconsAndNativeNightThemeResolveCorrectly"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P6UpdateUiTest.kt": [
+      "manualCheckWithStartupDisabledShowsAnEntryThatOpensTheDiscoveredRelease",
+      "failedManualCheckReplacesTheLatestVersionMessageAndAllowsRetry",
+      "inlineEntryAllowsOptOutAndInstallProviderExposesOnlyTheUpdatesSubdirectory"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/P8VisualTest.kt": [
+      "eightEvidenceScreensAndEveryListTailStayAboveTheFloatingCapsuleInBothThemes",
+      "updatePanelFitsShortContentAndScrollsLongNotesAt200PercentInBothThemes",
+      "landscapeCapsuleAndControlsRespectSideBarsAndCutoutsInBothDirectionsAndThemes",
+      "emptyFocusedDisabledErrorAndMultilineFieldsFitAt100And200PercentInBothThemes",
+      "removedChooserEntriesAreAbsentFromOpenRestaurantAndVisitMenusInBothThemes"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr16UiTest.kt": [
+      "invalidFirstVisitDateIsRevealedAfterFoldingAndSavingAndStaysVisibleWhenFoldedAgain",
+      "invalidFirstVisitNoteRemainsVisibleAfterSaveAndCompositionRestoration",
+      "historyTimeHasBothActionsAndStableHeightAtLargeFontWithoutOpeningTheCard",
+      "historyDetailAlsoReplacesTheTimeInsteadOfAddingAnotherLine",
+      "loadedStatsLabelTheirPageScopeAndFollowPaginationMissingCountsAndEmptyCache",
+      "restaurantAndDishChipsUseTheirLabelsAndExactInclusiveBoundaries"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr17ListFirstScreenTest.kt": [
+      "fiveListsHaveAtLeastTheMeasuredBaselineCompleteCards"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr17UiTest.kt": [
+      "measuredTextLayoutsStillRejectRealWidthHeightAndMaxLinesOverflow",
+      "detailEntityStateMatrixPreservesValuesMetadataAndAllCallbacks",
+      "pageActionsAndHeadersUseContentWidthBoundaryAndSingleCallbackFillsTheRow",
+      "receiptTailIsMeasuredAgainstTheOriginalCardWithMatchingData",
+      "ratingEditorNullSteppersBoundariesAndFilterControlsDoNotCrossValues",
+      "editorKeepsTheOuterRatingCardAndSavedRestaurantChildActions",
+      "historyPairsFullTextTimeAndConfirmationCallbacksRemainReachable",
+      "applyPreviewAndComparisonColumnsKeepTheirOwnValuesAndScroll",
+      "settingsProfileUpdatePasswordAndLogoutRemainReachableWithoutSessionManagement",
+      "updateStageMatrixPreservesCallbacksProgressAndScrollableBottomPadding",
+      "updatePairUsesDialogContent239And240Boundary",
+      "listKindsBrandHeadersAndLandscapeRemainReachableWithAllFontsAndThemes"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ComponentTest.kt": [
+      "f3InputRuleIsPaintedAboveTheContainerBeforeSupportingTextForEveryFieldState",
+      "f1RenderedButtonAndPlaceholderUseAccessibleForegroundsAndPreserveCallbacks",
+      "f2ActualSettingsUncheckedSwitchThumbAndBorderContrastWithTrackAndSurface",
+      "f4ScoreVerdictAndFillEmphasize40And50WithNeutral39AndNull",
+      "explicitUnratedTrackRequiresAnActionAndSteppersKeepOneTenthAndBounds",
+      "pinnedTextRemeasurementStillRejectsWidthHeightAndMaxLinesClipping",
+      "actualTargetMeasurementRejectsA24dpControlEvenWithAutomaticTouchExpansion"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18DialogAcceptanceTest.kt": [
+      "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch",
+      "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity",
+      "f7ConflictComparisonChoiceAndSaveRemainScrollableAndExplicitAtAllFonts",
+      "f7ApplyCurrentProposedFieldsAndFooterUseActualFontAndMeasuredTargets",
+      "f7ConfirmationAndOperationDialogActionsKeepCallbacksAndRealFonts"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Evidence.kt": [],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18Fixtures.kt": [],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18InstallTransactionTest.kt": [
+      "f6DelayedAutomaticBDoesNotReplaceReadyAOrPreventInstall",
+      "f6DelayedAutomaticBDoesNotReplacePermissionTransactionAOnReturn",
+      "f6DelayedAutomaticBDoesNotSweepInstallingAOrReceiveAsynchronousFailureFromA",
+      "f6RepeatedInstallTapsOwnOneJobAndOnePermissionRequest",
+      "f6RepeatedPermissionReturnInRecreatedOwnerOwnsOneJobAndInstallerIntent",
+      "f6ExplicitCancelAndManualBSelectionCannotReceiveStaleAInstallerCompletion",
+      "cancelRetryAndExplicitManualSelectionRemainUsableWithoutAutomaticDownload"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18PreferencesOrchestrationTest.kt": [
+      "f8AbsentStyleRendersInkPaperAndPersistedClassicRestoresAfterRecreationAndReopeningDataStore",
+      "f8BothStyleAndSystemLightDarkChoicesStayOrthogonalThroughSystemNightAndRecreation",
+      "f5FreshLaunchOwnersCanCheckAgainWithoutDownloadingAfterThePreviousLaunchDismissed"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18ScreenAcceptanceTest.kt": [
+      "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent",
+      "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches",
+      "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches",
+      "f7ProductionLoginRegistrationRecoveryAndAcknowledgementAt100And200Percent"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18StartupTest.kt": [
+      "f8NewerEnabledStartupOnLoginShowsOnePopupWithZeroDownloads",
+      "f5DismissRotateAndRecreateRetainsTheLaunchAcknowledgement",
+      "f5DismissActualSystemFontChangeRetainsTheLaunchAcknowledgementOnLogin",
+      "f5DismissThemeStyleRecompositionDoesNotShowAgain",
+      "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup",
+      "f8DisabledStartupIssuesNoRequestAndShowsNoPopup",
+      "f8FailedStartupShowsNoPopup",
+      "f8EqualStartupShowsNoPopup",
+      "f8OlderStartupShowsNoPopup",
+      "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload",
+      "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/Pr18WindowCapture.kt": [],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductEndToEndTest.kt": [
+      "plan104RegistrationThroughOfflineConflictRestorePasswordAndLogin"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ProductVisualTest.kt": [
+      "lightAndDarkListDetailEditSearchHistoryAndConflictRenderActualApprovedColors",
+      "light200PercentFontKeepsFullInputTextAndSaveReachable",
+      "dark200PercentFontKeepsFullInputTextAndSaveReachable",
+      "lightKeyboardLeavesSaveAboveActualIme",
+      "darkKeyboardAt200PercentLeavesSaveAboveActualIme",
+      "darkKeyboardAt200PercentWithLongSaveMessageKeepsButtonReachable",
+      "bothTabsAndPageTitlesRemainUnclippedAt200PercentInBothThemes",
+      "emptyNoResultsOfflineAndRefreshingContentRemainDistinct",
+      "sameFieldConflictSaveIsDisabledUntilExplicitChoice",
+      "selectingDefaultRatingSetsAnUnratedRecordAndEveryStepIsOneTenth",
+      "clearingARatingReturnsToAnUnratedTrackWithNoImpliedScore",
+      "longReviewsAndHistoryValuesCanBeReadInFullInBothThemesAt200Percent"
+    ],
+    "android/app/src/androidTest/kotlin/top/alanvampuke/dininglog/product/ScreenshotSecurityTest.kt": [
+      "passwordDismissalAndNavigationRestoreScreenshotsInBothThemes"
+    ]
+  },
+  "named_source_case_count": 93,
+  "pinned_sources": [
+    {
+      "path": "/tmp/pr17_compose_sources/ui-android/commonMain/androidx/compose/ui/semantics/SemanticsNode.kt",
+      "sha256": "a78d2b32cc3c7f0b1d2ef38cc0be4aeaa20462f89ad1cc854396c81e3da455d4"
+    },
+    {
+      "path": "/tmp/pr17_compose_sources/ui-android/commonMain/androidx/compose/ui/layout/LayoutInfo.kt",
+      "sha256": "bb1fc870fe3a0bfbdd965ca90b5c0b022bcadbd992d96bcaa77162febaaa628a"
+    },
+    {
+      "path": "/tmp/pr17_compose_sources/ui-test-android/commonMain/androidx/compose/ui/test/Assertions.kt",
+      "sha256": "4a47020dae3ac650c3297faab23ebb9ad6ceb19d3ea5b986ae62b655acd4e866"
+    },
+    {
+      "path": "/tmp/pr17_compose_sources/ui-test-android/commonMain/androidx/compose/ui/test/Actions.kt",
+      "sha256": "a1076f952fd778bbc36c18d4664c8973e8ee26a477ae75834ea86ec123825926"
+    },
+    {
+      "path": "/tmp/pr17_compose_sources/ui-test-android/commonMain/androidx/compose/ui/test/MultiModalInjectionScope.kt",
+      "sha256": "36dac8e549029074e0272274ad839323546f43cf851e18bc99e5c3643230b052"
+    },
+    {
+      "path": "/tmp/pr17_compose_sources/ui-test-android/androidMain/androidx/compose/ui/test/AndroidImageHelpers.android.kt",
+      "sha256": "686c2b43ab8a2318960390fa7afcb810b1e7cc3c0d08f4ef29490e236ea231c3"
+    }
+  ],
+  "original_png_threshold_samples": [
+    {
+      "path": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/outputs/p4-screenshots/p4-screenshots/pr18-flow-restaurants-ink_paper-light-actualFont1.0-api26.png",
+      "sha256": "c406cfe5b5f04f175850ddd9df8cfdf7422a65649905c43571921a7485f5cee0",
+      "width": 945,
+      "height": 1680,
+      "opaque": 1587600,
+      "black": 0,
+      "transparent": 0,
+      "white": 217599,
+      "palette_pixels": 1396360,
+      "ink_pixels": 29723,
+      "prior_run_only": true
+    },
+    {
+      "path": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/outputs/p4-screenshots/p4-screenshots/pr18-flow-restaurants-ink_paper-dark-actualFont1.0-api26.png",
+      "sha256": "f4d486d8a24b9fb9dd88da0bbc22297e28ea6b56c1e564ef445c86a561c0c553",
+      "width": 945,
+      "height": 1680,
+      "opaque": 1587600,
+      "black": 0,
+      "transparent": 0,
+      "white": 0,
+      "palette_pixels": 1396376,
+      "ink_pixels": 29723,
+      "prior_run_only": true
+    },
+    {
+      "path": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/outputs/p4-screenshots/p4-screenshots/pr18-flow-restaurants-last-row-quiet_grid-light-actualFont1.0-api26.png",
+      "sha256": "93a45eea6859dc7a6c13a44d5015f386b991b8ff1baa5b3b1d11f2a8c2975dcf",
+      "width": 945,
+      "height": 1680,
+      "opaque": 1587600,
+      "black": 0,
+      "transparent": 0,
+      "white": 734472,
+      "palette_pixels": 1120779,
+      "ink_pixels": 201252,
+      "prior_run_only": true
+    },
+    {
+      "path": "/tmp/dining-release-20261107/ci-evidence-42372736617/android-auth-api-26/outputs/p4-screenshots/p4-screenshots/pr18-flow-restaurants-quiet_grid-dark-actualFont1.0-api26.png",
+      "sha256": "d65b55ef71e22944d7b5c62bb6f33d48f27f5ae7b4e78fe8ae8571000d0b90b9",
+      "width": 945,
+      "height": 1680,
+      "opaque": 1587600,
+      "black": 0,
+      "transparent": 0,
+      "white": 0,
+      "palette_pixels": 1109821,
+      "ink_pixels": 120724,
+      "prior_run_only": true
+    }
+  ],
+  "audit_corrections": [
+    {
+      "initial_result": "source gates passed; HTML recount stopped at API35 with zero names",
+      "reason": "initial parser assumed four-column rows; original API35 tables also use two-column rows with passed/failed duration text",
+      "correction": "read actual status rows in both shapes; require equal 174 names against both APIs and integrated baseline",
+      "runtime_red": false
+    },
+    {
+      "initial_result": "174-case and baseline counts passed; build reader expected 95 in core module alone",
+      "reason": "the original build95 total is core58 plus data22 plus feature15",
+      "correction": "sum all original reports/tests module index counts to 95/0/0",
+      "runtime_red": false
+    }
+  ],
+  "unverified_boundary": [
+    "Kotlin/Android compilation",
+    "candidate full 174 API26/API35 runtime with zero skips",
+    "actual dialog fonts/physical touch/full final-line reachability",
+    "normal Activity capture and downstream artifact delivery",
+    "strict protected-window PNG acceptance; denial/blank remain blocking",
+    "out-of-scope Screen array restoration"
+  ]
+}

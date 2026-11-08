@@ -1,0 +1,78 @@
+{
+  "module": "updates",
+  "base_sha": "45c7f65823042deb76171732dcb2a000f8620e65",
+  "head_sha": "8b8decf7c39ed67858ef99c760e1ca75e273f013",
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "UPD-001",
+      "severity": "MAJOR",
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt",
+      "line": 75,
+      "claim": "Dismissing the startup popup does not survive activity recreation.",
+      "evidence": "After an automatic result, tap 稍后 and rotate MainActivity. remember initializes launchUpdateShown to false again, while the singleton checker retains release=A, enabled=true, manual=false (AppModule.kt:37–38). The effect at MainActivity.kt:88–93 immediately reopens the popup without another request. MainActivity has no orientation configChanges override; the automatic effect is absent from the base.",
+      "impact": "Violates the promised once-per-launch dismissal behavior, including recreation caused by system font changes.",
+      "recommendation": "Retain or save the launch dismissal state across recreation. Add dismiss→rotate and dismiss→system-font-change regressions that assert no popup and no second request.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    },
+    {
+      "id": "UPD-002",
+      "severity": "MAJOR",
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt",
+      "line": 92,
+      "claim": "An automatic result can replace an update whose installation is in progress.",
+      "evidence": "Start with automatic checks disabled, manually download A, dismiss during downloading, then enable checks and delay the automatic response for different release B. Deliver B after A reaches INSTALLING, before its IO verifier opens the APK. InAppUpdates.open guards only DOWNLOADING/VERIFYING or an identical release (InAppUpdates.kt:32–37; UpdateInstall.kt:62), so it deletes A's APK through sweepUpdateOrphans and resets state to B/IDLE. A's retained install coroutine then verifies the deleted file and can mark B FAILED (InAppUpdates.kt:130–138). READY and NEED_PERMISSION are also replaceable. The base only called open from an explicit user action.",
+      "impact": "The automatic prompt can discard a chosen, verified APK and corrupt installer or permission-return state. Active downloading itself is protected.",
+      "recommendation": "Preserve the active installation transaction and its APK when presenting another available release; defer automatic selection while installation is pending. Guard asynchronous installer results by transaction ownership and add a delayed-response regression covering READY, permission return, and INSTALLING.",
+      "introduced_in_pr": true,
+      "verification": "runtime-inference"
+    },
+    {
+      "id": "UPD-003",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Theme.kt",
+      "line": 21,
+      "claim": "Existing update-dialog tests do not cover the new default style or the required system-font acceptance matrix.",
+      "evidence": "P8VisualTest.kt:137–146 and Pr17UiTest.kt:754–799 render through QuietGridTheme(dark), whose default remains QUIET_GRID. No instrumentation source references InkPaper, ThemeStyle, MainActivity, or InAppUpdates. The update matrices inject LocalDensity instead of changing the actual system font configuration. The new test only checks style persistence.",
+      "impact": "Successful builds and classic-style tests cannot establish InkPaper dialog readability, action reachability, or target bounds under the required light/dark and large-font configurations.",
+      "recommendation": "Run a CI update-dialog matrix for both styles, light/dark, and actual 200% system font scaling. Verify activity/dialog font configuration, existing tags, 48dp targets, scrolling, dismissal, retry, and installation actions.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    },
+    {
+      "id": "UPD-004",
+      "severity": "MINOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt",
+      "line": 53,
+      "claim": "InkPaper dark update-action labels fail normal-text contrast.",
+      "evidence": "UpdateDialog.kt:47–53 uses BiteButton for update/retry/install actions. BiteButton.kt's definition in BiteComponents.kt:161–165 uses white onAccent on the dark cta color #E0653A. Executed sRGB calculation gives 3.4471:1, below 4.5:1 for the 14sp button labels. The base classic pair measures 13.3755:1.",
+      "impact": "Primary update and installation actions lose accessible label contrast in the new default dark style at normal font size.",
+      "recommendation": "Choose a dark-style CTA/foreground pair with at least 4.5:1 contrast and include these update actions in contrast validation.",
+      "introduced_in_pr": true,
+      "verification": "executed"
+    }
+  ],
+  "acceptance": [
+    "Source-inspected: persisted opt-out prevents startup requests; manual checks remain available with opt-out and do not trigger the automatic popup. Opening the startup dialog does not start a download.",
+    "Source-inspected: checker and installer remain process singletons; activity recreation does not recreate or recheck the checker. Background cancellation, stale-response rejection, and manual failure/retry behavior are unchanged.",
+    "FAIL: once-per-launch dismissal and pending installation ownership, UPD-001 and UPD-002.",
+    "PARTIAL: both-style, light/dark, actual large-font update-dialog acceptance remains uncovered, UPD-003. Existing tags and explicit 48dp button heights survive source inspection.",
+    "FAIL: normal-font InkPaper dark primary-action contrast, UPD-004.",
+    "Source-inspected: positive version checks, trusted URL/redirect constraints, SHA-256 promotion and installation rechecks, restricted FileProvider, and release signature constraints are unchanged.",
+    "Unchanged baseline: process recreation has no pending-APK recovery; manager initialization sweeps old APK/partial files. Service cancellation closes partial downloads before enabling retry. These are not reported as PR regressions."
+  ],
+  "validation_executed": [
+    "Read-only git/Python checks confirmed exact HEAD, base ancestry, and byte-identical checker, installer, service, gateway, dialog, manifest/provider, and signing paths against the base.",
+    "Selected six read-only node release-guard tests passed; the fixture test that writes temporary Git repositories was excluded.",
+    "Python -B calculated update-dialog text and primary-action contrast from the actual four palette definitions.",
+    "Static instrumentation-source scan confirmed no InkPaper or production startup/installer coverage.",
+    "Repository status was clean before and after review; no repository files were written."
+  ],
+  "not_verified": [
+    "Android lifecycle, download, and permission-return sequences were inferred from source; no device reproduction was executed.",
+    "Both styles in light/dark with actual 200% system font scaling, rendered target bounds, and dialog screenshots.",
+    "Local Gradle, builds, and instrumentation were prohibited by the resource rule. Supplied exact-SHA CI metadata reports android/backend success and API26/API35 in progress when captured; final instrumentation conclusions were not verified.",
+    "Actual APK installation, OS signature enforcement, and release certificate verification."
+  ]
+}

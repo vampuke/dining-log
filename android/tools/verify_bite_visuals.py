@@ -116,6 +116,10 @@ for relative, expected in protected_baseline.items():
 protected = set(subprocess.check_output(['git', 'ls-files', 'backend', 'contracts'], cwd=ROOT, text=True).splitlines())
 assert protected == set(protected_baseline), ('Protected files added or removed', protected ^ set(protected_baseline))
 print('PASS contrast failures=0, native night colors, visible dark strokes/shadows, launcher bindings, vectors, tags, backend/contracts unchanged')
+# Run the additional InkPaper consumer gate after every retained classic/native/
+# vector/tag/protected-file assertion, so a RED accent cannot mask those guards.
+from pr18_visual_roles import check_ink_paper
+measurements['ink_paper'] = check_ink_paper()
 if '--json' in __import__('sys').argv:
     dest = Path(__import__('sys').argv[-1]); dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps(measurements, indent=2) + '\n')

@@ -1,0 +1,6 @@
+/tmp/pr18-runtime-controls-aex1oswp/ExtractedAdapter.kt:107:57: warning: no cast needed
+            it.id !in ancestors && ownerWindow((it.root as ViewRootForTest).view) === geometry.window
+                                                        ^
+/tmp/pr18-runtime-controls-aex1oswp/ExtractedAdapter.kt:110:38: warning: no cast needed
+            val view = (overlay.root as ViewRootForTest).view
+                                     ^

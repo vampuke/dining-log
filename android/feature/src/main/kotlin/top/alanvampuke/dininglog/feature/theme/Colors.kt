@@ -34,6 +34,31 @@ val QuietGridDark = QuietGridColors(
     butter = Color(0xFFFFD60A), popRed = Color(0xFFFF595E), mint = Color(0xFF06D6A0), klein = Color(0xFF3A86FF),
     lilac = Color(0xFF8338EC), peach = Color(0xFFFF9F1C), bubble = Color(0xFFFF70A6), stickerInk = Color(0xFF111111),
 )
+// Ink & Paper ("纸墨"): the default style. One persimmon accent; the rainbow pop
+// fills are retired to warm neutrals so no saturated colour can leak through a
+// shared component. Dots match the background, so the dot grid disappears.
+val InkPaperLight = QuietGridColors(
+    bg = Color(0xFFFAF7F0), surface = Color(0xFFFFFFFF), ink = Color(0xFF1A1712),
+    secondary = Color(0xFF6B6257), tertiary = Color(0xFF786E60), border = Color(0xFFE5DDCF),
+    accent = Color(0xFFBC3E1D), onAccent = Color(0xFFFFFFFF), danger = Color(0xFFA61B27),
+    accentInk = Color(0xFF1A1712), cta = Color(0xFFBC3E1D), accentSoft = Color(0xFFF3EDE0),
+    borderStrong = Color(0xFFD8CDB8), gallery = Color(0xFFFAF7F0),
+    paper = Color(0xFFF3EDE0), shadow = Color(0x00000000), dieCut = Color(0xFFF3EDE0), dots = Color(0xFFFAF7F0),
+    butter = Color(0xFFBC3E1D), popRed = Color(0xFFBC3E1D), mint = Color(0xFF6B6257), klein = Color(0xFF6B6257),
+    lilac = Color(0xFF6B6257), peach = Color(0xFFBC3E1D), bubble = Color(0xFF6B6257), stickerInk = Color(0xFF1A1712),
+)
+val InkPaperDark = QuietGridColors(
+    bg = Color(0xFF1C1915), surface = Color(0xFF26211B), ink = Color(0xFFF5F1E8),
+    secondary = Color(0xFFB3A996), tertiary = Color(0xFF998F7E), border = Color(0xFF3A332A),
+    // Warm dark action text keeps contrast through the focused/pressed state layer;
+    // this persimmon also remains readable as small rating text on paper.
+    accent = Color(0xFFE56E44), onAccent = Color(0xFF1C1915), danger = Color(0xFFFF9398),
+    accentInk = Color(0xFFF5F1E8), cta = Color(0xFFE56E44), accentSoft = Color(0xFF2E2820),
+    borderStrong = Color(0xFF4A4234), gallery = Color(0xFF1C1915),
+    paper = Color(0xFF2E2820), shadow = Color(0x00000000), dieCut = Color(0xFF2E2820), dots = Color(0xFF1C1915),
+    butter = Color(0xFFE56E44), popRed = Color(0xFFE56E44), mint = Color(0xFFB3A996), klein = Color(0xFFB3A996),
+    lilac = Color(0xFFB3A996), peach = Color(0xFFE56E44), bubble = Color(0xFFB3A996), stickerInk = Color(0xFF1C1915),
+)
 private fun roles(c: QuietGridColors, inverse: QuietGridColors) = lightColorScheme(
     primary = c.accentInk, onPrimary = c.surface,
     primaryContainer = c.accentSoft, onPrimaryContainer = c.accentInk,
@@ -57,3 +82,5 @@ private fun roles(c: QuietGridColors, inverse: QuietGridColors) = lightColorSche
 )
 val QuietGridLightScheme = roles(QuietGridLight, QuietGridDark)
 val QuietGridDarkScheme = roles(QuietGridDark, QuietGridLight)
+val InkPaperLightScheme = roles(InkPaperLight, InkPaperDark)
+val InkPaperDarkScheme = roles(InkPaperDark, InkPaperLight)

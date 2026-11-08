@@ -18,9 +18,11 @@ data class AppRelease(val versionCode: Int, val versionName: String, val url: St
         }.getOrDefault(false)
 }
 // The startup preference does not hide results explicitly requested by the user.
+// startupRelease retains only the first persisted preference's automatic offer.
 data class AppUpdateState(val enabled: Boolean = true, val release: AppRelease? = null,
     val checking: Boolean = false, val upToDate: Boolean = false,
-    val failed: Boolean = false, val manual: Boolean = false)
+    val failed: Boolean = false, val manual: Boolean = false,
+    val startupRelease: AppRelease? = null)
 interface AppVersionGateway { suspend fun latest(): AppRelease }
 interface UpdatePreferences {
     val updateChecksEnabled: Flow<Boolean>
@@ -34,13 +36,16 @@ class AppUpdateChecker(private val gateway: AppVersionGateway, private val prefe
     val state: StateFlow<AppUpdateState> = mutableState.asStateFlow()
     init {
         scope.launch {
+            var firstPreference = true
             // Wait for persisted preferences before making any network request.
             preferences.updateChecksEnabled.catch { emit(false) }.distinctUntilChanged().collectLatest { enabled ->
+                val startup = firstPreference
+                firstPreference = false
                 mutableState.update { current ->
                     if (current.manual) current.copy(enabled = enabled)
                     else current.copy(enabled = enabled, release = null, upToDate = false, failed = false)
                 }
-                if (enabled) check(manual = false)
+                if (enabled) check(manual = false, startup = startup)
             }
         }
     }
@@ -50,7 +55,7 @@ class AppUpdateChecker(private val gateway: AppVersionGateway, private val prefe
     // Both sources share one guard. A duplicate call returns without owning or
     // clearing the active request's state; preference changes cancel only the
     // collector's background request, never an independently launched manual one.
-    private suspend fun check(manual: Boolean) {
+    private suspend fun check(manual: Boolean, startup: Boolean = false) {
         if (!requestLock.tryLock()) return
         try {
             // A pending background request does not change the provenance of
@@ -61,7 +66,8 @@ class AppUpdateChecker(private val gateway: AppVersionGateway, private val prefe
             require(release.valid) { "Invalid app release metadata" }
             val newer = isNewerVersion(release.versionCode, installedVersionCode)
             mutableState.update { it.copy(release = if (newer) release else null,
-                checking = false, upToDate = manual && !newer, failed = false, manual = manual) }
+                checking = false, upToDate = manual && !newer, failed = false, manual = manual,
+                startupRelease = if (startup && newer) release else it.startupRelease) }
         } catch (cancelled: CancellationException) {
             mutableState.update { it.copy(checking = false, upToDate = false) }
             throw cancelled

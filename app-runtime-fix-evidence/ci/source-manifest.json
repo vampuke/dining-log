@@ -1,0 +1,60 @@
+[
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/summary.json",
+    "saved": "app-runtime-fix-evidence/ci/summary.json",
+    "bytes": 2168034,
+    "sha256": "eefc22411638d8e5bb0afc1a70333ffc302e6cd41486898d3ffa458fc41551a5"
+  },
+  {
+    "source": "/tmp/dining-publish-20261108/api-failure-stacks.json",
+    "saved": "app-runtime-fix-evidence/ci/parent-failure-stacks.json",
+    "bytes": 75407,
+    "sha256": "1792afd27b3c28da0c081e177fa335591a08d13a5e68949641e0e5de26a606b6"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/outputs/p4-screenshots/p4-screenshots/pr18-measurements-api26.txt",
+    "bytes": 11433315,
+    "sha256": "005e99025736df58f0e16bf2ade74c39ef7c6cb47a9a7722d97f4b68de95e5e0"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "saved": "app-runtime-fix-evidence/ci/api-26/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "bytes": 13314,
+    "sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "saved": "app-runtime-fix-evidence/ci/api-26/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "bytes": 15885,
+    "sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "saved": "app-runtime-fix-evidence/ci/api-26/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "bytes": 19916,
+    "sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/outputs/p4-screenshots/p4-screenshots/pr18-measurements-api35.txt",
+    "bytes": 11389519,
+    "sha256": "f8e37a73240632443a3328c3a1eaee0dbb760246e0694ad40cf28a33ea89e8a3"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "saved": "app-runtime-fix-evidence/ci/api-35/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "bytes": 13311,
+    "sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "saved": "app-runtime-fix-evidence/ci/api-35/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "bytes": 15891,
+    "sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "saved": "app-runtime-fix-evidence/ci/api-35/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "bytes": 19942,
+    "sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  }
+]

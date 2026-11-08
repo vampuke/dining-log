@@ -1,0 +1,64 @@
+name: PR18 Regression Probe
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - verify/pr18-review-regressions
+permissions:
+  contents: read
+concurrency:
+  group: pr18-regression-probe-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  # Diagnostic only; never one of the four mandatory production ci.yml jobs.
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Record probe source
+        run: |
+          mkdir -p android/app/build/outputs/pr18-regression-probe
+          git rev-parse HEAD > android/app/build/outputs/pr18-regression-probe/SOURCE_COMMIT
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          cache-read-only: false
+      - name: Install pinned Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run only the new review regressions (API35)
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: bash .github/scripts/pr18-regression-probe.sh
+      - name: Validate actual test execution and classify evidence
+        if: always()
+        run: >-
+          python3 -B .github/scripts/verify-pr18-regression-probe.py
+          android/app/build/outputs/androidTest-results/connected
+          android/app/build/outputs/pr18-regression-probe/results.json
+      - name: Retain probe reports and diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pr18-regression-probe-api35-${{ github.sha }}
+          path: |
+            android/app/build/reports/androidTests/connected/
+            android/app/build/outputs/androidTest-results/connected/
+            android/app/build/outputs/pr18-regression-probe/
+          if-no-files-found: error
+          retention-days: 14

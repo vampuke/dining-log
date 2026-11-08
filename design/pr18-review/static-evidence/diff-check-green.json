@@ -1,0 +1,8 @@
+{
+  "name": "diff-check-green",
+  "command": "git diff --check",
+  "exit_code": 0,
+  "output": "",
+  "executed_at_utc": "2026-11-07 09:34:37 UTC",
+  "execution_head": "ed9f8112352767006ad312d6e7ded6ec0644fea4"
+}

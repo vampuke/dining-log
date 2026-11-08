@@ -1,0 +1,8 @@
+PASS branch/master/base; execution HEAD=8b8decf7c39ed67858ef99c760e1ca75e273f013
+PASS 663 original files byte-identical; new files restricted to tests/seams/evidence
+PASS 22 legacy Android test files unchanged; dependencies/locks/version/signing/workflows/resources unchanged
+PASS 80 protected backend/contracts hashes; migrations unchanged
+PASS original MainActivity composition equals extraction after receiver/ignored-provenance substitutions
+PASS original InAppUpdates methods and production HTTP/installer operations retained; automatic argument ignored
+PASS every original contrast/native/vector/tag/protected-hash verifier assertion retained
+PASS delimiter audit of 13 Kotlin files; Android compilation/execution PENDING parent CI

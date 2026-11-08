@@ -1,0 +1,8 @@
+{
+  "name": "python-release-guards-green",
+  "command": "python3 -B -m unittest discover -s .github/scripts -p 'test_*.py'",
+  "exit_code": 0,
+  "output": "..................\n----------------------------------------------------------------------\nRan 18 tests in 8.787s\n\nOK\n",
+  "executed_at_utc": "2026-11-07 09:27:02 UTC",
+  "execution_head": "ed9f8112352767006ad312d6e7ded6ec0644fea4"
+}

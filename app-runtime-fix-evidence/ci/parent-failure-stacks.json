@@ -1,0 +1,514 @@
+[
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-56712:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-57691:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-58697:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-59729:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=false]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #56623 at (l=42.0, t=1227.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-15067374'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=true]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #57602 at (l=42.0, t=1227.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-658968'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=false]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #58597 at (l=42.0, t=1227.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-15658735'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=true]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #59630 at (l=42.0, t=1227.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-658712'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "7afc21397ec705cfccceb205ca41edca04144e3243729588d87595039fe482c8"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-67039:record-list, node-67127:record:pr18-row-2]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-69542:record-list, node-69616:record:pr18-row-2]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-72575:record-list, node-72684:record:pr18-restaurant]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-75640:record-list, node-75749:record:pr18-restaurant]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-66968:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-69471:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-72480:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-75545:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-65312:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-67815:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-70475:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-73540:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "5686d32f8aee4324f54c8b16801203e471d9a59aa33a6be08c7b282305333972"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-76538:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-77885:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-79542:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-81508:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-76333:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-77680:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-79235:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-81201:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-76997:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-78330:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-80242:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 26,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-82198:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-26/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "7b6b9874384be162ac8087b848bdb0b1a62f7de8bb0387b76fe641192f8b6dfb"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-56328:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-57318:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-58334:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch password-save: occluded by [node-59366:untagged]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7PasswordDialogUsesRealFontAndKeepsInputCallbacksSaveAndSecurity(Pr18DialogAcceptanceTest.kt:225)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=false]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #56239 at (l=42.0, t=1218.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-15067374'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[INK_PAPER-dark=true]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #57229 at (l=42.0, t=1218.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-658968'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=false]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #58235 at (l=42.0, t=1218.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-15658735'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18DialogAcceptanceTest",
+    "name": "f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch[QUIET_GRID-dark=true]",
+    "stack": "java.lang.AssertionError: Failed to assert the following: (Text + InputText + EditableText contains '50%' (ignoreCase: false))\nSemantics of the node:\nNode #59267 at (l=42.0, t=1218.0, r=279.0, b=1270.0)px, Tag: 'update-progress'\nQuietGridForegroundArgb = '-658712'\nText = '[正在下载 · 50%]'\nActions = [ClearTextSubstitution, GetTextLayoutResult, SetTextSubstitution, ShowTextSubstitution]\nHas 7 siblings\nSelector used: (TestTag = 'update-progress')\n\nat androidx.compose.ui.test.AssertionsKt.assert(Assertions.kt:260)\nat androidx.compose.ui.test.AssertionsKt.assert$default(Assertions.kt:250)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains(Assertions.kt:204)\nat androidx.compose.ui.test.AssertionsKt.assertTextContains$default(Assertions.kt:200)\nat top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.f7UpdateAllStagesUseRealSystemFontAndReachableActionsAtEveryBranch(Pr18DialogAcceptanceTest.kt:127)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18DialogAcceptanceTest.html",
+    "source_sha256": "5dd46b59d45ce00eb18f0d1bc8dd2d6b6ca08e7f17d1293ca928eca3944ebc1a"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-66636:record-list, node-66697:record:pr18-restaurant]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-69159:record-list, node-69220:record:pr18-restaurant]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-72159:record-list, node-72268:record:pr18-restaurant]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:restaurants: occluded by [node-75205:record-list, node-75314:record:pr18-restaurant]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7EveryListAndSearchRemainReachableInBothLandscapeDirectionsAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:296)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-66565:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-69088:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-72064:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch landscape-ime-save: occluded by [node-75110:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7NarrowLandscapeImeKeepsActualSaveTargetAboveKeyboardAtAllFontBranches(Pr18ScreenAcceptanceTest.kt:279)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-64896:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-67467:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-70092:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18ScreenAcceptanceTest",
+    "name": "f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch save: occluded by [node-73138:edit-scroll]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.save(Pr18ScreenAcceptanceTest.kt:107)\nat top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.f7RestaurantSearchDishVisitHistoryDetailEditAndSettingsCompleteFlowsAt100And200Percent(Pr18ScreenAcceptanceTest.kt:172)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18ScreenAcceptanceTest.html",
+    "source_sha256": "3f809b3429da3f0faca959d1c86bd7fff3c854e2b65a576c332d6878f8c6ebd7"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-76032:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-77355:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-79040:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-80941:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f5InitiallyOptedOutLaunchCanEnableCheckingWithoutAnInterruptingStartupPopup(Pr18StartupTest.kt:143)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-75888:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-77150:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-78744:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-80645:record-list, node-80788:record:pr18-row-4]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedInRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:181)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-76538:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[INK_PAPER-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-77861:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=false]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-79719:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  },
+  {
+    "api": 35,
+    "class": "Pr18StartupTest",
+    "name": "f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload[QUIET_GRID-dark=true]",
+    "stack": "java.lang.IllegalStateException: Unreachable touch tab:settings: occluded by [node-81620:record-list]; no vertical scroll ancestor\nat top.alanvampuke.dininglog.product.Pr18Evidence.expose(Pr18Evidence.kt:502)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch(Pr18Evidence.kt:542)\nat top.alanvampuke.dininglog.product.Pr18Evidence.touch$default(Pr18Evidence.kt:539)\nat top.alanvampuke.dininglog.product.Pr18EvidenceKt.pr18Click(Pr18Evidence.kt:96)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.settings(Pr18StartupTest.kt:71)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.manualCheck(Pr18StartupTest.kt:191)\nat top.alanvampuke.dininglog.product.Pr18StartupTest.f8ManualCheckWhileOptedOutRequiresExplicitOpenAndDownload(Pr18StartupTest.kt:180)",
+    "source": "/tmp/dining-release-20261107/ci-evidence-42435516388/android-auth-api-35/reports/androidTests/connected/debug/top.alanvampuke.dininglog.product.Pr18StartupTest.html",
+    "source_sha256": "98bc32a05c3320d9a96a22f40ae22c47f752bef7a69592ab9a090c10e329caef"
+  }
+]

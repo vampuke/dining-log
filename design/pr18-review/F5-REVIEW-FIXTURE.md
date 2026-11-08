@@ -1,0 +1,17 @@
+PR18 F5/F6 fixture completion and diagnostics
+
+Starting SHA: `89ec3658a6c955504733b5af7a606335019662f6`. API35 probe `42383503147` ran all four methods without skips: three F6 passes and an F5 failure at `Pr18ReviewRegressionTest.kt:159`, asserting displayed B. Its classification is `OTHER_FAILURE`: the fixture RED, not the expected F5 popup-count RED or Android GREEN. XML, per-method logcat, and measurements are under `/tmp/dining-release-20261107/probe-f56-89ec365-42383503147/files`.
+
+The injected checker completed B (`enabled=true`, `manual=false`, `release=startupRelease=B`); selected A and the sampled zero popup count remained. The later unmerged tree still showed `有新版本 手动选择 A` and disabled `正在检查…`. The update row's full and visible bounds were both `(53,373)-(892,499)`, so clipping alone cannot explain missing B. The generic failure record incorrectly read the unused `next.updates`; it now records the injected checker.
+
+STATIC inspection of pinned Google Maven sources (Compose 1.8.2; lifecycle/navigation 2.9.0) found that lifecycle collection preserves the composition dispatcher. Compose's idle check examines frame awaiters, snapshot changes, and recomposer work, without checking queued dispatcher tasks. The UI clock advances the scheduler and calls `runCurrent()`. Thus a source-state wait followed by idle can miss queued collection. The existing startup/preferences tests use the unconfined default; this class keeps StandardTestDispatcher to prevent the previously observed wrong-thread window side effects.
+
+Ranked hypotheses: queued lifecycle collection, stale NavHost destination captures/state, and persistent product update failure. Navigation remembers the graph using the builder as a key and replaces destinations for equivalent graphs. This does not establish that the failed run's Settings capture was current; remote execution must distinguish the hypotheses.
+
+F5 waits up to 15 seconds for exactly one B text node inside the real `app-update` row and an enabled checking control. It then requires a `withFrameNanos` receipt from the same composition's remembered scope within 15 seconds and awaits idle/layout before sampling popups. This drains the synchronous startup-offer effect after real B without changing product inputs or forcing navigation/recreation. The predicate permits an erroneous popup; the original displayed-B and zero-popup assertions remain.
+
+Diagnostics record the injected checker, lifecycle, clock, update-row text/bounds, and checking-control semantics. A timeout remains a failure. Persistent A after clock progress blocks acceptance and requires parent investigation of production; this change supplies the exact reproduction without editing production.
+
+All four names, 21 F5 assertion calls, the entire F6 suffix with 30 assertion calls, and security/font checks are preserved. STATIC guards also verified 31 other original test files byte-for-byte. Production, dependencies, CI, test selection, and historical reports remain unchanged.
+
+STATIC checks passed: 12 synthetic probe-validator tests, seven existing source guards, preservation/pinned-API guards, and `git diff --check`. Reclassifying the original XML correctly returned exit 1 (`OTHER_FAILURE`). Android compilation and candidate execution remain unverified. The parent must inspect the exact four-method API35 probe, independently review the integrated F7 candidate, and run complete CI; the probe does not replace it.

@@ -11,6 +11,14 @@ on:
         description: Release tag matching the source version, for example v0.5.0
         required: true
         type: string
+      production_mode:
+        description: APK-only skips production operations; full retains the legacy deployment path
+        required: true
+        type: choice
+        default: apk-only
+        options:
+          - apk-only
+          - full
 
 permissions:
   contents: read
@@ -33,6 +41,7 @@ jobs:
     env:
       RELEASE_COMMIT: ${{ inputs.commit_sha }}
       RELEASE_TAG: ${{ inputs.release_tag }}
+      PRODUCTION_MODE: ${{ inputs.production_mode }}
       WRANGLER_SEND_METRICS: 'false'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -58,10 +67,21 @@ jobs:
           test "$(git rev-parse HEAD)" = "${RELEASE_COMMIT,,}"
           git fetch origin master --no-tags
           git merge-base --is-ancestor "${RELEASE_COMMIT,,}" origin/master
+      - name: Validate explicit production mode before executing candidate scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          case "${PRODUCTION_MODE-}" in
+            apk-only|full) ;;
+            *) echo 'production_mode must be exactly apk-only or full' >&2; exit 1 ;;
+          esac
       - name: Validate source, unused tag and successful master/API 26/35 candidate
         env:
           GH_TOKEN: ${{ github.token }}
         run: node .github/scripts/validate-release.mjs
+      - name: Prove APK-only backend source against the previous published tag
+        if: env.PRODUCTION_MODE == 'apk-only'
+        run: python3 -B .github/scripts/verify-apk-only-release.py
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
@@ -144,27 +164,33 @@ jobs:
           disable-animations: true
           script: bash .github/scripts/release-install.sh
       - name: Record current Worker deployment/version IDs and D1 Time Travel checkpoint
+        if: env.PRODUCTION_MODE == 'full'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node .github/scripts/production-d1.mjs checkpoint
       - name: Verify immutable migrations and compatibility with the current schema
+        if: env.PRODUCTION_MODE == 'full'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node .github/scripts/production-d1.mjs pre-migration
       - name: Reject Custom Domain and DNS conflicts before production writes
+        if: env.PRODUCTION_MODE == 'full'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node .github/scripts/production-d1.mjs domain
       - name: Apply production migrations
+        if: env.PRODUCTION_MODE == 'full'
         working-directory: backend
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: npx --no-install wrangler d1 migrations apply DB --remote
       - name: Assert 14 tables, migration records, foreign_key_check and quick_check
+        if: env.PRODUCTION_MODE == 'full'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node .github/scripts/production-d1.mjs verify
       - name: Deploy Worker to the sole Custom Domain
+        if: env.PRODUCTION_MODE == 'full'
         working-directory: backend
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -183,15 +209,25 @@ jobs:
           print('HTTP 200', json.dumps(body, separators=(',', ':')))
           PY
       - name: Independently smoke auth, CRUD, history, deletion, restore and logout
+        if: env.PRODUCTION_MODE == 'full'
         working-directory: backend
         run: |
           set -euo pipefail
           npm run smoke:production | tee "$RUNNER_TEMP/dining-production-smoke.txt"
-      - name: Publish signed APK and checksum only after production smoke passes
+      - name: Publish signed APK and checksum after required release checks
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          case "$PRODUCTION_MODE" in
+            apk-only)
+              printf '\n%s\n' 'Release mode: apk-only. Signed APK and public read-only health checks passed. Production deployment, migrations and CRUD smoke were skipped.' >> "$RUNNER_TEMP/dining-release-notes.md"
+              ;;
+            full)
+              printf '\n%s\n' 'Release mode: full. Existing production deployment and CRUD smoke gates passed.' >> "$RUNNER_TEMP/dining-release-notes.md"
+              ;;
+            *) echo 'production_mode must be exactly apk-only or full' >&2; exit 1 ;;
+          esac
           node .github/scripts/validate-release.mjs publish
           gh release create "$RELEASE_TAG" \
             android/app/build/outputs/apk/release/app-release.apk \
@@ -207,6 +243,7 @@ jobs:
           name: release-evidence
           path: |
             ${{ runner.temp }}/dining-release-selection.json
+            ${{ runner.temp }}/dining-apk-only-source-check.json
             ${{ runner.temp }}/dining-apk-badging.txt
             ${{ runner.temp }}/dining-apk-signature.txt
             ${{ runner.temp }}/dining-apk-metadata.json

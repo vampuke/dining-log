@@ -1,0 +1,210 @@
+{
+  "bom": {
+    "source": "/tmp/pr17_compose_sources/compose-bom-2025.05.01.pom",
+    "sha256": "00c14ac373ca3f73dcaa21524ce5f6564656a7485cf096e799449ab968ca57b8"
+  },
+  "archives": [
+    {
+      "source": "/tmp/pr17_compose_sources/ui-android-1.8.2-sources.jar",
+      "sha256": "963e15c8a0568027095e95461152f7e59213261389d00a90aa5c7b12ff0ce2a0"
+    },
+    {
+      "source": "/tmp/pr17_compose_sources/ui-test-android-1.8.2-sources.jar",
+      "sha256": "61cd0d46ac0ec8f18cef97ab43ce7d7c000e177c4dfe75eaf35f2c735ad75df3"
+    },
+    {
+      "source": "/tmp/pr17_compose_sources/material3-android-1.3.2-sources.jar",
+      "sha256": "e58d105a4fcf1f65a6b2838ca8a6fe40b5784b5dba9ddcf27aabcdfc92b3e4e2"
+    }
+  ],
+  "entries": [
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/semantics/SemanticsNode.kt",
+      "full_sha256": "a78d2b32cc3c7f0b1d2ef38cc0be4aeaa20462f89ad1cc854396c81e3da455d4",
+      "excerpts": [
+        {
+          "first_line": 117,
+          "last_line": 148,
+          "source": "    val id: Int = layoutNode.semanticsId\n\n    // GEOMETRY\n\n    /**\n     * The rectangle of the touchable area.\n     *\n     * If this is a clickable region, this is the rectangle that accepts touch input. This can be\n     * larger than [size] when the layout is less than [ViewConfiguration.minimumTouchTargetSize]\n     */\n    val touchBoundsInRoot: Rect\n        get() {\n            val entity =\n                if (unmergedConfig.isMergingSemanticsOfDescendants) {\n                    (layoutNode.outerMergingSemantics ?: outerSemanticsNode)\n                } else {\n                    outerSemanticsNode\n                }\n            return entity.node.touchBoundsInRoot(unmergedConfig.useMinimumTouchTarget)\n        }\n\n    /** The size of the bounding box for this node, with no clipping applied */\n    val size: IntSize\n        get() = findCoordinatorToGetBounds()?.size ?: IntSize.Zero\n\n    /**\n     * The bounding box for this node relative to the root of this Compose hierarchy, with clipping\n     * applied. To get the bounds with no clipping applied, use Rect([positionInRoot],\n     * [size].toSize())\n     */\n    val boundsInRoot: Rect\n        get() = findCoordinatorToGetBounds()?.takeIf { it.isAttached }?.boundsInRoot() ?: Rect.Zero\n"
+        },
+        {
+          "first_line": 267,
+          "last_line": 296,
+          "source": "        list: MutableList<SemanticsNode>,\n        includeDeactivatedNodes: Boolean\n    ) {\n        // TODO(lmr): visitChildren would be great for this but we would lose the zSorted bit...\n        //  i wonder if we can optimize this for the common case of no z-sortedness going on.\n        zSortedChildren.forEach { child ->\n            // TODO(b/290936195): In some conditions it appears that children here can be\n            //  unattached. We just guard against that here as a \"quick fix\" but we need to\n            //  understand why this is happening and followup with a proper fix.\n            if (child.isAttached && (includeDeactivatedNodes || !child.isDeactivated)) {\n                if (child.nodes.has(Nodes.Semantics)) {\n                    list.add(SemanticsNode(child, mergingEnabled))\n                } else {\n                    child.fillOneLayerOfSemanticsWrappers(list, includeDeactivatedNodes)\n                }\n            }\n        }\n    }\n\n    /**\n     * Contains the children in inverse hit test order (i.e. paint order).\n     *\n     * Note that if mergingEnabled and mergeDescendants are both true, then there are no children\n     * (except those that are themselves mergeDescendants).\n     */\n    // TODO(b/184376083): This is too expensive for a val (full subtree recreation every call);\n    //               optimize this when the merging algorithm is improved.\n    val children: List<SemanticsNode>\n        get() = getChildren()\n\n"
+        },
+        {
+          "first_line": 397,
+          "last_line": 407,
+          "source": "    /**\n     * If the node is merging the descendants, we'll use the outermost semantics modifier that has\n     * mergeDescendants == true to report the bounds, size and position of the node. For majority of\n     * use cases it means that accessibility bounds will be equal to the clickable area. Otherwise\n     * the outermost semantics will be used to report bounds, size and position.\n     */\n    internal fun findCoordinatorToGetBounds(): NodeCoordinator? {\n        if (isFake) return parent?.findCoordinatorToGetBounds()\n        val semanticsModifierNode = layoutNode.outerMergingSemantics ?: outerSemanticsNode\n        return semanticsModifierNode.requireCoordinator(Nodes.Semantics)\n    }\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/semantics/SemanticsOwner.kt",
+      "full_sha256": "6823bb138891bba6986d49bec489e18384f0f1534ac7d370eef6851c8b3a836c",
+      "excerpts": [
+        {
+          "first_line": 34,
+          "last_line": 66,
+          "source": "     */\n    val rootSemanticsNode: SemanticsNode\n        get() {\n            return SemanticsNode(rootNode, mergingEnabled = true)\n        }\n\n    val unmergedRootSemanticsNode: SemanticsNode\n        get() {\n            return SemanticsNode(\n                outerSemanticsNode = outerSemanticsNode,\n                layoutNode = rootNode,\n                mergingEnabled = false,\n                // Forcing an empty SemanticsConfiguration here since the root node will always\n                // have an empty config, but if we don't pass this in explicitly here it will try\n                // to call `rootNode.collapsedSemantics` which will fail because the LayoutNode\n                // is not yet attached when this getter is first called.\n                unmergedConfig = SemanticsConfiguration()\n            )\n        }\n\n    internal val listeners = MutableObjectList<SemanticsListener>(2)\n\n    internal val rootInfo: SemanticsInfo\n        get() = rootNode\n\n    internal operator fun get(semanticsId: Int): SemanticsInfo? {\n        return nodes[semanticsId]\n    }\n\n    internal fun notifySemanticsChange(\n        semanticsInfo: SemanticsInfo,\n        previousSemanticsConfiguration: SemanticsConfiguration?\n    ) {\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/node/RootForTest.kt",
+      "full_sha256": "77877e7e275689d3611d49bcb7b3a286c74c9311b66e7f654e7e5e614a4bc5fe",
+      "excerpts": [
+        {
+          "first_line": 29,
+          "last_line": 41,
+          "source": "interface RootForTest {\n    /** Current device density. */\n    val density: Density\n\n    /** Semantics owner for this root. Manages all the semantics nodes. */\n    val semanticsOwner: SemanticsOwner\n\n    /** The service handling text input. */\n    @Deprecated(\"Use PlatformTextInputModifierNode instead.\") val textInputService: TextInputService\n\n    /**\n     * Send this [KeyEvent] to the focused component in this [Owner].\n     *\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/layout/LayoutInfo.kt",
+      "full_sha256": "bb1fc870fe3a0bfbdd965ca90b5c0b022bcadbd992d96bcaa77162febaaa628a",
+      "excerpts": [
+        {
+          "first_line": 29,
+          "last_line": 90,
+          "source": "    /**\n     * This returns a new List of [Modifier]s and the coordinates and any extra information that may\n     * be useful. This is used for tooling to retrieve layout modifier and layer information.\n     */\n    fun getModifierInfo(): List<ModifierInfo>\n\n    /** The measured width of this layout and all of its modifiers. */\n    val width: Int\n\n    /** The measured height of this layout and all of its modifiers. */\n    val height: Int\n\n    /** Coordinates of just the contents of the layout, after being affected by all modifiers. */\n    val coordinates: LayoutCoordinates\n\n    /** Whether or not this layout and all of its parents have been placed in the hierarchy. */\n    val isPlaced: Boolean\n\n    /** Parent of this layout. */\n    val parentInfo: LayoutInfo?\n\n    /** The density in use for this layout. */\n    val density: Density\n\n    /** The layout direction in use for this layout. */\n    val layoutDirection: LayoutDirection\n\n    /** The [ViewConfiguration] in use for this layout. */\n    val viewConfiguration: ViewConfiguration\n\n    /** Returns true if this layout is currently a part of the layout tree. */\n    val isAttached: Boolean\n\n    /** Unique and stable id representing this node to the semantics system. */\n    val semanticsId: Int\n\n    /**\n     * True if the node is deactivated. For example, the children of\n     * [androidx.compose.ui.layout.SubcomposeLayout] which are retained to be reused in future are\n     * considered deactivated.\n     */\n    val isDeactivated: Boolean\n        get() = false\n}\n\n/** Used by tooling to examine the modifiers on a [LayoutInfo]. */\nclass ModifierInfo(\n    val modifier: Modifier,\n    val coordinates: LayoutCoordinates,\n    val extra: Any? = null\n) {\n    override fun toString(): String {\n        return \"ModifierInfo($modifier, $coordinates, $extra)\"\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/node/SemanticsModifierNode.kt",
+      "full_sha256": "79d6d2de56c564dced5602fd5b265d8d70895de66d319d7978e102151c910459",
+      "excerpts": [
+        {
+          "first_line": 109,
+          "last_line": 121,
+          "source": "internal val SemanticsConfiguration.useMinimumTouchTarget: Boolean\n    get() = getOrNull(SemanticsActions.OnClick) != null\n\ninternal fun Modifier.Node.touchBoundsInRoot(useMinimumTouchTarget: Boolean): Rect {\n    if (!node.isAttached) {\n        return Rect.Zero\n    }\n    if (!useMinimumTouchTarget) {\n        return requireCoordinator(Nodes.Semantics).boundsInRoot()\n    }\n\n    return requireCoordinator(Nodes.Semantics).touchBoundsInRoot()\n}\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/node/NodeCoordinator.kt",
+      "full_sha256": "e67fad1a7fd256cc096ed8f565cfb13c789893dc1f5dfc14fb27e613046bc8d0",
+      "excerpts": [
+        {
+          "first_line": 912,
+          "last_line": 941,
+          "source": "    /** Returns the bounds of this [NodeCoordinator], including the minimum touch target. */\n    fun touchBoundsInRoot(): Rect {\n        if (!isAttached) {\n            return Rect.Zero\n        }\n\n        val root = findRootCoordinates()\n\n        val bounds = rectCache\n        val padding = calculateMinimumTouchTargetPadding(minimumTouchTargetSize)\n        bounds.left = -padding.width\n        bounds.top = -padding.height\n        bounds.right = measuredWidth + padding.width\n        bounds.bottom = measuredHeight + padding.height\n\n        var coordinator: NodeCoordinator = this\n        while (coordinator !== root) {\n            coordinator.rectInParent(\n                bounds,\n                clipBounds = false,\n                clipToMinimumTouchTargetSize = true\n            )\n            if (bounds.isEmpty) {\n                return Rect.Zero\n            }\n\n            coordinator = coordinator.wrappedBy!!\n        }\n        return bounds.toRect()\n    }\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/node/LayoutNode.kt",
+      "full_sha256": "06b1018173adc49e95b99c4eb02e8b57c328ddc3b85ff1bcd64bd9bfed0385d7",
+      "excerpts": [
+        {
+          "first_line": 619,
+          "last_line": 640,
+          "source": "    private val _zSortedChildren = mutableVectorOf<LayoutNode>()\n    private var zSortedChildrenInvalidated = true\n\n    /**\n     * Returns the children list sorted by their [LayoutNode.zIndex] first (smaller first) and the\n     * order they were placed via [Placeable.placeAt] by parent (smaller first). Please note that\n     * this list contains not placed items as well, so you have to manually filter them.\n     *\n     * Note that the object is reused so you shouldn't save it for later.\n     */\n    @PublishedApi\n    internal val zSortedChildren: MutableVector<LayoutNode>\n        get() {\n            if (zSortedChildrenInvalidated) {\n                _zSortedChildren.clear()\n                _zSortedChildren.addAll(_children)\n                _zSortedChildren.sortWith(ZComparator)\n                zSortedChildrenInvalidated = false\n            }\n            return _zSortedChildren\n        }\n\n"
+        },
+        {
+          "first_line": 875,
+          "last_line": 883,
+          "source": "     * zIndex defines the drawing order of the LayoutNode. Children with larger zIndex are drawn on\n     * top of others (the original order is used for the nodes with the same zIndex). Default zIndex\n     * is 0. We use sum of the values passed as zIndex to place() by the parent layout and all the\n     * applied modifiers.\n     */\n    private val zIndex: Float\n        get() = measurePassDelegate.zIndex\n\n    /** The inner state associated with [androidx.compose.ui.layout.SubcomposeLayout]. */\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/node/InnerNodeCoordinator.kt",
+      "full_sha256": "ed0cc4192a63d1e87acdc4e5647fe548074ec30fae5d64175af10cb1885694dd",
+      "excerpts": [
+        {
+          "first_line": 173,
+          "last_line": 181,
+          "source": "    override fun performDraw(canvas: Canvas, graphicsLayer: GraphicsLayer?) {\n        val owner = layoutNode.requireOwner()\n        layoutNode.zSortedChildren.forEach { child ->\n            if (child.isPlaced) {\n                child.draw(canvas, graphicsLayer)\n            }\n        }\n        if (owner.showLayoutBounds) {\n            drawBorder(canvas, innerBoundsPaint)\n"
+        },
+        {
+          "first_line": 208,
+          "last_line": 234,
+          "source": "        if (hitTestChildren) {\n            hitTestResult.siblingHits {\n                // Any because as soon as true is returned, we know we have found a hit path and we\n                // must\n                // not add hit results on different paths so we should not even go looking.\n                layoutNode.zSortedChildren.reversedAny { child ->\n                    if (child.isPlaced) {\n                        hitTestSource.childHitTest(\n                            child,\n                            pointerPosition,\n                            hitTestResult,\n                            pointerType,\n                            inLayer\n                        )\n                        val wasHit = hitTestResult.hasHit()\n                        val continueHitTest: Boolean\n                        if (!wasHit) {\n                            continueHitTest = true\n                        } else if (child.outerCoordinator.shouldSharePointerInputWithSiblings()) {\n                            hitTestResult.acceptHits()\n                            continueHitTest = true\n                        } else {\n                            continueHitTest = false\n                        }\n                        !continueHitTest\n                    } else {\n                        false\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/semantics/SemanticsProperties.kt",
+      "full_sha256": "52427d7df251a3f22fdbe43251f69c825666cb0bcf466634dfa5e98607b260dc",
+      "excerpts": [
+        {
+          "first_line": 276,
+          "last_line": 306,
+          "source": "    /** @see SemanticsPropertyReceiver.onLongClick */\n    val OnLongClick = ActionPropertyKey<() -> Boolean>(\"OnLongClick\")\n\n    /** @see SemanticsPropertyReceiver.scrollBy */\n    val ScrollBy = ActionPropertyKey<(x: Float, y: Float) -> Boolean>(\"ScrollBy\")\n\n    /** @see SemanticsPropertyReceiver.scrollByOffset */\n    val ScrollByOffset = SemanticsPropertyKey<suspend (offset: Offset) -> Offset>(\"ScrollByOffset\")\n\n    /** @see SemanticsPropertyReceiver.scrollToIndex */\n    val ScrollToIndex = ActionPropertyKey<(Int) -> Boolean>(\"ScrollToIndex\")\n\n    /** @see SemanticsPropertyReceiver.onAutofillText */\n    val OnAutofillText = ActionPropertyKey<(AnnotatedString) -> Boolean>(\"OnAutofillText\")\n\n    /** @see SemanticsPropertyReceiver.setProgress */\n    val SetProgress = ActionPropertyKey<(progress: Float) -> Boolean>(\"SetProgress\")\n\n    /** @see SemanticsPropertyReceiver.setSelection */\n    val SetSelection = ActionPropertyKey<(Int, Int, Boolean) -> Boolean>(\"SetSelection\")\n\n    /** @see SemanticsPropertyReceiver.setText */\n    val SetText = ActionPropertyKey<(AnnotatedString) -> Boolean>(\"SetText\")\n\n    /** @see SemanticsPropertyReceiver.setTextSubstitution */\n    val SetTextSubstitution = ActionPropertyKey<(AnnotatedString) -> Boolean>(\"SetTextSubstitution\")\n\n    /** @see SemanticsPropertyReceiver.showTextSubstitution */\n    val ShowTextSubstitution = ActionPropertyKey<(Boolean) -> Boolean>(\"ShowTextSubstitution\")\n\n    /** @see SemanticsPropertyReceiver.clearTextSubstitution */\n"
+        }
+      ]
+    },
+    {
+      "archive": "ui-test-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/test/Filters.kt",
+      "full_sha256": "0b6e312663d132e00df7cbfef38759861f287464593591b60daf50a9e05c5fcf",
+      "excerpts": [
+        {
+          "first_line": 229,
+          "last_line": 258,
+          "source": "fun hasText(\n    text: String,\n    substring: Boolean = false,\n    ignoreCase: Boolean = false\n): SemanticsMatcher {\n    val propertyName = \"${Text.name} + ${InputText.name} + ${EditableText.name}\"\n    return if (substring) {\n        SemanticsMatcher(\"$propertyName contains '$text' (ignoreCase: $ignoreCase) as substring\") {\n            val isInInputTextValue =\n                it.config.getOrNull(InputText)?.text?.contains(text, ignoreCase) ?: false\n            val isInEditableTextValue =\n                it.config.getOrNull(EditableText)?.text?.contains(text, ignoreCase) ?: false\n            val isInTextValue =\n                it.config.getOrNull(Text)?.any { item -> item.text.contains(text, ignoreCase) }\n                    ?: false\n            isInInputTextValue || isInEditableTextValue || isInTextValue\n        }\n    } else {\n        SemanticsMatcher(\"$propertyName contains '$text' (ignoreCase: $ignoreCase)\") {\n            val isInInputTextValue =\n                it.config.getOrNull(InputText)?.text?.equals(text, ignoreCase) ?: false\n            val isInEditableTextValue =\n                it.config.getOrNull(EditableText)?.text?.equals(text, ignoreCase) ?: false\n            val isInTextValue =\n                it.config.getOrNull(Text)?.any { item -> item.text.equals(text, ignoreCase) }\n                    ?: false\n            isInInputTextValue || isInEditableTextValue || isInTextValue\n        }\n    }\n}\n"
+        },
+        {
+          "first_line": 274,
+          "last_line": 293,
+          "source": "fun hasTextExactly(\n    vararg textValues: String,\n    includeEditableText: Boolean = true\n): SemanticsMatcher {\n    val expected = textValues.toList()\n    val propertyName =\n        if (includeEditableText) {\n            \"${Text.name} + ${EditableText.name}\"\n        } else {\n            Text.name\n        }\n    return SemanticsMatcher(\"$propertyName = [${textValues.joinToString(\",\")}]\") { node ->\n        val actual = mutableListOf<String>()\n        if (includeEditableText) {\n            node.config.getOrNull(EditableText)?.let { actual.add(it.text) }\n        }\n        node.config.getOrNull(Text)?.let { actual.addAll(it.map { anStr -> anStr.text }) }\n        actual.containsAll(expected) && expected.containsAll(actual)\n    }\n}\n"
+        }
+      ],
+      "saved": "app-runtime-fix-evidence/pinned/Filters.kt"
+    },
+    {
+      "archive": "ui-test-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/test/Assertions.kt",
+      "full_sha256": "4a47020dae3ac650c3297faab23ebb9ad6ceb19d3ea5b986ae62b655acd4e866",
+      "excerpts": [
+        {
+          "first_line": 172,
+          "last_line": 181,
+          "source": " *\n * @param values List of values to match (the order does not matter)\n * @param includeEditableText Whether to also assert against the editable text.\n * @see SemanticsProperties.ContentDescription\n */\nfun SemanticsNodeInteraction.assertTextEquals(\n    vararg values: String,\n    includeEditableText: Boolean = true\n): SemanticsNodeInteraction =\n    assert(hasTextExactly(*values, includeEditableText = includeEditableText))\n"
+        },
+        {
+          "first_line": 183,
+          "last_line": 204,
+          "source": "/**\n * Asserts that the node's text contains the given [value].\n *\n * This will also search in [SemanticsProperties.EditableText] and [SemanticsProperties.InputText].\n *\n * Note that in merged semantics tree there can be a list of text items that got merged from the\n * child nodes. Typically an accessibility tooling will decide based on its heuristics which ones to\n * use.\n *\n * Throws [AssertionError] if the node's value does not contain `value`, or if the node has no value\n *\n * @param value Value to match as one of the items in the list of text values.\n * @param substring Whether this can be satisfied as a substring match of an item in the list of\n *   text.\n * @param ignoreCase Whether case should be ignored.\n * @see SemanticsProperties.Text\n */\nfun SemanticsNodeInteraction.assertTextContains(\n    value: String,\n    substring: Boolean = false,\n    ignoreCase: Boolean = false\n): SemanticsNodeInteraction = assert(hasText(value, substring = substring, ignoreCase = ignoreCase))\n"
+        }
+      ],
+      "saved": "app-runtime-fix-evidence/pinned/Assertions.kt"
+    },
+    {
+      "archive": "ui-test-android-1.8.2-sources.jar",
+      "entry": "commonMain/androidx/compose/ui/test/Output.kt",
+      "full_sha256": "ff0ae21d8cb7fe0c9e225105b0cac75823e1e4fcc4d95ccda811772e7e5666ca",
+      "excerpts": [
+        {
+          "first_line": 205,
+          "last_line": 212,
+          "source": "    val childrenLevel = nestingLevel + 1\n    val children = this.children.toList()\n    children.forEachIndexed { index, child ->\n        val hasSibling = index < children.size - 1\n        sb.appendLine()\n        child.printToStringInner(sb, maxDepth, childrenLevel, newIndent, hasSibling)\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "archive": "material3-android-1.3.2-sources.jar",
+      "entry": "commonMain/androidx/compose/material3/Scaffold.kt",
+      "full_sha256": "8f1cd01c1c2970ca5cd1a3e8f46de3e07b391678690bd5204aaad5193fafa539",
+      "excerpts": [
+        {
+          "first_line": 265,
+          "last_line": 283,
+          "source": "        layout(layoutWidth, layoutHeight) {\n            // Placing to control drawing order to match default elevation of each placeable\n\n            bodyContentPlaceables.fastForEach { it.place(0, 0) }\n            topBarPlaceables.fastForEach { it.place(0, 0) }\n            snackbarPlaceables.fastForEach {\n                it.place(\n                    (layoutWidth - snackbarWidth) / 2 +\n                        contentWindowInsets.getLeft(this@SubcomposeLayout, layoutDirection),\n                    layoutHeight - snackbarOffsetFromBottom\n                )\n            }\n            // The bottom bar is always at the bottom of the layout\n            bottomBarPlaceables.fastForEach { it.place(0, layoutHeight - (bottomBarHeight ?: 0)) }\n            // Explicitly not using placeRelative here as `leftOffset` already accounts for RTL\n            fabPlacement?.let { placement ->\n                fabPlaceables.fastForEach {\n                    it.place(placement.left, layoutHeight - fabOffsetFromBottom!!)\n                }\n"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "module": "theme",
+  "base_sha": "45c7f65823042deb76171732dcb2a000f8620e65",
+  "head_sha": "8b8decf7c39ed67858ef99c760e1ca75e273f013",
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "THEME-01",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt",
+      "line": 53,
+      "claim": "Dark InkPaper button labels fail WCAG AA contrast.",
+      "evidence": "BiteComponents.kt:162-165 explicitly uses white onAccent over cta=#E0653A. The button label style is 14sp Bold. Executed WCAG calculations give 3.4471:1 normally and 3.0456:1 with Material3's 10% focused state layer, below 4.5:1. Classic buttons remain 13.3755:1.",
+      "impact": "Enabled actions including 登录、保存、修改密码 and 立即更新 have insufficient text contrast in the new default dark style.",
+      "recommendation": "Adjust the dark CTA foreground or background to reach 4.5:1 in normal and interaction states, and validate actual BiteButton colors.",
+      "introduced_in_pr": true,
+      "verification": "executed"
+    },
+    {
+      "id": "THEME-02",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt",
+      "line": 42,
+      "claim": "Enabled InkPaper field placeholders fail small-text contrast in both modes.",
+      "evidence": "BiteComponents.kt:226 and 237-244 render tertiary placeholders on opaque surface backgrounds. Executed calculations give #8A8175/#FFFFFF=3.8338:1 in light mode and #8F8574/#26211B=4.3891:1 in dark mode. Both are below 4.5:1; corresponding classic pairs are 7.2528:1 and 7.7256:1.",
+      "impact": "Input examples and password requirements become harder to read throughout search, forms, authentication and password dialogs.",
+      "recommendation": "Choose tertiary foregrounds that meet 4.5:1 on the actual field surfaces in both modes.",
+      "introduced_in_pr": true,
+      "verification": "executed"
+    },
+    {
+      "id": "THEME-03",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Colors.kt",
+      "line": 45,
+      "claim": "InkPaper's Material outline mapping makes the enabled off-state update switch insufficiently contrasted.",
+      "evidence": "Colors.kt:75 maps outline to borderStrong. SettingsScreen.kt:77 uses default Switch colors. Locked Material3 1.3.2 sources map the unchecked thumb and border to Outline and the track to SurfaceContainerHighest, mapped here to surface. Executed thumb/border-to-track contrasts are 1.5737:1 light and 1.6112:1 dark; contrasts against the surrounding background are also below 3:1. Classic outlines exceed 14:1 against their tracks.",
+      "impact": "The switch boundary and off-state thumb are difficult to identify when startup update checking is disabled.",
+      "recommendation": "Separate functional control outlines from decorative divider colors and provide at least 3:1 contrast for the enabled unchecked switch.",
+      "introduced_in_pr": true,
+      "verification": "executed"
+    },
+    {
+      "id": "THEME-04",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt",
+      "line": 210,
+      "claim": "The InkPaper field underline is drawn behind the opaque input container or below supporting text.",
+      "evidence": "The new drawBehind rule uses the entire OutlinedTextField height. Lines 237-240 retain opaque surface containers and transparent Material borders. Material3 1.3.2 OutlinedTextFieldDefaults.Container paints its background after the outer drawBehind; its measurement excludes supporting-text height. Consequently, unsupported fields such as search/password cover the underline across the container interior, while supported fields place it beneath the supporting area. The base used a border drawn over content.",
+      "impact": "The promised underline fields lose or misplace their focus/error rule.",
+      "recommendation": "Draw the rule above the input container and at that container's bottom, excluding supporting text. Verify empty, focused, error and multiline fields in both modes.",
+      "introduced_in_pr": true,
+      "verification": "runtime-inference"
+    },
+    {
+      "id": "THEME-05",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt",
+      "line": 184,
+      "claim": "InkPaper's high-score accent branch is unreachable for valid ratings.",
+      "evidence": "Score tests tenths>=80; BiteComponents.kt:109 and 117 repeat that threshold. The unchanged Rating.kt contract permits only 10..50 tenths, and RatingEditor clamps to that range. Static enumeration found zero qualifying values among all 41 valid ratings.",
+      "impact": "Even 5.0 never receives the promised high-score emphasis; numeric scores and verdict labels always take their lower-score colors.",
+      "recommendation": "Translate the requested threshold into the existing 1–5 scale without changing storage or classic tiers, and test the threshold, maximum and unrated cases.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    },
+    {
+      "id": "THEME-06",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Theme.kt",
+      "line": 21,
+      "claim": "The new default InkPaper rendering lacks the required visual and accessibility acceptance coverage.",
+      "evidence": "All 35 instrumentation theme invocations omit the style argument and therefore render QUIET_GRID. ProductVisualTest.kt:61/81 also asserts classic colors; P8VisualTest.kt:68 does likewise. verify_bite_visuals.py:35-37 checks only QuietGrid palettes and passed during this review. Pr17UiTest exercises real system font scaling but still uses the classic fixture at line 96. The added test covers DataStore persistence, not rendering.",
+      "impact": "Green classic checks do not validate InkPaper contrast, drawing, overflow, touch bounds or independent dialog windows.",
+      "recommendation": "Parameterize guards and instrumentation for both styles and both modes, then execute large real-system-font coverage on API26/API35 across screens and dialogs while preserving classic checks.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    }
+  ],
+  "acceptance": [
+    "SOURCE-INSPECTED: Complete diff and full assigned files reviewed, including consumers in authentication, navigation, lists, detail/edit, history, settings and password/conflict/apply/confirmation/update dialogs.",
+    "PASS (static): Runtime defaults to InkPaper; style and SYSTEM/LIGHT/DARK resolve independently. Classic palettes, Material3 mappings, typography, shapes and dimension values are preserved. No source testTag expressions were removed.",
+    "PASS (calculated): Body, metadata, error text and selected/unselected segment text meet 4.5:1 on their active backgrounds. Disabled BiteButton text measures 5.1287:1 light and 6.2701:1 dark; dialog progress colors also pass.",
+    "FAIL: Active InkPaper button, placeholder and unchecked-switch contrast fails; field underline placement and high-score emphasis are incorrect.",
+    "PARTIAL: Unrated dash rendering, explicit rating setup/clear actions, tenths clamps, named fields, radio selection/disabled semantics and source-level minimum targets were inspected. Actual TalkBack behavior and touch bounds were not executed.",
+    "PARTIAL: Slider thumbs contrast 5.1046:1 light and 5.0798:1 dark against inactive tracks. Empty-track borders measure only 1.1557:1/1.1710:1 against paper, and dark meter active/inactive segments measure 2.8735:1; visual usability remains unexecuted.",
+    "PASS (source): Theme lookups are hoisted outside drawing scopes. InkPaper sticker/score branches avoid classic sticker-ink aliases; icon consumers supply explicit tints. Classic reduced-motion handling remains, and InkPaper removes the custom press shift.",
+    "PARTIAL: Both styles × both modes × large real system font acceptance is incomplete. Existing classic guards do not validate InkPaper."
+  ],
+  "validation_executed": [
+    "Read-only git diff and SHA verification: HEAD matches the immutable PR SHA; repository status remained clean.",
+    "python3 -B android/tools/verify_p6_visuals.py: PASS, exclusively for classic QuietGrid.",
+    "In-memory Python WCAG calculations for active palette/consumer pairs, Material3 switch roles, focused state layers, disabled controls, sliders and dialogs.",
+    "In-memory base comparison: classic palette, role, typography and shape definitions unchanged; dimension values unchanged; zero removed testTag expressions.",
+    "Static rating-range enumeration and instrumentation-source audit confirmed the unreachable threshold and absence of InkPaper rendering fixtures."
+  ],
+  "not_verified": [
+    "Android builds and instrumentation were not run locally under the resource restriction. Captured CI run 42351574722 reports android/backend success, with API26/API35 instrumentation still in progress at capture.",
+    "Device rendering and pixel confirmation of underline behavior, classic rendering equivalence and InkPaper appearance.",
+    "Overflow and reachability with large real system fonts across both styles, both modes and independent dialog windows.",
+    "Actual TalkBack announcements/focus, measured 48dp touch bounds, reduced-motion behavior and runtime system-bar/style switching."
+  ]
+}

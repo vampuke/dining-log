@@ -1,0 +1,92 @@
+{
+  "module": "integration",
+  "base_sha": "45c7f65823042deb76171732dcb2a000f8620e65",
+  "head_sha": "8b8decf7c39ed67858ef99c760e1ca75e273f013",
+  "verdict": "FAIL",
+  "findings": [
+    {
+      "id": "integration-01",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt",
+      "line": 210,
+      "claim": "The opaque text-field container covers InkPaper's new underline.",
+      "evidence": "The rule uses drawBehind, while lines 237–238 retain opaque c.surface containers. Inspection of the locked Compose UI 1.8.2 and Material3 1.3.2 sources confirms drawBehind runs before content and OutlinedTextField subsequently paints its container. Without supporting text, that container extends to the field bottom and covers the middle of the rule. Search, authentication password/recovery fields and PasswordDialog use this configuration. The base used border, which draws after content.",
+      "impact": "These inputs lose the full-width underline and focused underline promised by the default style. With supporting text, the rule is positioned below that text instead of immediately below the input.",
+      "recommendation": "Draw the indicator after the input container background and position it independently of supporting text. Verify focused, empty, error and multiline fields in both styles.",
+      "introduced_in_pr": true,
+      "verification": "runtime-inference"
+    },
+    {
+      "id": "integration-02",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/BiteComponents.kt",
+      "line": 164,
+      "claim": "InkPaper's primary-action labels and placeholders fail the existing 4.5:1 text-contrast requirement.",
+      "evidence": "BiteButton forces c.onAccent onto c.cta. Python calculations using Colors.kt give InkPaperDark white/#E0653A only 3.4471:1. The same component serves login, save, password confirmation and update actions. BiteTextField binds placeholders to c.tertiary on c.surface: InkPaperLight yields 3.8338:1 and InkPaperDark 4.3891:1. Classic equivalents pass. The existing visual guard checks only QuietGrid palettes.",
+      "impact": "Enabled actions and input examples become harder to read at normal font size throughout the new default runtime style.",
+      "recommendation": "Adjust the InkPaper foreground/background pairs to meet 4.5:1 at their actual consumers and extend the contrast guard to both styles.",
+      "introduced_in_pr": true,
+      "verification": "executed"
+    },
+    {
+      "id": "integration-03",
+      "severity": "MAJOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/theme/Theme.kt",
+      "line": 21,
+      "claim": "The required UI acceptance matrix never exercises the new default InkPaper runtime.",
+      "evidence": "An audit of all 11 instrumentation files found 35 QuietGridTheme calls, all omitting style and therefore rendering QUIET_GRID. No instrumentation references INK_PAPER, setStyle or MainActivity. Pr17UiTest does test actual system font scaling for dialogs, but its fixture at line 96 remains classic. The only added test checks DataStore reopening. MainActivity explicitly defaults to INK_PAPER at line 71.",
+      "impact": "Existing CI cannot validate InkPaper screen geometry, preference hydration, switching/restart, dialog font scaling, 48dp targets or nested touch behavior. Passing classic screenshots does not satisfy acceptance for the changed default.",
+      "recommendation": "Parameterize screen and interaction tests explicitly across both styles and light/dark. Add MainActivity persistence/restart coverage and run 360dp, landscape, actual 200% system font and IME cases on Actions API26/API35.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    },
+    {
+      "id": "integration-04",
+      "severity": "MINOR",
+      "path": "android/app/src/main/kotlin/top/alanvampuke/dininglog/MainActivity.kt",
+      "line": 75,
+      "claim": "Dismissing the launch update popup does not survive activity recreation.",
+      "evidence": "launchUpdateShown uses remember and resets to false after rotation. AppUpdateChecker is a singleton retaining the enabled, non-manual release, so lines 88–94 reopen the dialog in the recreated activity. Dismissal only sets showUpdate=false at line 106, and the manifest does not handle configuration changes itself. The automatic reopening path is absent from the base.",
+      "impact": "After choosing “稍后”, rotating or changing system font can display the same popup again during the same app launch.",
+      "recommendation": "Keep launch acknowledgement in an owner that survives configuration recreation, and test dismiss-then-rotate without reopening the popup.",
+      "introduced_in_pr": true,
+      "verification": "runtime-inference"
+    },
+    {
+      "id": "integration-05",
+      "severity": "MINOR",
+      "path": "android/feature/src/main/kotlin/top/alanvampuke/dininglog/feature/components/QuietGridComponents.kt",
+      "line": 184,
+      "claim": "InkPaper's high-score accent condition is unreachable for valid records.",
+      "evidence": "Score requires tenths>=80; BiteComponents.kt lines 109 and 117 repeat that threshold. Rating.kt requires 10..50, the editor clamps to that range, and database constraints enforce it. Enumeration found zero qualifying values among all 41 legal ratings. The base used valid five-point verdict thresholds.",
+      "impact": "Even a maximum 5.0 restaurant or dish score never receives the advertised high-score accent in lists, details or editors.",
+      "recommendation": "Define a highlight threshold on the existing five-point scale and use it consistently without changing stored ratings or classic verdict behavior.",
+      "introduced_in_pr": true,
+      "verification": "source-inspected"
+    }
+  ],
+  "acceptance": [
+    "Source inspection: separate theme/style keys, InkPaper fallback and SettingsScreen → ProductRoot → MainActivity callbacks correctly keep style orthogonal to SYSTEM/LIGHT/DARK.",
+    "Source inspection: the added DataStore test covers saving classic and reopening the file; actual activity hydration and restart remain unverified.",
+    "Reviewed the complete 15-file diff and full screen consumers, including auth/recovery, navigation/tabs, settings/password, restaurant/dish/visit/history/trash lists, detail/edit, conflict/apply/operation and update dialogs.",
+    "Static checks confirm classic palettes, typography, shapes and dimensions remain unchanged; existing testTag strings survive. Shared buttons, segments and nested history-time controls retain explicit 48dp minimum heights.",
+    "InkPaper contrast acceptance fails; required rendering, geometry and interaction acceptance lacks coverage.",
+    "Supplied CI snapshot for this SHA reports android/backend success and API26/API35 instrumentation in progress; it provides no InkPaper acceptance evidence."
+  ],
+  "validation_executed": [
+    "git diff --check for the immutable base/head comparison passed.",
+    "python3 -B android/tools/verify_p6_visuals.py passed; its palette checks cover QuietGrid only.",
+    "Read-only Python audits checked instrumentation style arguments, preference keys, preserved testTags, classic token definitions and all legal rating values.",
+    "Read-only Python calculations measured contrast at the actual button and placeholder color bindings.",
+    "Inspected locked Compose source JARs for field container sizing and drawing order.",
+    "Final git status was clean and HEAD remained 8b8decf7c39ed67858ef99c760e1ca75e273f013."
+  ],
+  "not_verified": [
+    "Android rendering and pixel reproduction of underline occlusion.",
+    "Cold-start hydration after saving classic, switching both preferences, and persistence after activity/process restart.",
+    "Both styles in light/dark at 360dp, landscape, actual 200% system font and visible IME, including independent dialog windows.",
+    "Measured touch geometry, nested history-time touch consumption and all navigation/menu/input interactions under InkPaper.",
+    "Runtime reproduction of popup reopening after dismissal and configuration recreation.",
+    "Final instrumentation results beyond the supplied snapshot. No Gradle, builds or emulators were run locally."
+  ]
+}

@@ -22,9 +22,12 @@ class AndroidThemePreferences private constructor(private val data: DataStore<Pr
         internal fun fromDataStore(data: DataStore<Preferences>) = AndroidThemePreferences(data)
     }
     private val themeKey = stringPreferencesKey("theme")
+    private val styleKey = stringPreferencesKey("theme-style")
     private val updatesKey = booleanPreferencesKey("update-checks")
     override val theme = data.data.map { preferences -> ThemeChoice.entries.firstOrNull { it.name == preferences[themeKey] } ?: ThemeChoice.SYSTEM }
     override suspend fun setTheme(choice: ThemeChoice) { data.edit { it[themeKey] = choice.name } }
+    override val style = data.data.map { preferences -> ThemeStyle.entries.firstOrNull { it.name == preferences[styleKey] } ?: ThemeStyle.INK_PAPER }
+    override suspend fun setStyle(style: ThemeStyle) { data.edit { it[styleKey] = style.name } }
     override val updateChecksEnabled = data.data.map { it[updatesKey] ?: true }
     override suspend fun setUpdateChecksEnabled(enabled: Boolean) { data.edit { it[updatesKey] = enabled } }
 }
