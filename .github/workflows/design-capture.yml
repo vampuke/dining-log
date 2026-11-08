@@ -41,25 +41,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: |
-            set -eu
-            cd android
-            mkdir -p app/build/outputs/p4-screenshots
-            # UTP uninstalls test APKs at the end, removing app-owned external
-            # files. Copy screenshots while instrumentation is running, as in
-            # .github/scripts/android-test.sh.
-            set +e
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon \
-              -Pandroid.testInstrumentationRunnerArguments.class=top.alanvampuke.dininglog.product.DesignCaptureTest &
-            gradle_pid=$!
-            while kill -0 "$gradle_pid" 2>/dev/null; do
-              adb pull /sdcard/Android/data/top.alanvampuke.dininglog.debug/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1 || true
-              sleep 1
-            done
-            wait "$gradle_pid"
-            test_status=$?
-            adb pull /sdcard/Android/data/top.alanvampuke.dininglog.debug/files/p4-screenshots app/build/outputs/p4-screenshots/ >/dev/null 2>&1 || true
-            exit "$test_status"
+          script: bash .github/scripts/capture-design-screenshots.sh
       - name: Retain design screenshots
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
