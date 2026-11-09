@@ -71,11 +71,21 @@ def placeholder_roles():
     slots = re.search(r'LocalContentColor provides c\.(\w+), LocalFieldForeground provides c\.(\w+)',
                       text[text.index('placeholder ='):])
     assert slots and slots.group(1) == slots.group(2), 'placeholder slot foregrounds diverged'
+    # The InkPaper field is underline-only: its container is transparent, so the
+    # placeholder actually sits on the page background. Measure it against bg
+    # in that case; a direct c.<token> container binding keeps the old reading.
+    # Anything else still fails loudly in token_binding below.
+    transparent = re.search(
+        r'val (\w+) = if \(LocalThemeStyle.current.isInkPaper\) Color\.Transparent else c\.(\w+)', text)
     result = {}
     for state in ('focused', 'unfocused', 'error'):
         foreground = token_binding(text, state + 'PlaceholderColor')
         assert foreground == slots.group(1), f'{state} Material and GridText placeholder roles diverged'
-        result[state] = (foreground, token_binding(text, state + 'ContainerColor'))
+        if transparent and re.search(state + r'ContainerColor = ' + transparent.group(1) + r'\b', text):
+            background = 'bg'
+        else:
+            background = token_binding(text, state + 'ContainerColor')
+        result[state] = (foreground, background)
     return result
 
 
