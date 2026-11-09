@@ -10,6 +10,7 @@ import androidx.compose.ui.draw.rotate
 import top.alanvampuke.dininglog.feature.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -44,115 +45,146 @@ import top.alanvampuke.dininglog.feature.theme.*
     // Ink & Paper: one header switch drives every history row's time format,
     // like the design preview's timeToggle. Classic keeps per-row toggling.
     var historyAbsolute by rememberSaveable { mutableStateOf(false) }
+    // Ink & Paper puts the add action in a full-width button above the bottom
+    // bar (design .fab-wrap); classic keeps it in the header.
+    val bottomAdd = inkPaper && onAdd != null
+    val listContent: LazyListScope.() -> Unit = {
+        item {
+            if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && state.query.deleted != DeletedFilter.ONLY) {
+                ResponsiveHeading(title = { modifier ->
+                    // Ink & Paper drops the tilted burger and the "BITE!" wordmark:
+                    // just the section name with a small loaded count.
+                    if (inkPaper) Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                        GridText("${state.items.size} 家", style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                    } else Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Image(painterResource(if (LocalQuietGridColors.current == QuietGridDark) R.drawable.bite_v1_burger_dark else R.drawable.bite_v1_burger), null, Modifier.size(38.dp).rotate(-3f))
+                        Column(Modifier.weight(1f)) {
+                            GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
+                            GridText(title, Modifier.fillMaxWidth(), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
+                        }
+                    }
+                }, trailing = if (bottomAdd) null else onAdd?.let { callback -> { modifier ->
+                    BiteButton(callback, modifier.testTag("add")) { Text("新增餐厅") }
+                } })
+            } else {
+                PageHeader(title, onBack, trailing = if (kind == RecordKind.REVISION && inkPaper) { { modifier ->
+                    BiteTextButton(onClick = { historyAbsolute = !historyAbsolute }, modifier = modifier.testTag("history-time-toggle")) {
+                        Text(if (historyAbsolute) "相对时间" else "绝对时间", style = QuietGridText.caption)
+                    }
+                } } else if (bottomAdd) null else onAdd?.let { callback -> { modifier ->
+                    BiteButton(callback, modifier.testTag("add")) {
+                        Text(if (kind == RecordKind.DISH) "新增菜品" else if (kind == RecordKind.VISIT) "新增到店" else "新增")
+                    }
+                } })
+            }
+        }
+        if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && !isSearch && state.query.deleted != DeletedFilter.ONLY) item { LoadedStats(state.items) }
+        item {
+            BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
+                RecordKind.RESTAURANT -> "搜索店名、菜品或评价"
+                RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
+            }) }, placeholder = { GridText(when (kind) {
+                RecordKind.RESTAURANT -> "例如：兰巴赫"
+                RecordKind.DISH -> "例如：披萨"; RecordKind.VISIT -> "例如：2026-11-01"; RecordKind.REVISION -> "例如：评分"
+            }) }, accessibleLabel = "搜索", textStyle = QuietGridText.input, singleLine = true,
+                leadingIcon = { Icon(QuietGridIcons.search, null, tint = LocalQuietGridColors.current.ink) })
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    // Thresholds were invisible: the top tier is minRating 46
+                    // and the low tier maxRating 31, and the dish verdicts are
+                    // "惊艳"/"踩雷" rather than the restaurant ones. Classic
+                    // keeps the threshold on the chip itself; Ink & Paper
+                    // shows the bare label and leaves the thresholds in the
+                    // filter panel ("评分档位" line below).
+                    val topLabel = (if (kind == RecordKind.DISH) "惊艳" else "封神必吃") + if (inkPaper) "" else " ★4.6+"
+                    val lowLabel = (if (kind == RecordKind.DISH) "踩雷" else "踩雷预警") + if (inkPaper) "" else " ★3.1−"
+                    // Ink & Paper uses the design's four segments; the low tier
+                    // (maxRating 31) moves into the filter panel so it stays
+                    // reachable. Classic keeps the three threshold chips.
+                    val quick = if (inkPaper) listOf("全部" to ListFilters(),
+                        topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
+                        "4 分以上" to filters.copy(minRating = 40, maxRating = null, unrated = false),
+                        "未评分" to filters.copy(minRating = null, maxRating = null, unrated = true))
+                    else listOf("全部" to ListFilters(), topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
+                        lowLabel to filters.copy(minRating = null, maxRating = 31, unrated = false))
+                    if (inkPaper) quick.forEach { (label, next) -> SegmentItem(label, filters == next, true) { onFilters(next) } }
+                    else quick.forEach { (label, next) ->
+                        FilterChip(selected = filters == next, onClick = { onFilters(next) }, label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                            modifier = Modifier.heightIn(min = 48.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, LocalQuietGridColors.current.border),
+                            colors = FilterChipDefaults.filterChipColors(containerColor = LocalQuietGridColors.current.surface,
+                                labelColor = LocalQuietGridColors.current.ink, selectedContainerColor = LocalQuietGridColors.current.accentSoft,
+                                selectedLabelColor = LocalQuietGridColors.current.accentInk))
+                    }
+                } else Spacer(Modifier.weight(1f))
+                // Ink & Paper uses the design's "筛选" text entry; classic
+                // keeps the funnel icon. The ⋮ menu (refresh / trash) stays.
+                if (kind != RecordKind.REVISION) if (inkPaper) {
+                    BiteTextButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) {
+                        Text(if (expandedFilters) "收起筛选" else "筛选", style = QuietGridText.caption)
+                    }
+                } else IconButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) {
+                    Icon(QuietGridIcons.filter, contentDescription = if (expandedFilters) "收起筛选" else "筛选与排序",
+                        tint = if (expandedFilters || filters != ListFilters()) LocalQuietGridColors.current.accentInk else LocalQuietGridColors.current.secondary)
+                }
+                Box {
+                    IconButton(onClick = { menu = true }, modifier = Modifier.testTag("list-more")) {
+                        Icon(QuietGridIcons.more, contentDescription = "更多操作", tint = LocalQuietGridColors.current.secondary)
+                    }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(if (state.isRefreshing) "正在刷新…" else "刷新") },
+                            onClick = { menu = false; onRefresh() }, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh"))
+                        if (onTrash != null) DropdownMenuItem(text = { Text(if (kind == RecordKind.REVISION) "管理隐藏历史" else "回收站") },
+                            onClick = { menu = false; onTrash() }, modifier = Modifier.testTag("trash"))
+                    }
+                }
+            }
+        }
+        if (expandedFilters) item { ListFilterPanel(kind, filters, onFilters) }
+        if (state.isOffline || (state.localScope && isSearch) || state.error != null) item {
+            CacheStatus(state.isOffline, state.fetchedAt, localSearch = (state.isOffline || state.localScope) && isSearch)
+            if (state.error != null) ErrorMessage(state.error!!, "load-error")
+        }
+        if (state.items.isEmpty()) item {
+            val text = when {
+                state.isRefreshing -> "正在读取记录…"
+                state.isOffline || state.localScope -> when {
+                    isSearch -> "已缓存内容中没有匹配；服务器范围未确认"
+                    state.isOffline -> "此设备没有可用缓存，请联网后重试"
+                    else -> "此设备还没有缓存，服务器范围尚未确认；可刷新重试"
+                }
+                state.error != null -> "加载失败，请重试"
+                isSearch || filters != ListFilters() -> "没有符合条件的结果"
+                state.query.deleted == DeletedFilter.ONLY -> "这里没有可恢复的记录"
+                else -> when (kind) { RecordKind.RESTAURANT -> "还没有餐厅，记下第一家吧"; RecordKind.DISH -> "这家餐厅还没有菜品"; RecordKind.VISIT -> "还没有到店记录"; RecordKind.REVISION -> "还没有修改历史" }
+            }
+            val emptyTag = when { state.isOffline || state.localScope -> "cache-empty"; isSearch && state.error == null -> "no-results"; else -> "empty-state" }
+            GridText(text, Modifier.fillMaxWidth().testTag(emptyTag), color = LocalQuietGridColors.current.secondary)
+        }
+        items(state.items, key = { it.ref.id }) { record -> RecordRow(record, onRecord, tilt = if (state.items.indexOf(record) % 2 == 0) -1f else 1f,
+            historyAbsolute = if (kind == RecordKind.REVISION && inkPaper) historyAbsolute else null) }
+        if (state.hasMore) item { BiteButton(onClick = onMore, enabled = !state.isLoadingMore && !state.isRefreshing,
+            modifier = Modifier.fillMaxWidth().testTag("load-more")) { Text(if (state.isLoadingMore) "正在加载更多…" else "加载更多") } }
+    }
     ScreenFrame(tag, bottomBar, floatingBottomBar = true) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("record-list"), state = listState,
-            contentPadding = PaddingValues(start = LocalGridDimensions.current.edge, top = 8.dp, end = LocalGridDimensions.current.edge, bottom = 8.dp + padding.calculateBottomPadding()),
-            verticalArrangement = if (inkPaper) Arrangement.spacedBy(0.dp) else Arrangement.spacedBy(7.dp)) {
-            item {
-                if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && state.query.deleted != DeletedFilter.ONLY) {
-                    ResponsiveHeading(title = { modifier ->
-                        // Ink & Paper drops the tilted burger and the "BITE!" wordmark:
-                        // just the section name with a small loaded count.
-                        if (inkPaper) Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            GridText(title, Modifier.weight(1f).testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
-                            GridText("${state.items.size} 家", style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
-                        } else Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Image(painterResource(if (LocalQuietGridColors.current == QuietGridDark) R.drawable.bite_v1_burger_dark else R.drawable.bite_v1_burger), null, Modifier.size(38.dp).rotate(-3f))
-                            Column(Modifier.weight(1f)) {
-                                GridText(if (LocalDensity.current.fontScale > 1.3f) "食记" else "BITE! 食记", Modifier.fillMaxWidth().testTag("page-title"), style = MaterialTheme.typography.headlineSmall)
-                                GridText(title, Modifier.fillMaxWidth(), style = QuietGridText.caption, color = LocalQuietGridColors.current.secondary)
-                            }
-                        }
-                    }, trailing = onAdd?.let { callback -> { modifier ->
-                        BiteButton(callback, modifier.testTag("add")) { Text("新增餐厅") }
-                    } })
-                } else {
-                    PageHeader(title, onBack, trailing = if (kind == RecordKind.REVISION && inkPaper) { { modifier ->
-                        BiteTextButton(onClick = { historyAbsolute = !historyAbsolute }, modifier = modifier.testTag("history-time-toggle")) {
-                            Text(if (historyAbsolute) "相对时间" else "绝对时间", style = QuietGridText.caption)
-                        }
-                    } } else onAdd?.let { callback -> { modifier ->
-                        BiteButton(callback, modifier.testTag("add")) {
-                            Text(if (kind == RecordKind.DISH) "新增菜品" else if (kind == RecordKind.VISIT) "新增到店" else "新增")
-                        }
-                    } })
+        if (inkPaper && onAdd != null) {
+            // The design pins the add action above the bottom bar; the list
+            // scrolls in the remaining viewport above it.
+            Column(Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(Modifier.weight(1f).fillMaxWidth().testTag("record-list"), state = listState,
+                    contentPadding = PaddingValues(start = LocalGridDimensions.current.edge, top = 8.dp, end = LocalGridDimensions.current.edge, bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp), content = listContent)
+                BiteButton(onClick = onAdd, modifier = Modifier.fillMaxWidth()
+                    .padding(horizontal = LocalGridDimensions.current.edge, vertical = 8.dp).testTag("add")) {
+                    Text(when (kind) { RecordKind.DISH -> "新增菜品"; RecordKind.VISIT -> "新增到店"; RecordKind.REVISION -> "新增"; else -> "新增餐厅" })
                 }
             }
-            if (kind == RecordKind.RESTAURANT && onBack == null && titleOverride == null && !isSearch && state.query.deleted != DeletedFilter.ONLY) item { LoadedStats(state.items) }
-            item {
-                BiteTextField(searchText, onSearch, Modifier.fillMaxWidth().testTag("search"), label = { GridText(when (kind) {
-                    RecordKind.RESTAURANT -> "搜索店名、菜品或评价"
-                    RecordKind.DISH -> "搜索本店菜品与短评"; RecordKind.VISIT -> "搜索餐厅、日期、备注"; RecordKind.REVISION -> "搜索修改与说明"
-                }) }, placeholder = { GridText(when (kind) {
-                    RecordKind.RESTAURANT -> "例如：兰巴赫"
-                    RecordKind.DISH -> "例如：披萨"; RecordKind.VISIT -> "例如：2026-11-01"; RecordKind.REVISION -> "例如：评分"
-                }) }, accessibleLabel = "搜索", textStyle = QuietGridText.input, singleLine = true,
-                    leadingIcon = { Icon(QuietGridIcons.search, null, tint = LocalQuietGridColors.current.ink) })
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)) Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        // Thresholds were invisible: the top tier is minRating 46
-                        // and the low tier maxRating 31, and the dish verdicts are
-                        // "惊艳"/"踩雷" rather than the restaurant ones. Classic
-                        // keeps the threshold on the chip itself; Ink & Paper
-                        // shows the bare label and leaves the thresholds in the
-                        // filter panel ("评分档位" line below).
-                        val topLabel = (if (kind == RecordKind.DISH) "惊艳" else "封神必吃") + if (inkPaper) "" else " ★4.6+"
-                        val lowLabel = (if (kind == RecordKind.DISH) "踩雷" else "踩雷预警") + if (inkPaper) "" else " ★3.1−"
-                        val quick = listOf("全部" to ListFilters(), topLabel to filters.copy(minRating = 46, maxRating = null, unrated = false),
-                            lowLabel to filters.copy(minRating = null, maxRating = 31, unrated = false))
-                        if (inkPaper) quick.forEach { (label, next) -> SegmentItem(label, filters == next, true) { onFilters(next) } }
-                        else quick.forEach { (label, next) ->
-                            FilterChip(selected = filters == next, onClick = { onFilters(next) }, label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                                modifier = Modifier.heightIn(min = 48.dp), border = androidx.compose.foundation.BorderStroke(1.5.dp, LocalQuietGridColors.current.border),
-                                colors = FilterChipDefaults.filterChipColors(containerColor = LocalQuietGridColors.current.surface,
-                                    labelColor = LocalQuietGridColors.current.ink, selectedContainerColor = LocalQuietGridColors.current.accentSoft,
-                                    selectedLabelColor = LocalQuietGridColors.current.accentInk))
-                        }
-                    } else Spacer(Modifier.weight(1f))
-                    if (kind != RecordKind.REVISION) IconButton(onClick = { expandedFilters = !expandedFilters }, modifier = Modifier.testTag("filters")) {
-                        Icon(QuietGridIcons.filter, contentDescription = if (expandedFilters) "收起筛选" else "筛选与排序",
-                            tint = if (expandedFilters || filters != ListFilters()) LocalQuietGridColors.current.accentInk else LocalQuietGridColors.current.secondary)
-                    }
-                    Box {
-                        IconButton(onClick = { menu = true }, modifier = Modifier.testTag("list-more")) {
-                            Icon(QuietGridIcons.more, contentDescription = "更多操作", tint = LocalQuietGridColors.current.secondary)
-                        }
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(text = { Text(if (state.isRefreshing) "正在刷新…" else "刷新") },
-                                onClick = { menu = false; onRefresh() }, enabled = !state.isRefreshing, modifier = Modifier.testTag("refresh"))
-                            if (onTrash != null) DropdownMenuItem(text = { Text(if (kind == RecordKind.REVISION) "管理隐藏历史" else "回收站") },
-                                onClick = { menu = false; onTrash() }, modifier = Modifier.testTag("trash"))
-                        }
-                    }
-                }
-            }
-            if (expandedFilters) item { ListFilterPanel(kind, filters, onFilters) }
-            if (state.isOffline || (state.localScope && isSearch) || state.error != null) item {
-                CacheStatus(state.isOffline, state.fetchedAt, localSearch = (state.isOffline || state.localScope) && isSearch)
-                if (state.error != null) ErrorMessage(state.error!!, "load-error")
-            }
-            if (state.items.isEmpty()) item {
-                val text = when {
-                    state.isRefreshing -> "正在读取记录…"
-                    state.isOffline || state.localScope -> when {
-                        isSearch -> "已缓存内容中没有匹配；服务器范围未确认"
-                        state.isOffline -> "此设备没有可用缓存，请联网后重试"
-                        else -> "此设备还没有缓存，服务器范围尚未确认；可刷新重试"
-                    }
-                    state.error != null -> "加载失败，请重试"
-                    isSearch || filters != ListFilters() -> "没有符合条件的结果"
-                    state.query.deleted == DeletedFilter.ONLY -> "这里没有可恢复的记录"
-                    else -> when (kind) { RecordKind.RESTAURANT -> "还没有餐厅，记下第一家吧"; RecordKind.DISH -> "这家餐厅还没有菜品"; RecordKind.VISIT -> "还没有到店记录"; RecordKind.REVISION -> "还没有修改历史" }
-                }
-                val emptyTag = when { state.isOffline || state.localScope -> "cache-empty"; isSearch && state.error == null -> "no-results"; else -> "empty-state" }
-                GridText(text, Modifier.fillMaxWidth().testTag(emptyTag), color = LocalQuietGridColors.current.secondary)
-            }
-            items(state.items, key = { it.ref.id }) { record -> RecordRow(record, onRecord, tilt = if (state.items.indexOf(record) % 2 == 0) -1f else 1f,
-                historyAbsolute = if (kind == RecordKind.REVISION && inkPaper) historyAbsolute else null) }
-            if (state.hasMore) item { BiteButton(onClick = onMore, enabled = !state.isLoadingMore && !state.isRefreshing,
-                modifier = Modifier.fillMaxWidth().testTag("load-more")) { Text(if (state.isLoadingMore) "正在加载更多…" else "加载更多") } }
+        } else {
+            LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("record-list"), state = listState,
+                contentPadding = PaddingValues(start = LocalGridDimensions.current.edge, top = 8.dp, end = LocalGridDimensions.current.edge, bottom = 8.dp + padding.calculateBottomPadding()),
+                verticalArrangement = if (inkPaper) Arrangement.spacedBy(0.dp) else Arrangement.spacedBy(7.dp), content = listContent)
         }
     }
 }
@@ -224,6 +256,14 @@ import top.alanvampuke.dininglog.feature.theme.*
     var localAbsolute by rememberSaveable(record.ref.id) { mutableStateOf(false) }
     val absolute = historyAbsolute ?: localAbsolute
     val large = LocalDensity.current.fontScale > 1.3f
+    val isHistoryInk = record.ref.kind == RecordKind.REVISION && LocalThemeStyle.current.isInkPaper
+    // Ink & Paper history rows lead with the time, like the design preview:
+    // time on top, change below, source line under it. Classic keeps the
+    // time at the bottom of the row.
+    if (isHistoryInk) HistoryTimeText(record.updatedAt, absolute, null,
+        Modifier.testTag("history-time:${record.ref.id}"),
+        if (absolute) Modifier.testTag("history-absolute:${record.ref.id}")
+        else Modifier.testTag("history-relative:${record.ref.id}"))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         GridText(record.title, Modifier.weight(1f).testTag("title:${record.ref.id}"),
             style = if (LocalThemeStyle.current.isInkPaper) InkPaperText.recordTitle else MaterialTheme.typography.titleMedium,
@@ -252,7 +292,15 @@ import top.alanvampuke.dininglog.feature.theme.*
     }
     if (secondary.isNotEmpty()) GridText(secondary, Modifier.testTag("record-summary:${record.ref.id}"), color = LocalQuietGridColors.current.secondary,
         style = QuietGridText.metadata, maxLines = if (large) Int.MAX_VALUE else 2, overflow = TextOverflow.Ellipsis)
-    if (record.ref.kind == RecordKind.REVISION) {
+    // Source line, design "老街面馆 · 菜品评分" style. The backend returns
+    // restaurant_name on revision summaries; skip it when it only repeats
+    // the title (a restaurant's own revision), where it adds nothing.
+    if (isHistoryInk) record.fields["restaurant_name"]?.takeIf { it.isNotBlank() && it != record.title }?.let { where ->
+        val kindLabel = when (record.fields["entity_type"]) { "dish" -> "菜品"; "restaurant" -> "餐厅"; "visit" -> "到店"; else -> "" }
+        GridText(listOfNotNull(where, kindLabel.takeIf { it.isNotEmpty() }).joinToString(" · "),
+            Modifier.fillMaxWidth(), color = LocalQuietGridColors.current.secondary, style = QuietGridText.metadata)
+    }
+    if (record.ref.kind == RecordKind.REVISION && !isHistoryInk) {
         HistoryTimeText(record.updatedAt, absolute, if (historyAbsolute == null) ({ localAbsolute = !localAbsolute }) else null,
             Modifier.testTag("history-time:${record.ref.id}"),
             if (absolute) Modifier.testTag("history-absolute:${record.ref.id}")
@@ -290,6 +338,14 @@ import top.alanvampuke.dininglog.feature.theme.*
                 } else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     unrated(Modifier.fillMaxWidth()); range(Modifier.fillMaxWidth())
                 }
+            }
+            // Ink & Paper: the low tier left the quick segments for the panel,
+            // so it needs a home here. Classic keeps the chip on the row.
+            if (LocalThemeStyle.current.isInkPaper) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(filters.maxRating == 31 && filters.minRating == null,
+                    { onChange(filters.copy(unrated = false, minRating = null, maxRating = if (it) 31 else null)) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag("filter-low-tier"))
+                GridText(if (kind == RecordKind.DISH) "只看踩雷" else "只看踩雷预警", Modifier.weight(1f))
             }
             if (filters.minRating != null || filters.maxRating != null) BoxWithConstraints(Modifier.fillMaxWidth()) {
                 val minimum: @Composable () -> Unit = {
