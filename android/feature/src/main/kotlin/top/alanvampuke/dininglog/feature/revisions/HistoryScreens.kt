@@ -30,7 +30,19 @@ import top.alanvampuke.dininglog.feature.theme.*
     ScreenFrame("screen:history", bottomBar, floatingBottomBar = true) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(listViewportPadding(padding)).testTag("history-scroll"), contentPadding = listContentPadding(padding), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { PageHeader("修改详情", onBack, record?.fields?.get("entity_label"), trailing = { modifier ->
-                BiteTextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = modifier.testTag("pr17:history-refresh")) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
+                // Ink & Paper: an explicit small toggle next to the title;
+                // the time text itself stops doubling as the switch. Classic
+                // keeps the refresh button alone and the clickable time.
+                if (LocalThemeStyle.current.isInkPaper) {
+                    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        BiteTextButton(onClick = { absolute = !absolute }, modifier = Modifier.testTag("history-time-toggle")) {
+                            Text(if (absolute) "相对时间" else "绝对时间", style = QuietGridText.caption)
+                        }
+                        BiteTextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = Modifier.testTag("pr17:history-refresh")) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
+                    }
+                } else {
+                    BiteTextButton(onClick = onRefresh, enabled = !state.refreshing, modifier = modifier.testTag("pr17:history-refresh")) { Text(if (state.refreshing) "正在刷新…" else "刷新历史详情") }
+                }
             }) }
             if (state.offline || state.cached.stale || state.error != null) item {
                 CacheStatus(state.offline, state.cached.fetchedAt, state.cached.stale)
@@ -40,7 +52,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                 item {
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         val time: @Composable (Modifier) -> Unit = { modifier ->
-                            HistoryTimeText(record.fields["created_at"] ?: record.updatedAt, absolute, { absolute = !absolute },
+                            HistoryTimeText(record.fields["created_at"] ?: record.updatedAt, absolute, if (LocalThemeStyle.current.isInkPaper) null else ({ absolute = !absolute }),
                                 modifier.testTag("history-time"), if (absolute) Modifier.testTag("absolute-time") else Modifier)
                         }
                         val version: @Composable () -> Unit = {

@@ -8,6 +8,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -43,7 +44,7 @@ import top.alanvampuke.dininglog.feature.theme.*
             if (record != null) {
                 item {
                     ReceiptEdge(true)
-                    BitePanel(Modifier.testTag("pr17:receipt-head")) {
+                    BitePanel(Modifier.testTag("pr17:receipt-head"), fill = c.paper) {
                         GridText("BITE! 食记 · 探店小票 · 版本 ${record.version}", style = QuietGridText.date, color = c.secondary)
                         val ratedKind = record.ref.kind in setOf(RecordKind.RESTAURANT, RecordKind.DISH)
                         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -168,7 +169,7 @@ import top.alanvampuke.dininglog.feature.theme.*
                     }
                 }
                 item {
-                    Column(Modifier.fillMaxWidth().testTag("pr17:receipt-footer").brutalBox(c.surface, c.border, c.shadow)
+                    Column(Modifier.fillMaxWidth().testTag("pr17:receipt-footer").brutalBox(if (LocalThemeStyle.current.isInkPaper) Color.Transparent else c.surface, c.border, c.shadow)
                         .padding(horizontal = 14.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         ReceiptBarcode()
                         GridText("食记 · 每一口都值得记录", style = QuietGridText.caption, color = c.secondary)
