@@ -1,0 +1,127 @@
+name: Capacity history projection E2
+on:
+  push:
+    branches: [verify/issue19-capacity-history-payload-20261112]
+  workflow_dispatch:
+    inputs:
+      reviewed_candidate_sha:
+        description: Independently reviewed exact candidate SHA
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: capacity-history-e2-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Record attempt and validate exact route
+        id: route
+        continue-on-error: true
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_candidate_sha }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/capacity-history-e2"
+          python3 -B - <<'PY'
+          import json, os
+          from pathlib import Path
+          facts = {k: os.environ.get(k) for k in ('GITHUB_SHA','GITHUB_REF','GITHUB_RUN_ID','GITHUB_RUN_ATTEMPT','GITHUB_EVENT_NAME')}
+          Path(os.environ['RUNNER_TEMP'], 'capacity-history-e2', 'attempt.json').write_text(json.dumps(facts, indent=2)+'\n')
+          assert facts['GITHUB_REF'] == 'refs/heads/verify/issue19-capacity-history-payload-20261112'
+          assert facts['GITHUB_EVENT_NAME'] in ('push','workflow_dispatch')
+          if facts['GITHUB_EVENT_NAME'] == 'workflow_dispatch':
+              assert os.environ['REVIEWED_SHA'] == facts['GITHUB_SHA'], 'Exact independently reviewed SHA required'
+          PY
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        id: checkout
+        if: steps.route.outcome == 'success'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        id: node
+        if: steps.checkout.outcome == 'success'
+        with:
+          node-version: '22'
+      - name: Guard candidate and frozen source before install
+        id: guard
+        if: steps.node.outcome == 'success'
+        continue-on-error: true
+        run: python3 -B .github/scripts/capacity-history-e2.py --phase guard --output "$RUNNER_TEMP/capacity-history-e2/guard"
+      - name: Install unchanged backend lock once
+        id: install
+        if: steps.guard.outcome == 'success'
+        continue-on-error: true
+        working-directory: backend
+        shell: bash
+        run: |
+          set +e
+          npm ci > "$RUNNER_TEMP/capacity-history-e2/install.stdout" 2> "$RUNNER_TEMP/capacity-history-e2/install.stderr"
+          code=$?
+          echo "$code" > "$RUNNER_TEMP/capacity-history-e2/install.exit"
+          exit "$code"
+      - name: Stdlib dummy controls
+        id: controls
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        env:
+          E2_TEST_EVIDENCE: ${{ runner.temp }}/capacity-history-e2/controls/disposable
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/capacity-history-e2/controls"
+          set +e
+          python3 -B -m unittest discover -s .github/scripts -p test_capacity_history_e2.py -v > "$RUNNER_TEMP/capacity-history-e2/controls/stdout" 2> "$RUNNER_TEMP/capacity-history-e2/controls/stderr"
+          code=$?
+          echo "$code" > "$RUNNER_TEMP/capacity-history-e2/controls/exit"
+          exit "$code"
+      - name: Native preflight pair
+        id: preflight
+        if: steps.controls.outcome == 'success'
+        continue-on-error: true
+        run: python3 -B .github/scripts/capacity-history-e2.py --phase preflight --output "$RUNNER_TEMP/capacity-history-e2/preflight"
+      - name: Read preflight infrastructure gate
+        id: gate
+        if: always()
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ['RUNNER_TEMP'], 'capacity-history-e2/preflight/phase.json')
+          valid = False
+          try:
+              value = json.loads(p.read_text())
+              valid = value.get('infrastructure_valid') is True and value.get('scratch_cleanup_ok') is True and value.get('source_guard_after') is True
+          except (OSError, ValueError):
+              pass
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write('valid='+str(valid).lower()+'\n')
+          PY
+      - name: Native serial ABBA
+        id: abba
+        if: always() && steps.controls.outcome == 'success' && steps.gate.outputs.valid == 'true'
+        continue-on-error: true
+        run: python3 -B .github/scripts/capacity-history-e2.py --phase abba --preflight "$RUNNER_TEMP/capacity-history-e2/preflight" --output "$RUNNER_TEMP/capacity-history-e2/abba"
+      - name: Always upload attempted raw evidence
+        id: artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: DIAGNOSTIC_HISTORY_PROJECTION_E2_NOT_ROOT_CAUSE-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/capacity-history-e2/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Aggregate every required exit including preflight and upload
+        if: always()
+        env:
+          OUTCOMES: ${{ steps.route.outcome }} ${{ steps.checkout.outcome }} ${{ steps.node.outcome }} ${{ steps.guard.outcome }} ${{ steps.install.outcome }} ${{ steps.controls.outcome }} ${{ steps.preflight.outcome }} ${{ steps.abba.outcome }} ${{ steps.artifact.outcome }}
+        run: |
+          python3 -B - <<'PY'
+          import os
+          outcomes = os.environ['OUTCOMES'].split()
+          assert len(outcomes) == 9 and all(x == 'success' for x in outcomes), outcomes
+          PY
