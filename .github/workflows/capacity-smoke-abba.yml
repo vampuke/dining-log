@@ -1,0 +1,71 @@
+name: E1 diagnostic smoke liveness ABBA
+on:
+  push:
+    branches: [verify/issue19-capacity-smoke-abba-20261112]
+  workflow_dispatch:
+    inputs:
+      reviewed_candidate_sha:
+        description: Exact independently reviewed diagnostic commit SHA
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: capacity-smoke-abba-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Reject unexpected diagnostic ref or candidate
+        env:
+          REVIEWED_SHA: ${{ inputs.reviewed_candidate_sha }}
+          E1_OUTPUT: ${{ runner.temp }}/capacity-smoke-abba
+        run: |
+          set -euo pipefail
+          mkdir -p "$E1_OUTPUT"
+          git rev-parse HEAD > "$E1_OUTPUT/checked-head.txt"
+          test "$GITHUB_REF" = refs/heads/verify/issue19-capacity-smoke-abba-20261112
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          if test "$GITHUB_EVENT_NAME" = workflow_dispatch; then
+            test "$REVIEWED_SHA" = "$GITHUB_SHA"
+            [[ "$REVIEWED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          fi
+          git rev-parse HEAD:backend > "$E1_OUTPUT/checked-backend-tree.txt"
+          test "$(git rev-parse HEAD:backend)" = 29ba53b82cfa707e872f3571bebb42aecb6011b1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install original locked dependencies on Actions
+        working-directory: backend
+        env:
+          E1_OUTPUT: ${{ runner.temp }}/capacity-smoke-abba
+        run: |
+          set -uo pipefail
+          npm ci 2>&1 | tee "$E1_OUTPUT/npm-ci.log"
+          codes=("${PIPESTATUS[@]}")
+          printf '%s\n' "${codes[0]}" > "$E1_OUTPUT/npm-ci.exit"
+          printf '%s\n' "${codes[1]}" > "$E1_OUTPUT/npm-ci.tee.exit"
+          test "${codes[0]}" -eq 0 && test "${codes[1]}" -eq 0
+      - name: Run predeclared serial ABBA diagnostic
+        env:
+          E1_OUTPUT: ${{ runner.temp }}/capacity-smoke-abba/abba
+          E1_EXPECTED_BACKEND_TREE: 29ba53b82cfa707e872f3571bebb42aecb6011b1
+          DINING_SMOKE_BASE_URL: http://127.0.0.1:8787/api/v1
+        run: python3 -B .github/scripts/capacity-smoke-abba.py
+      - name: Always retain raw diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: DIAGNOSTIC_SMOKE_LIVENESS_ABBA_NOT_PRODUCTION_PROOF-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/capacity-smoke-abba/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
