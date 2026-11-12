@@ -184,6 +184,37 @@ class GateAProducerContracts(unittest.TestCase):
     def test_full_scalar_chain_is_only_a_labelled_contract_fixture(self):
         self.assertEqual(self.probe.case_chain(scalar_fixture_rows()), "H1_CHAIN_RECORDED_WITH_ORIGINAL_IDENTITY_PATTERN")
 
+    def test_failure_actual_font_contradiction_stops_on_h4(self):
+        """Artificial negative scalars; no Android execution or native receipt."""
+        rows = scalar_fixture_rows()
+        failure = next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")
+        failure["owner"]["resourcesFont"] = 1
+        self.assertEqual(failure["requestedFont"], 2)
+        self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
+    def test_failure_non_resumed_lifecycle_stops_on_h4(self):
+        """Artificial negative scalars; actual font stays 2, never native proof."""
+        rows = scalar_fixture_rows()
+        failure = next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")
+        failure["owner"]["lifecycle"] = "CREATED"
+        self.assertEqual(failure["owner"]["resourcesFont"], 2)
+        self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
+    def test_failure_owner_must_match_rendered_owner_on_h4(self):
+        """Artificial owner contradictions/missing IDs; never native evidence."""
+        for name in ("activity", "window", "registry", "provider", "store"):
+            for mutation in ("different_failure_id", "both_ids_absent"):
+                with self.subTest(owner=name, mutation=mutation):
+                    rows = scalar_fixture_rows()
+                    rendered = next(row for row in rows if row["stage"] == "after-production-render" and row["requestedFont"] == 2)
+                    failure = next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")
+                    if mutation == "different_failure_id":
+                        failure["owner"][name]["id"] = 999
+                    else:
+                        for row in (rendered, failure):
+                            row["owner"][name].update(id=None, present=False)
+                    self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
     def test_missing_natural_bundle_and_early_read_cannot_support_h1(self):
         rows = scalar_fixture_rows()
         saved = next(row for row in rows if row["stage"] == "natural-save-complete")

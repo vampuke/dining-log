@@ -302,6 +302,12 @@ def case_chain(rows):
              terminal["callbacks"]["accountScope"]["id"] != rendered["callbacks"]["accountScope"]["id"] and
              terminal["callbacks"]["generation"] == rendered["callbacks"]["generation"] == 1)
     failure = at("failure-list-RESTAURANT", 2)
+    # H4: the failure must retain the ready owner observed after this render.
+    if (failure["owner"]["resourcesFont"] != failure["requestedFont"] or
+            failure["owner"]["lifecycle"] != "RESUMED" or
+            not all(ident(failure, name) is not None and ident(failure, name) == ident(rendered, name)
+                    for name in ("activity", "window", "registry", "provider", "store"))):
+        return "H4_NOT_ESTABLISHED"
     fresh = fresh and failure["sameVmAsHelper"] and ident(failure, "productVm") == ident(rendered, "productVm")
     composition_view = boundary["compositionView"]
     native_ready = (all(composition_view[key] for key in ("attached", "shown", "focused", "matchesActivityRoot", "matchesActivityToken")) and
