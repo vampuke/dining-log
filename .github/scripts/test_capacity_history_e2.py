@@ -199,7 +199,7 @@ def dummy_probe_raw(scenario="p1-4500", projection="id", state="pass"):
     original = emit(dummy_original(scenario))
     payload = original[len(b"CAPACITY_RESULT "):-1]
     task = {"filepath": str(RUNNER.parents[2] / "backend/tests/capacity/capacity_test.ts"),
-            "pool": "@cloudflare/vitest-pool-workers", "leaves": [
+            "pool": "threads", "leaves": [
                 {"id": "control-selected", "name": scenario + ": exact corpus, measured SQL, atomic complete write, p95 <= 100ms", "mode": "run", "state": state},
                 {"id": "control-skipped", "name": ("plan-6000" if scenario == "p1-4500" else "p1-4500") + ": exact corpus, measured SQL, atomic complete write, p95 <= 100ms", "mode": "skip", "state": "skip"}]}
     capture = {"emit_count": 1, "unexpected_log_calls": 0, "wrapper_owned": True, "wrapper_restored": True,
@@ -2070,7 +2070,8 @@ class ScenarioWideControls(DisposableControls):
 class NativeScratchArchiveControls(DisposableControls):
     members = ('config.ts', 'setup.ts', 'config-facts.json')
 
-    def native_scratch_control(self, mutation=None, missing_facts=False, copy_failure=None, freeze_failure=None):
+    def native_scratch_control(self, mutation=None, missing_facts=False, copy_failure=None, freeze_failure=None, facts_mutation=None,
+                               archive_failure=None, final_guard=None):
         """Real materialization/cleanup/completion/finalization/reopening; command seams use dummy bytes only."""
         case = Path(tempfile.mkdtemp(prefix='native-scratch-', dir=self.root))
         checkout = case / 'checkout'
@@ -2082,12 +2083,19 @@ class NativeScratchArchiveControls(DisposableControls):
         facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True, isolatedStorage=False,
                      remote_bindings=False, persistent_override=False,
                      test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+        if facts_mutation: facts_mutation(facts)
         source = {'manifest': {name: {'sha256': hashlib.sha256((checkout / name).read_bytes()).hexdigest()}
                                for name in e2.SNAPSHOT_SOURCES}}
         trace = {'unlinks': [], 'freezes': [], 'cleanup_called': False}
         cleanup = e2.cleanup_scratch
         freeze = e2.freeze_evidence
         unlink = Path.unlink
+        read_bytes = Path.read_bytes
+        open_path = Path.open
+        def guard(root, candidate, ref, scratch=None):
+            if final_guard and scratch is None and trace['cleanup_called']:
+                return final_guard(root, candidate, ref)
+            return source
         def command(argv, cwd, directory, timeout):
             directory = Path(directory)
             if argv[0].endswith('/vitest'):
@@ -2126,19 +2134,40 @@ class NativeScratchArchiveControls(DisposableControls):
             return freeze(target, digest)
         def real_cleanup(owner, archive):
             trace['cleanup_called'] = True
+            scratch = Path(owner['path'])
+            trace['scratch_path'] = str(scratch)
+            trace['original_hex'] = {p.name: p.read_bytes().hex() for p in scratch.iterdir()}
             if copy_failure:
                 # Exclusive-copy failure at the actual archive destination; preserve this foreign file.
                 (Path(archive) / copy_failure).write_bytes(b'CONTROL foreign archive member')
+            read_failed = False
+            def fault_read(target):
+                nonlocal read_failed
+                if archive_failure:
+                    stage, member = archive_failure
+                    if stage == 'read' and target == scratch / member and not read_failed:
+                        read_failed = True
+                        raise OSError('CONTROL scratch read failed')
+                    if stage == 'verification' and target == Path(archive) / member:
+                        return read_bytes(target) + b'CONTROL verification drift'
+                return read_bytes(target)
+            def fault_open(target, mode='r', *args, **kwargs):
+                if archive_failure and archive_failure[0] == 'copy' and target == Path(archive) / archive_failure[1] and mode == 'xb':
+                    with open_path(target, mode) as copied: copied.write(b'CONTROL partial archive copy')
+                    raise OSError('CONTROL scratch copy failed')
+                return open_path(target, mode, *args, **kwargs)
             try:
-                return cleanup(owner, archive)
+                with mock.patch.object(Path, 'read_bytes', fault_read), mock.patch.object(Path, 'open', fault_open):
+                    return cleanup(owner, archive)
             finally:
                 trace['cleanup_ledger'] = copy.deepcopy(e2.EXPECTED_EVIDENCE)
-                trace['scratch_exists_after'] = Path(owner['path']).exists()
+                trace['scratch_exists_after'] = scratch.exists()
+                trace['remaining_hex'] = {p.name: p.read_bytes().hex() for p in scratch.iterdir()} if scratch.exists() else {}
                 if mutation: mutation(output)
         with mock.patch.dict(os.environ, dict(RUNNER_TEMP=str(case), GITHUB_SHA=identity['candidate'], GITHUB_REF=identity['ref'],
                                                GITHUB_RUN_ID=identity['run'], GITHUB_RUN_ATTEMPT=identity['attempt'])), \
              mock.patch.object(e2, '__file__', str(checkout / '.github/scripts/capacity-history-e2.py')), \
-             mock.patch.object(e2, 'source_guard', return_value=source), \
+             mock.patch.object(e2, 'source_guard', side_effect=guard), \
              mock.patch.object(e2, 'runtime', return_value=identity['runtime']), \
              mock.patch.object(e2, 'no_smoke', return_value={'smoke_state': 'absent'}), \
              mock.patch.object(e2, 'cleanup_scratch', side_effect=real_cleanup), \
@@ -2261,6 +2290,204 @@ class NativeScratchArchiveControls(DisposableControls):
                 self.assertFalse(trace['phase']['artifact_members_ok'])
                 self.assertEqual(trace['phase']['evidence_status'], 'INCOMPLETE')
                 self.assertFalse(trace['reopened'])
+
+class ExecutorPoolControls(DisposableControls):
+    members = NativeScratchArchiveControls.members
+
+    def test_pinned_threads_file_is_accepted_by_python_audit(self):
+        for scenario in ('p1-4500', 'plan-6000'):
+            with self.subTest(scenario=scenario):
+                raw, preflight, history = dummy_probe_raw(scenario)
+                preflight['original_task']['pool'] = history['original_task']['pool'] = 'threads'
+                original = e2.audit_original(raw, scenario)
+                try:
+                    audited = e2.audit_probe(probe_log(raw, preflight, history), original, scenario, 'id', RUNNER.parents[2])
+                except ValueError as error:
+                    self.fail('pinned actual File.pool=threads rejected: ' + str(error))
+                self.assertEqual(audited['probe_calls'], 30)
+
+    def native_file_guard(self, pool, root=True, filepath=None):
+        source = RUNNER.with_name('capacity-history-e2-probe.ts').read_text()
+        guard = next(line.strip() for line in source.splitlines() if "'original root file/pool'" in line)
+        harness = self.root / 'native-file-guard.cjs'
+        harness.write_text('const file=' + json.dumps(dict(pool=pool, filepath=filepath or str(RUNNER.parents[2] / 'backend/tests/capacity/capacity_test.ts'))) + ';\n'
+                           + ('file.file=file;\n' if root else 'file.file={};\n')
+                           + 'function check(v,m) { if(!v) throw new Error(m); }\n'
+                           + 'try { ' + guard + '; console.log("accepted"); } catch(e) { console.error(e.message); process.exitCode=1; }\n')
+        result = subprocess.run(['node', str(harness)], capture_output=True, text=True, timeout=10)
+        print('CONTROL source-bound File.pool', pool, 'exit:', result.returncode, result.stderr.strip())
+        return result
+
+    def test_pinned_threads_file_is_accepted_by_native_source_guard(self):
+        result = self.native_file_guard('threads')
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_wrong_pool_and_unowned_native_root_are_rejected(self):
+        for pool in ('@cloudflare/vitest-pool-workers', 'forks', '', None):
+            with self.subTest(pool=pool):
+                result = self.native_file_guard(pool)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn('original root file/pool', result.stderr)
+                raw, preflight, history = dummy_probe_raw()
+                preflight['original_task']['pool'] = history['original_task']['pool'] = pool
+                with self.assertRaisesRegex(ValueError, 'original file/pool'):
+                    e2.audit_probe(probe_log(raw, preflight, history), e2.audit_original(raw, 'p1-4500'), 'p1-4500', 'id', RUNNER.parents[2])
+        for kwargs in ({'root': False}, {'filepath': '/backend/tests/capacity/foreign.ts'}):
+            with self.subTest(kwargs=kwargs):
+                self.assertEqual(self.native_file_guard('threads', **kwargs).returncode, 1)
+
+    def test_missing_and_drifted_configured_workers_facts_close_native_collection(self):
+        for field in ('inherited_once', 'plugins_same', 'pool_options_same', 'isolatedStorage', 'remote_bindings', 'persistent_override', 'test_original'):
+            for missing in (True, False):
+                with self.subTest(field=field, missing=missing):
+                    def mutate(facts):
+                        if missing: facts.pop(field)
+                        else: facts[field] = not facts[field] if type(facts[field]) is bool else {}
+                    _, trace = NativeScratchArchiveControls.native_scratch_control(self, facts_mutation=mutate)
+                    self.assertEqual(trace['code'], 1)
+                    self.assertFalse(trace['phase']['infrastructure_valid'])
+                    self.assertFalse(trace['reopened'])
+                    self.assertTrue(all('resolved config' in p['error'] or 'malformed evidence' in p['error'] for p in trace['phase']['processes']))
+
+    def test_resolved_workers_config_keeps_original_objects_and_rejects_missing_or_unsafe_workers(self):
+        # Execute the checked-in config body with local objects; no adapter import,
+        # Vitest, Workers, migrations or D1 operation is executed.
+        body = '\n'.join(line for line in e2.CONFIG.decode().splitlines() if not line.startswith('import '))
+        body = body.replace('export default async function(configEnv)', 'async function configure(configEnv)')
+        harness = self.root / 'resolved-config-control.cjs'
+        harness.write_text(r'''
+const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
+const fileURLToPath = url => url.pathname;
+const importMeta = {url: 'file:///owned/backend/.capacity-e2-scratch-12-1/config.ts'};
+let facts, calls;
+const writeFileSync = (url, raw) => { facts = JSON.parse(raw); };
+let resolved;
+const original = async () => { calls++; return resolved; };
+function baseline() {
+  calls=0;
+  return {plugins:[{name:'original-workers-plugin'}],test:{include:['tests/capacity/capacity_test.ts'],testTimeout:600000,hookTimeout:60000,
+    poolOptions:{workers:{isolatedStorage:false,wrangler:{configPath:'./wrangler.toml'},
+      miniflare:{compatibilityDate:'2025-06-17',bindings:{TEST_MIGRATIONS:['CONTROL ONLY']}}}}}};
+}
+''' + body.replace('import.meta', 'importMeta') + r'''
+(async () => {
+  resolved=baseline(); const result=await configure({});
+  assert.equal(calls,1); assert.equal(result.plugins,resolved.plugins);
+  assert.equal(result.test.poolOptions,resolved.test.poolOptions);
+  assert.equal(result.test.poolOptions.workers,resolved.test.poolOptions.workers);
+  assert.deepEqual(facts.binding_names,['TEST_MIGRATIONS']);
+  assert.equal(facts.binding_hashes.TEST_MIGRATIONS, createHash('sha256').update(JSON.stringify(resolved.test.poolOptions.workers.miniflare.bindings.TEST_MIGRATIONS)).digest('hex'));
+  assert.equal(facts.pool_options_same,true); assert.equal(facts.plugins_same,true);
+  assert.equal(facts.isolatedStorage,false); assert.equal(facts.wrangler_config,'./wrangler.toml');
+  assert.equal(facts.setup_path,'/owned/backend/.capacity-e2-scratch-12-1/setup.ts');
+  const mutations=[r=>delete r.test.poolOptions.workers, r=>delete r.test.poolOptions,
+    r=>r.test.poolOptions.workers.isolatedStorage=true, r=>r.test.poolOptions.workers.wrangler.configPath='./foreign.toml',
+    r=>r.test.poolOptions.workers.experimental_remoteBindings=true,
+    r=>r.test.poolOptions.workers.miniflare.d1Databases=['foreign'], r=>r.test.poolOptions.workers.miniflare.d1Persist='foreign',
+    r=>r.test.poolOptions.workers.miniflare.persist='foreign', r=>r.test.setupFiles=['foreign']];
+  for(const mutate of mutations) { resolved=baseline(); mutate(resolved); await assert.rejects(configure({})); }
+  console.log('configured Workers object identity and safety guards passed; File.pool remains separate');
+})().catch(e=>{console.error(e);process.exitCode=1;});
+''')
+        result = subprocess.run(['node', str(harness)], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        print(result.stdout.strip())
+
+class ScratchRetentionControls(DisposableControls):
+    members = NativeScratchArchiveControls.members
+
+    def retained_scratch_guard(self):
+        # Exercise the real source/status guard against a stdlib checkout fixture.
+        # Git command output is simulated; no native tool or repository mutation.
+        source_guard = e2.source_guard
+        def guard(root, candidate, ref):
+            tree = b''
+            for name in e2.SNAPSHOT_SOURCES:
+                raw = (root / name).read_bytes()
+                blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+                tree += ('100644 blob ' + blob + '\t' + name).encode() + b'\0'
+            status = ''.join('?? ' + str(p.relative_to(root)) + '\n'
+                             for p in sorted((root / 'backend').glob('.capacity-e2-scratch-*/*')))
+            def command(argv, cwd, expected=(0,)):
+                if argv[1:] == ['rev-parse', 'HEAD']: raw = candidate
+                elif argv[1:] == ['branch', '--show-current']: raw = e2.BRANCH
+                elif argv[1:] == ['rev-parse', 'HEAD:backend']: raw = e2.BACKEND_TREE
+                elif argv[1] == 'merge-base': raw = ''
+                elif argv[1:3] == ['diff', '--name-status']: raw = ''.join('A\t' + n + '\n' for n in e2.ALLOWED)
+                elif argv[1] == 'ls-tree': return tree, 0
+                elif argv[1:3] == ['diff', '--exit-code']: raw = ''
+                elif argv[1] == 'status': raw = status
+                else: raise AssertionError('unexpected source guard command: ' + repr(argv))
+                return raw.encode(), 0
+            with mock.patch.object(e2, 'read_command', side_effect=command):
+                return source_guard(root, candidate, ref)
+        return guard
+
+    def assert_retained_failure(self, output, trace, member):
+        phase = trace['phase']
+        scratch = Path(trace['scratch_path'])
+        original = bytes.fromhex(trace['original_hex'][member])
+        # This is the regression assertion: the old compensating deletion loses it.
+        self.assertTrue(scratch.is_dir(), 'failed archival must retain the owned scratch directory')
+        self.assertEqual((scratch / member).read_bytes(), original)
+        self.assertEqual(trace['remaining_hex'], {member: original.hex()})
+        self.assertTrue(trace['scratch_exists_after'])
+        for name in self.members:
+            ledger_name = 'scratch/' + name
+            if name == member:
+                self.assertIn(ledger_name, trace['cleanup_ledger'])
+                self.assertIsNone(trace['cleanup_ledger'][ledger_name])
+                self.assertIsNone(trace['receipt']['expected'][ledger_name])
+                self.assertFalse(any(event['name'] == ledger_name for event in trace['unlinks']))
+            else:
+                digest = hashlib.sha256(bytes.fromhex(trace['original_hex'][name])).hexdigest()
+                self.assertEqual(trace['cleanup_ledger'][ledger_name], digest)
+                self.assertEqual(trace['receipt']['expected'][ledger_name], digest)
+                self.assertEqual((output / ledger_name).read_bytes(), bytes.fromhex(trace['original_hex'][name]))
+        self.assertEqual(trace['code'], 1)
+        self.assertFalse(phase['scratch_cleanup_ok'])
+        self.assertIn('scratch archive failed', phase['cleanup_error'])
+        self.assertFalse(phase['source_guard_after'])
+        self.assertEqual(phase['source_error'], 'unexpected source status')
+        self.assertFalse(phase['artifact_members_ok'])
+        self.assertFalse(phase['infrastructure_valid'])
+        self.assertTrue(phase['failed'])
+        self.assertEqual(phase['evidence_status'], 'INCOMPLETE')
+        self.assertIn('source-after.json', trace['receipt']['expected'])
+        self.assertIsNone(trace['receipt']['expected']['source-after.json'])
+        self.assertFalse(trace['reopened'])
+        identity = {k: phase[k] for k in ('candidate', 'ref', 'run', 'attempt', 'runtime')}
+        with self.assertRaises(ValueError): e2.verify_artifact_members(output, e2.artifact_hashes(output))
+        with self.assertRaises(ValueError): e2.preflight_gate(output, identity)
+
+    def test_each_exclusive_collision_retains_exact_original_and_foreign_target(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                output, trace = NativeScratchArchiveControls.native_scratch_control(
+                    self, copy_failure=member, final_guard=self.retained_scratch_guard())
+                self.assertEqual((output / 'scratch' / member).read_bytes(), b'CONTROL foreign archive member')
+                self.assert_retained_failure(output, trace, member)
+
+    def test_each_freeze_failure_retains_exact_original_and_unfrozen_copy(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                output, trace = NativeScratchArchiveControls.native_scratch_control(
+                    self, freeze_failure=member, final_guard=self.retained_scratch_guard())
+                self.assertEqual((output / 'scratch' / member).read_bytes(), bytes.fromhex(trace['original_hex'][member]))
+                self.assert_retained_failure(output, trace, member)
+
+    def test_read_partial_copy_and_verification_failures_retain_existing_facts(self):
+        member = 'config-facts.json'
+        for stage in ('read', 'copy', 'verification'):
+            with self.subTest(stage=stage):
+                output, trace = NativeScratchArchiveControls.native_scratch_control(
+                    self, archive_failure=(stage, member), final_guard=self.retained_scratch_guard())
+                target = output / 'scratch' / member
+                if stage == 'read': self.assertFalse(target.exists())
+                elif stage == 'copy': self.assertEqual(target.read_bytes(), b'CONTROL partial archive copy')
+                else: self.assertEqual(target.read_bytes(), bytes.fromhex(trace['original_hex'][member]))
+                self.assert_retained_failure(output, trace, member)
 
 if __name__ == "__main__":
     unittest.main()

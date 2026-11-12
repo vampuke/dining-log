@@ -207,7 +207,9 @@ afterAll(async suite => {
   let restored = false;
   try {
     const file = suite;
-    check(file.file===file && typeof file.filepath==='string' && file.filepath.endsWith('/backend/tests/capacity/capacity_test.ts') && file.pool==='@cloudflare/vitest-pool-workers', 'original root file/pool');
+    // The pinned Workers adapter uses the threads executor identity; configured
+    // Workers ownership is independently guarded by the resolved config chain.
+    check(file.file===file && typeof file.filepath==='string' && file.filepath.endsWith('/backend/tests/capacity/capacity_test.ts') && file.pool==='threads', 'original root file/pool');
     owned=console.log===capture;
     check(owned && env.DB===savedDB && emitCount===1 && rawEmit!==undefined && ['*','id'].includes(projection), 'capture/binding/projection prerequisites');
     let payload = rawEmit.slice('CAPACITY_RESULT '.length);

@@ -206,7 +206,7 @@ def audit_probe(raw, original, scenario, projection, root):
     task = preflight['original_task']
     require(task == history['original_task'], 'task drift')
     require(task['filepath'] == str(Path(root) / 'backend/tests/capacity/capacity_test.ts')
-            and task['pool'] == '@cloudflare/vitest-pool-workers', 'original file/pool')
+            and task['pool'] == 'threads', 'original file/pool')
     require(len(task['leaves']) == 2 and len({l['id'] for l in task['leaves']}) == 2, 'selected leaf count')
     selected = [l for l in task['leaves'] if l['name'].startswith(scenario + ': ')]
     other = [l for l in task['leaves'] if not l['name'].startswith(scenario + ': ')]
@@ -436,12 +436,9 @@ def cleanup_scratch(owner, archive):
         else:
             # Only copied and frozen originals may be discarded on success.
             item.unlink()
-    if errors:
-        # A failed archive must not strand safely owned temporary sources. The
-        # unfilled ledger entries keep this cleanup from completing evidence.
-        for item in path.iterdir(): item.unlink()
-    path.rmdir()
+    # Failed archival leaves the original bytes and owned directory available.
     require(not errors, 'scratch archive failed: ' + '; '.join(errors))
+    path.rmdir()
 
 
 
@@ -1024,9 +1021,9 @@ def native(args):
                     facts_path=Path(owner['path'])/'config-facts.json'
                     require(facts_path.is_file() and not facts_path.is_symlink(), 'missing native resolved config facts')
                     facts=parse_json(facts_path.read_bytes())
-                    require(facts['inherited_once'] is True and facts['plugins_same'] is True and facts['pool_options_same'] is True
-                            and facts['isolatedStorage'] is False and facts['remote_bindings'] is False and facts['persistent_override'] is False
-                            and facts['test_original']=={'include':['tests/capacity/capacity_test.ts'],'testTimeout':600000,'hookTimeout':60000}, 'unsafe resolved config')
+                    require(facts.get('inherited_once') is True and facts.get('plugins_same') is True and facts.get('pool_options_same') is True
+                            and facts.get('isolatedStorage') is False and facts.get('remote_bindings') is False and facts.get('persistent_override') is False
+                            and facts.get('test_original')=={'include':['tests/capacity/capacity_test.ts'],'testTimeout':600000,'hookTimeout':60000}, 'unsafe resolved config')
                     if baseline_config is None: baseline_config=facts
                     require(facts==baseline_config, 'resolved binding/config drift')
                     write_json(directory/'resolved-config.json',facts)
