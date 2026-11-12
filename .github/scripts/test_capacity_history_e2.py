@@ -9,6 +9,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import select
 from pathlib import Path
 import signal
 import subprocess
@@ -545,6 +546,98 @@ class SourceScratchControls(DisposableControls):
 
 
 class ProcessControls(DisposableControls):
+    def cleanup_proven_fixture(self, proof):
+        current = e2.process_table().get(proof['pid'])
+        if current and current['start'] == proof['start'] and current['state'] != 'Z':
+            fd = os.pidfd_open(proof['pid'])
+            try:
+                poller = select.poll(); poller.register(fd, select.POLLIN)
+                current = e2.process_table().get(proof['pid'])
+                if not poller.poll(0) and current and current['start'] == proof['start']:
+                    signal.pidfd_send_signal(fd, signal.SIGTERM)
+            finally: os.close(fd)
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            try:
+                if os.waitpid(proof['pid'], os.WNOHANG)[0]: return
+            except ChildProcessError: return
+            time.sleep(.005)
+        self.fail('test owner could not reap its bounded fixture')
+
+    def test_unavailable_identity_handle_closes_without_numeric_fallback(self):
+        directory = self.root / 'no-pidfd'; directory.mkdir()
+        with mock.patch.object(os, 'pidfd_open', side_effect=OSError('CONTROL pidfd unavailable')), \
+             mock.patch.object(os, 'kill', side_effect=AssertionError('numeric fallback forbidden')):
+            receipt = e2.run_owned([sys.executable, '-B', '-c', 'import time; time.sleep(.05)'],
+                                   self.root, directory, 1)
+        self.assertFalse(receipt['cleanup_ok'])
+        self.assertTrue(receipt['ownership_errors'])
+        self.assertFalse(receipt['cleanup_signals'])
+
+    def reuse_race(self, after_reap=False):
+        # Deterministic PID reuse is infeasible on the host. This OS seam models
+        # exit/reap/replacement at signal delivery; it never signals host PIDs.
+        leader, child, foreign_child = 410001, 410002, 410003
+        def info(pid, start, ppid, sid=leader):
+            return dict(pid=pid, start=start, ppid=ppid, sid=sid, pgid=sid, state='S')
+        original = {leader: info(leader, 10, os.getpid()), child: info(child, 11, leader)}
+        foreign = {leader: info(leader, 20, os.getpid()),
+                   foreign_child: info(foreign_child, 21, leader)} if after_reap else {
+                       child: info(child, 20, os.getpid(), child)}
+        state = {'tables': 0, 'reused': False, 'foreign_signals': [], 'pinned_signals': []}
+        process = mock.Mock(pid=leader, returncode=None)
+        def poll():
+            if after_reap or state['reused']:
+                process.returncode = 0; state['reused'] = True
+                return 0
+            return None
+        process.poll.side_effect = poll
+        process.wait.side_effect = lambda **_: poll()
+        def table():
+            state['tables'] += 1
+            if state['tables'] == 1: return {}
+            if state['reused']: return foreign
+            return {leader: original[leader]} if after_reap else original
+        handles = {}
+        def pin(pid, flags=0):
+            handles[pid + 100] = (pid, table()[pid]['start'])
+            return pid + 100
+        class Poll:
+            def register(self, fd, *_): self.fd = fd
+            def poll(self, *_):
+                pid, start = handles[self.fd]
+                return [(self.fd, select.POLLIN)] if after_reap or state['reused'] or pid not in original else []
+        def numeric(pid, sig):
+            if not after_reap and pid == leader: return
+            state['reused'] = True
+            state['foreign_signals'].append({'pid': pid, 'signal': sig})
+        def stable(fd, sig, *_):
+            if not after_reap and handles[fd][0] == leader: return
+            # The proven child exits and is reaped after the discovery snapshot.
+            state['reused'] = True
+            state['pinned_signals'].append({'handle_generation': handles[fd], 'signal': sig})
+            raise ProcessLookupError('controlled original generation exited')
+        directory = self.root / 'reuse'; directory.mkdir()
+        with mock.patch.object(e2, 'process_table', side_effect=table), \
+             mock.patch.object(e2.subprocess, 'Popen', return_value=process), \
+             mock.patch.object(os, 'kill', side_effect=numeric), \
+             mock.patch.object(os, 'pidfd_open', side_effect=pin), \
+             mock.patch.object(signal, 'pidfd_send_signal', side_effect=stable), \
+             mock.patch.object(select, 'poll', Poll), \
+             mock.patch.object(os, 'close'), mock.patch.object(os, 'waitid', return_value=None):
+            receipt = e2.run_owned(['CONTROL-only'], self.root, directory, .0001)
+        (self.root / 'reuse-trace.json').write_text(json.dumps(state, indent=2))
+        self.assertFalse(state['foreign_signals'], 'no signal may reach a replacement generation')
+        self.assertNotIn(foreign_child, [p['pid'] for p in receipt['descendants_observed']],
+                         'reaped leader numeric session cannot promote foreign descendants')
+        self.assertFalse(receipt['cleanup_ok'], 'lost generation must stop interpretation')
+
+    def test_pid_reuse_between_discovery_and_delivery_never_signals_foreign(self):
+        self.reuse_race()
+
+    def test_reaped_leader_session_reuse_never_promotes_foreign(self):
+        self.reuse_race(after_reap=True)
+
     def test_new_unrelated_descendant_actually_adopted_is_never_owned_or_signaled(self):
         # This parent exists before run_owned's baseline. It forks only after the
         # launched command's marker, and records independent fixture ancestry.
@@ -585,11 +678,7 @@ assert int(fields[1])==os.getpid()
             if proof.exists():
                 owned = json.loads(proof.read_text())
                 self.assertEqual(owned['ppid'], unrelated.pid)
-                current = e2.process_table().get(owned['pid'])
-                if current and current['start'] == owned['start'] and current['state'] != 'Z':
-                    os.kill(owned['pid'], signal.SIGTERM)
-                try: os.waitpid(owned['pid'], 0)
-                except ChildProcessError: pass
+                self.cleanup_proven_fixture(owned)
         self.addCleanup(cleanup_fixture)
         deadline = time.monotonic() + 3
         while not (self.root / 'parent-ready').exists() and time.monotonic() < deadline: time.sleep(.005)
@@ -652,11 +741,7 @@ assert (root/'escaped').exists()
             proof_path = self.root / 'owned-child.json'
             if proof_path.exists():
                 proof = json.loads(proof_path.read_text())
-                child = original_table().get(proof['pid'])
-                if child and child['start'] == proof['start'] and child['state'] != 'Z':
-                    os.kill(proof['pid'], signal.SIGTERM)
-                try: os.waitpid(proof['pid'], os.WNOHANG)
-                except ChildProcessError: pass
+                self.cleanup_proven_fixture(proof)
         self.addCleanup(cleanup_fixture)
         directory = self.root / 'escaped-child'; directory.mkdir()
         with mock.patch.object(e2, 'process_table', observed_table):
@@ -690,8 +775,10 @@ assert (root/'escaped').exists()
 
     def test_owned_descendant_is_drained_and_unowned_process_survives(self):
         unrelated = subprocess.Popen([sys.executable, '-B', '-c', 'import time; time.sleep(4)'])
-        self.addCleanup(lambda: unrelated.poll() is None and unrelated.terminate())
-        self.addCleanup(lambda: None)
+        def cleanup_unrelated():
+            if unrelated.poll() is None: unrelated.terminate()
+            unrelated.wait(timeout=2)
+        self.addCleanup(cleanup_unrelated)
         directory = self.root / 'descendant'; directory.mkdir()
         command = [sys.executable, '-B', '-c', "import subprocess,sys; subprocess.Popen([sys.executable,'-B','-c','import time; time.sleep(3)']); print('CONTROL parent exit')"]
         value = e2.run_owned(command, self.root, directory, 1)
@@ -935,6 +1022,33 @@ class FinalizationControls(DisposableControls):
         def cleanup(*_):
             if artifact_mutation is not None: artifact_mutation(output)
             if cleanup_failed: raise ValueError('CONTROL final scratch cleanup failure')
+        def collected(*_):
+            # Final-operation controls substitute the schedule, but must supply
+            # its actual required files and frozen mock completion receipts.
+            for process in processes:
+                directory = output / process['block'] / process['scenario']; directory.mkdir(parents=True)
+                probe = process['probe_audit']
+                raw = probe_log(emit(process['original_audit']['result']), probe['preflight'], probe['history'])
+                for name, content in (('stdout.raw', raw), ('stderr.raw', b'')):
+                    (directory / name).write_bytes(content)
+                    digest = hashlib.sha256(content).hexdigest()
+                    process['process'][name.split('.')[0] + '_sha256'] = digest
+                    e2.freeze_evidence(directory / name, digest)
+                for name, value in (('process.json', process['process']), ('audit.json', process),
+                                    ('preflight-record.json', probe['preflight']), ('history-record.json', probe['history'])):
+                    e2.write_json(directory / name, value)
+                for name in ('liveness-before.json','liveness-after.json','source-before.json','source-after.json','resolved-config.json'):
+                    e2.write_json(directory / name, {'control_only': True})
+            for block in ('01-A','02-B','03-B','04-A'):
+                directory = output / block; renderer = directory / 'renderer'; renderer.mkdir()
+                raw = b''.join((directory / s / n).read_bytes() for s in ('p1-4500','plan-6000') for n in ('stdout.raw','stderr.raw'))
+                for path, content in ((directory/'capacity.log',raw), (directory/'measurements.json',b'{}'),
+                                      (directory/'RESULTS.md',b'CONTROL results'), (renderer/'stdout.raw',b'CONTROL renderer'),
+                                      (renderer/'stderr.raw',b'')):
+                    path.write_bytes(content); e2.freeze_evidence(path)
+                e2.write_json(renderer/'process.json', {'control_only':True, 'returncode':0})
+                e2.write_json(renderer/'audit.json', {'failed':False})
+            return outcome
         # Exercise native's finalization code only. All command/DB/runtime and
         # scratch materialization interfaces are replaced; no backend writes.
         with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root)}), \
@@ -943,7 +1057,7 @@ class FinalizationControls(DisposableControls):
              mock.patch.object(e2, 'runtime', return_value={'control_only': True}), \
              mock.patch.object(e2, 'preflight_gate', return_value={'resolved_config': {'control_only': True}, 'failed': False}), \
              mock.patch.object(e2, 'materialize_scratch', return_value=owner), \
-             mock.patch.object(e2, 'serial_phase', return_value=outcome), \
+             mock.patch.object(e2, 'serial_phase', side_effect=collected), \
              mock.patch.object(e2, 'cleanup_scratch', side_effect=cleanup), \
              mock.patch.object(e2, 'run_owned', side_effect=AssertionError('native command forbidden in finalization control')):
             code = e2.native(args)
@@ -977,7 +1091,7 @@ class FinalizationControls(DisposableControls):
                 e2.verify_artifact_members(output, hashes)
             path.write_bytes(original)
         omitted_hash = dict(hashes); omitted_hash.pop('scratch/variants.json')
-        with self.assertRaisesRegex(ValueError, 'artifact member/hash completeness'):
+        with self.assertRaisesRegex(ValueError, 'missing completed evidence member'):
             e2.verify_artifact_members(output, omitted_hash)
         e2.verify_artifact_members(output, hashes)
 
@@ -1034,6 +1148,8 @@ class FinalizationControls(DisposableControls):
         if source_failed:
             self.assertEqual(phase['source_error'], 'CONTROL final source validation failure')
             exclusions.append('final source validation failed')
+            self.assertFalse(phase['artifact_members_ok'], 'missing required final source receipt is incomplete evidence')
+            exclusions.append('required artifact membership failed')
         self.assertEqual(report['final_exclusions'], exclusions)
         self.assertEqual(report['final_operations'], {'scratch_cleanup_ok': not cleanup_failed, 'source_guard_after': not source_failed})
         for actual, original in zip(report['comparisons'], expected['comparisons']):
@@ -1061,6 +1177,177 @@ class FinalizationControls(DisposableControls):
         self.assertEqual(report['final_operations'], {'scratch_cleanup_ok': True, 'source_guard_after': True})
         self.assertEqual(report['final_exclusions'], [])
         self.assertEqual(hashes['descriptive-effect.json'], hashlib.sha256((output / 'descriptive-effect.json').read_bytes()).hexdigest())
+
+
+class CommandPhaseControls(DisposableControls):
+    def controlled_phase(self, failure_at=None, mutation=None):
+        """Run the real serial/finalization paths with only pure Python children.
+
+        Guard/runtime and renderer command interfaces substitute bounded Python
+        commands. The unsafe-command seam records a fake surviving generation.
+        """
+        output = self.root / 'phase'
+        checkout = self.root / 'fixture-checkout'
+        for name in e2.SNAPSHOT_SOURCES:
+            target = checkout / name; target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((RUNNER.parents[2] / name).read_bytes())
+        scratch = checkout / 'backend/test-owned-scratch'; scratch.mkdir()
+        facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True,
+                     isolatedStorage=False, remote_bindings=False, persistent_override=False,
+                     test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+        (scratch / 'config-facts.json').write_text(json.dumps(facts))
+        owner = {'path': str(scratch), 'variants': {}}
+        source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
+                               for name in e2.SNAPSHOT_SOURCES}}
+        trace = {'attempts': [], 'scratch_deletions': [], 'fake_owned_remains': False,
+                 'guards': 0, 'runtimes': 0, 'arm': 'full', 'original_raw_hashes': {}}
+        original_owned = e2.run_owned
+        def guard(*_, **__):
+            trace['guards'] += 1
+            e2.read_command(['CONTROL-guard', str(trace['guards'])], self.root)
+            return source
+        def runtime(*_, **__):
+            trace['runtimes'] += 1
+            e2.read_command(['CONTROL-runtime', str(trace['runtimes'])], self.root)
+            return {'control_only': True}
+        def command(argv, cwd, directory, timeout):
+            directory = Path(directory)
+            trace['attempts'].append(argv)
+            kind = ('guard' if argv[0] == 'CONTROL-guard' else 'runtime' if argv[0] == 'CONTROL-runtime'
+                    else 'vitest' if argv[0].endswith('/vitest') else 'renderer')
+            fail = kind == failure_at and (kind not in ('guard', 'runtime') or argv[1] == '2')
+            if fail:
+                trace['fake_owned_remains'] = True
+                (directory / 'stdout.raw').write_bytes(b'CONTROL unsafe cleanup\n')
+                (directory / 'stderr.raw').write_bytes(b'CONTROL generation still owned\n')
+                receipt = dict(command=argv, returncode=1, cleanup_ok=False, timed_out=False,
+                               spawn_error=None, descendants_after_exit=[490001], ownership_errors=[{'error': 'CONTROL unproved drain'}],
+                               stdout_sha256=hashlib.sha256((directory / 'stdout.raw').read_bytes()).hexdigest(),
+                               stderr_sha256=hashlib.sha256((directory / 'stderr.raw').read_bytes()).hexdigest())
+                e2.write_json(directory / 'process.json', receipt)
+                return receipt
+            if kind == 'vitest':
+                scenario = argv[-1]; projection = '*' if trace['arm'] == 'full' else 'id'
+                original, preflight, history = dummy_probe_raw(scenario, projection)
+                preflight['original_task']['filepath'] = str(checkout / 'backend/tests/capacity/capacity_test.ts')
+                history['original_task']['filepath'] = preflight['original_task']['filepath']
+                for sample in history['samples']:
+                    sample.update(start_ms=1000 + 20 * sample['index'], wall_ms=10 if projection == '*' else 2)
+                    sample['stop_ms'] = sample['start_ms'] + sample['wall_ms']
+                    sample['bookkeeping_stop_ms'] = sample['stop_ms'] + sample['bookkeeping_ms']
+                raw = probe_log(original, preflight, history)
+                inp = self.root / ('input-%03d.raw' % len(trace['attempts'])); inp.write_bytes(raw)
+                actual = [sys.executable, '-B', '-c',
+                          'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())', str(inp)]
+            elif kind == 'renderer':
+                actual = [sys.executable, '-B', '-c',
+                          "import pathlib,sys; p=pathlib.Path(sys.argv[1]); (p/'measurements.json').write_text('{}'); (p/'RESULTS.md').write_text('CONTROL renderer output'); print('CONTROL renderer completed')",
+                          str(directory.parent)]
+            else:
+                actual = [sys.executable, '-B', '-c', "print('CONTROL guard/runtime')"]
+            receipt = original_owned(actual, self.root, directory, 3)
+            if kind == 'vitest':
+                trace['original_raw_hashes'][str(directory.relative_to(output) / 'stdout.raw')] = receipt['stdout_sha256']
+            return receipt
+        def cleanup(*_):
+            if mutation: mutation(output)
+            trace['scratch_deletions'].append(str(scratch))
+            for path in scratch.iterdir(): path.unlink()
+            scratch.rmdir()
+        args = mock.Mock(phase='abba', output=str(output), preflight=str(self.root / 'preflight'))
+        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root)}), \
+             mock.patch.object(e2, '__file__', str(checkout / '.github/scripts/capacity-history-e2.py')), \
+             mock.patch.object(e2, 'LEDGER', None), \
+             mock.patch.object(e2, 'source_guard', side_effect=guard), \
+             mock.patch.object(e2, 'runtime', side_effect=runtime), \
+             mock.patch.object(e2, 'preflight_gate', return_value={'resolved_config': facts, 'failed': False}), \
+             mock.patch.object(e2, 'materialize_scratch', return_value=owner), \
+             mock.patch.object(e2, 'select_projection', side_effect=lambda _, arm: trace.update(arm=arm)), \
+             mock.patch.object(e2, 'owned_scratch', return_value=scratch), \
+             mock.patch.object(e2, 'no_smoke', return_value={'smoke_state': 'absent'}), \
+             mock.patch.object(e2, 'cleanup_scratch', side_effect=cleanup), \
+             mock.patch.object(e2, 'run_owned', side_effect=command):
+            code = e2.native(args)
+        (self.root / 'command-cleanup-trace.json').write_text(json.dumps(trace, indent=2))
+        phase = json.loads((output / 'phase.json').read_text())
+        return code, phase, output, trace
+
+    def assert_unsafe_command(self, kind):
+        code, phase, output, trace = self.controlled_phase(failure_at=kind)
+        self.assertTrue(trace['fake_owned_remains'])
+        self.assertFalse(trace['scratch_deletions'], 'unsafe cleanup prohibits scratch deletion')
+        renderer_attempts = [c for c in trace['attempts'] if c[0] == 'node']
+        self.assertEqual(len(renderer_attempts), 1 if kind == 'renderer' else 0,
+                         'cleanup failure prohibits any later renderer launch')
+        unsafe_index = next(i for i, c in enumerate(trace['attempts']) if
+                            (kind == 'renderer' and c[0] == 'node') or
+                            (kind == 'vitest' and c[0].endswith('/vitest')) or
+                            (kind in ('guard', 'runtime') and c == ['CONTROL-' + kind, '2']))
+        self.assertEqual(trace['attempts'][unsafe_index + 1:], [],
+                         'every command category must stop later launches after unsafe cleanup')
+        self.assertFalse(phase['owned_processes_gone'], 'persistent latch cannot be reset by later guard success')
+        self.assertFalse(phase['infrastructure_valid']); self.assertTrue(phase['failed']); self.assertEqual(code, 1)
+
+    def test_guard_cleanup_failure_blocks_renderer_and_scratch_deletion(self):
+        self.assert_unsafe_command('guard')
+
+    def test_runtime_cleanup_failure_blocks_renderer_and_scratch_deletion(self):
+        self.assert_unsafe_command('runtime')
+
+    def test_vitest_cleanup_failure_blocks_renderer_and_scratch_deletion(self):
+        self.assert_unsafe_command('vitest')
+
+    def test_renderer_cleanup_failure_blocks_next_command_and_scratch_deletion(self):
+        self.assert_unsafe_command('renderer')
+
+    def assert_before_hash_failure(self, relative, change=False):
+        def mutate(output):
+            path = output / relative
+            self.assertTrue(path.is_file(), 'mutation must target already completed real evidence')
+            if change: path.write_bytes(path.read_bytes() + b'CONTROL changed before manifest\n')
+            else: path.unlink()
+        code, phase, output, trace = self.controlled_phase(mutation=mutate)
+        self.assertEqual(len(trace['original_raw_hashes']), 8, 'all ABBA Python processes must have completed')
+        self.assertEqual((phase['original_samples'], phase['original_gate_evaluations'], phase['probe_calls']),
+                         (4080, 208, 240), 'retain the actual audited observations')
+        self.assertEqual(code, 1, 'pre-manifest evidence loss/drift must prohibit success')
+        self.assertFalse(phase['artifact_members_ok']); self.assertFalse(phase['infrastructure_valid'])
+        self.assertEqual(phase['evidence_status'], 'INCOMPLETE')
+        report = json.loads((output / 'descriptive-effect.json').read_text())
+        self.assertEqual(report['status'], 'infrastructure-invalid')
+        self.assertEqual(report['evidence_status'], 'INCOMPLETE')
+        self.assertIn('required artifact membership failed', report['final_exclusions'])
+        self.assertEqual(len(report['comparisons']), 4)
+        self.assertTrue(all(c['criterion_support'] for c in report['comparisons']), 'retain descriptive numbers, revoke conclusion')
+
+    def test_before_final_hash_removed_abba_raw_log_is_incomplete(self):
+        self.assert_before_hash_failure('01-A/p1-4500/stdout.raw')
+
+    def test_before_final_hash_changed_abba_raw_bytes_are_incomplete(self):
+        self.assert_before_hash_failure('01-A/p1-4500/stdout.raw', change=True)
+
+    def test_before_final_hash_missing_renderer_output_is_incomplete(self):
+        self.assert_before_hash_failure('01-A/RESULTS.md')
+
+    def test_before_final_hash_missing_process_receipt_is_incomplete(self):
+        self.assert_before_hash_failure('01-A/p1-4500/process.json')
+
+    def test_before_final_hash_missing_result_output_is_incomplete(self):
+        self.assert_before_hash_failure('01-A/p1-4500/audit.json')
+
+    def test_completed_evidence_keeps_both_original_emissions_byte_exact(self):
+        code, phase, output, trace = self.controlled_phase()
+        self.assertEqual(code, 0); self.assertTrue(phase['artifact_members_ok'])
+        for block in ('01-A', '02-B', '03-B', '04-A'):
+            original = b''
+            for scenario in ('p1-4500', 'plan-6000'):
+                relative = block + '/' + scenario + '/stdout.raw'
+                raw = (output / relative).read_bytes()
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), trace['original_raw_hashes'][relative])
+                self.assertEqual(raw.count(b'CAPACITY_RESULT '), 1)
+                original += raw + (output / block / scenario / 'stderr.raw').read_bytes()
+            self.assertEqual((output / block / 'capacity.log').read_bytes(), original)
+            self.assertEqual(original.count(b'CAPACITY_RESULT '), 2, 'both raw original emits remain unnormalized')
 
 
 class AdditionalControls(DisposableControls):

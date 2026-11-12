@@ -6,6 +6,7 @@ import math
 import os
 from pathlib import Path
 import re
+import select
 import signal
 import stat
 import subprocess
@@ -462,31 +463,69 @@ def run_owned(command, cwd, directory, timeout):
     directory = Path(directory)
     baseline = process_table()
     known = {}
+    handles = {}
+    ownership_errors = []
     unexplained = {}
     events = []
     start = time.monotonic()
     timed_out = False
     spawn_error = None
     process = None
+    def alive(fd):
+        poller = select.poll(); poller.register(fd, select.POLLIN)
+        return not poller.poll(0)
+    def pin(pid, info, proof):
+        fd = None
+        try:
+            require(hasattr(os, 'P_PIDFD') and hasattr(signal, 'pidfd_send_signal'), 'identity-stable signal/wait unavailable')
+            fd = os.pidfd_open(pid, 0)
+            # A live pidfd brackets the fresh /proc read: the numeric identity
+            # cannot change during that read without the handle becoming dead.
+            live = alive(fd)
+            current = process_table().get(pid)
+            require(current is not None and current['start'] == info['start'], 'generation changed while pinning')
+            require((live and alive(fd)) or (proof['kind'] == 'launched' and process.returncode is None
+                    and current['ppid'] == os.getpid()), 'generation exited while pinning')
+            if proof['kind'] == 'observed-parent':
+                if current['ppid'] != proof['pid'] or not alive(handles[proof['pid']]):
+                    # Parent exit can race pinning. Only the still-unreaped
+                    # private session leader can independently prove this child.
+                    proof = {'kind': 'inherited-session', 'pid': process.pid, 'start': known[process.pid]['start']}
+            if proof['kind'] == 'inherited-session':
+                leader = process_table().get(process.pid)
+                require(process.returncode is None and leader is not None and leader['start'] == known[process.pid]['start']
+                        and current['sid'] == process.pid, 'session generation lost')
+            known[pid] = dict(current, ownership_proof=proof)
+            handles[pid] = fd
+            return True
+        except (OSError, ValueError, AttributeError) as error:
+            if fd is not None: os.close(fd)
+            ownership_errors.append({'pid': pid, 'error': str(error)})
+            return False
     def discover():
         table = process_table()
         changed = True
         while changed:
             changed = False
             for pid, info in table.items():
-                if pid in known: continue
+                if pid in known:
+                    if info['start'] != known[pid]['start']:
+                        error = {'pid': pid, 'error': 'owned numeric identity reused'}
+                        if error not in ownership_errors: ownership_errors.append(error)
+                    continue
                 proof = None
+                if ownership_errors: continue
                 if pid == process.pid and info['ppid'] == os.getpid() and info['sid'] == info['pgid'] == pid and pid not in baseline:
                     proof = {'kind': 'launched', 'pid': pid, 'start': info['start']}
-                elif info['ppid'] in known and info['ppid'] in table and table[info['ppid']]['start'] == known[info['ppid']]['start']:
+                elif info['ppid'] in handles and alive(handles[info['ppid']]) and info['ppid'] in table and table[info['ppid']]['start'] == known[info['ppid']]['start']:
                     proof = {'kind': 'observed-parent', 'pid': info['ppid'], 'start': known[info['ppid']]['start']}
-                elif process.pid in known and info['sid'] == process.pid and info['start'] >= known[process.pid]['start']:
-                    # start_new_session creates a private Linux session. Other
-                    # processes cannot join it; membership proves inheritance
-                    # from this command even after an unobserved parent exits.
+                elif process.pid in known and process.returncode is None and process.pid in table and table[process.pid]['start'] == known[process.pid]['start'] and info['sid'] == process.pid:
+                    # Popen has not reaped the pinned session leader, so its
+                    # numeric session generation is still reserved. After reap,
+                    # only previously pinned descendants retain ownership.
                     proof = {'kind': 'inherited-session', 'pid': process.pid, 'start': known[process.pid]['start']}
                 if proof:
-                    known[pid] = dict(info, ownership_proof=proof); changed = True
+                    changed = pin(pid, info, proof) or changed
         for pid, info in table.items():
             if pid in known and info['start'] == known[pid]['start']: continue
             previous = baseline.get(pid)
@@ -495,17 +534,22 @@ def run_owned(command, cwd, directory, timeout):
         return {pid: table[pid] for pid, info in known.items() if pid in table and table[pid]['start'] == info['start']}
     def send(sig):
         live = discover()
-        # Ancestry proves ownership; Linux start time guards against PID reuse.
+        # Never deliver a signal via a numeric PID, even after a fresh snapshot.
         for pid, info in live.items():
+            if ownership_errors: break
             if info['state'] == 'Z': continue
             try:
-                os.kill(pid, sig); events.append({'pid':pid,'start':info['start'],'signal':sig})
-            except ProcessLookupError: pass
+                signal.pidfd_send_signal(handles[pid], sig, None, 0)
+                events.append({'pid':pid,'start':info['start'],'signal':sig,'identity':'pidfd'})
+            except (OSError, AttributeError) as error:
+                ownership_errors.append({'pid':pid,'error':str(error)})
     def reap():
         for pid in known:
             if pid == process.pid: continue
-            try: os.waitpid(pid, os.WNOHANG)
+            try: os.waitid(os.P_PIDFD, handles[pid], os.WEXITED | os.WNOHANG)
             except ChildProcessError: pass
+            except OSError as error:
+                ownership_errors.append({'pid':pid,'error':str(error)})
     with (directory / 'stdout.raw').open('xb') as stdout, (directory / 'stderr.raw').open('xb') as stderr:
         try:
             process = subprocess.Popen(command, cwd=cwd, stdout=stdout, stderr=stderr, start_new_session=True)
@@ -513,8 +557,12 @@ def run_owned(command, cwd, directory, timeout):
             spawn_error = str(error)
         if process is not None:
             discover()  # Retain the launched identity before poll can reap it.
-            while process.poll() is None:
+            while process.returncode is None:
                 discover()
+                if process.pid in handles and not alive(handles[process.pid]):
+                    discover()  # Discover the private session before leader reap.
+                    process.poll(); break
+                if process.pid not in handles and process.poll() is not None: break
                 if time.monotonic() - start >= timeout:
                     timed_out = True; send(signal.SIGTERM); break
                 time.sleep(0.02)
@@ -537,14 +585,16 @@ def run_owned(command, cwd, directory, timeout):
                 while discover() and time.monotonic() < end:
                     reap(); time.sleep(0.02)
             reap()
-            cleanup_ok = not discover() and code is not None and process.pid in known and not unexplained
+            cleanup_ok = not discover() and code is not None and process.pid in known and not unexplained and not ownership_errors
         else:
             code = None; leaked = []; cleanup_ok = True
+    for fd in handles.values(): os.close(fd)
     receipt = {'command': command, 'cwd': str(cwd), 'pid': process.pid if process else None,
                'returncode': code, 'signal': -code if code is not None and code < 0 else None,
                'spawn_error': spawn_error, 'timed_out': timed_out, 'cleanup_ok': cleanup_ok,
                'descendants_observed': [v for k,v in known.items() if process and k != process.pid],
                'unexplained_adopted': list(unexplained.values()),
+               'ownership_errors': ownership_errors,
                'descendants_after_exit': leaked, 'cleanup_signals': events,
                'stdout_sha256': hashlib.sha256((directory / 'stdout.raw').read_bytes()).hexdigest(),
                'stderr_sha256': hashlib.sha256((directory / 'stderr.raw').read_bytes()).hexdigest()}
@@ -553,6 +603,7 @@ def run_owned(command, cwd, directory, timeout):
 
 def write_json(path, value):
     Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n')
+    freeze_evidence(path)
 
 # Control interface: a successful hook must never mask a child failure.
 def audit_process(receipt, raw, scenario, projection, root):
@@ -684,12 +735,47 @@ def describe_effect(processes):
 PINNED = {'@cloudflare/vitest-pool-workers':'0.8.49','vitest':'3.2.4','@vitest/runner':'3.2.7',
           'miniflare':'4.20250617.5','workerd':'1.20250617.0','@cloudflare/workers-types':'4.20250620.0','wrangler':'4.23.0'}
 LEDGER = None
+SAFETY = None
+EVIDENCE_ROOT = None
+EXPECTED_EVIDENCE = None
+
+def expect_evidence(path):
+    path = Path(path).absolute()
+    if EXPECTED_EVIDENCE is not None and path.is_relative_to(EVIDENCE_ROOT):
+        EXPECTED_EVIDENCE.setdefault(str(path.relative_to(EVIDENCE_ROOT)), None)
+
+def freeze_evidence(path, digest=None):
+    """Record completion bytes once; later filesystem inventories cannot reset them."""
+    path = Path(path).absolute()
+    expect_evidence(path)
+    if EXPECTED_EVIDENCE is None or not path.is_relative_to(EVIDENCE_ROOT): return
+    name = str(path.relative_to(EVIDENCE_ROOT))
+    if EXPECTED_EVIDENCE[name] is not None: return
+    if digest is None and path.is_file() and not path.is_symlink():
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    EXPECTED_EVIDENCE[name] = digest
+
+def owned_command(command, cwd, directory, timeout):
+    if SAFETY is not None:
+        require(SAFETY['owned_processes_gone'], 'owned command prohibited after unsafe cleanup')
+    for name in ('stdout.raw','stderr.raw','process.json'): expect_evidence(Path(directory) / name)
+    try:
+        receipt = run_owned(command, cwd, directory, timeout)
+    except (ValueError, OSError):
+        if SAFETY is not None: SAFETY['owned_processes_gone'] = False
+        raise
+    if SAFETY is not None:
+        SAFETY['owned_processes_gone'] &= receipt['cleanup_ok'] and not receipt.get('ownership_errors')
+    for name in ('stdout','stderr'):
+        freeze_evidence(Path(directory) / (name + '.raw'), receipt[name + '_sha256'])
+    freeze_evidence(Path(directory) / 'process.json')
+    return receipt
 
 def read_command(command, cwd, expected=(0,)):
     require(LEDGER is not None, 'command evidence ledger unavailable')
     directory = LEDGER / ('%03d' % (len(list(LEDGER.iterdir())) + 1))
     directory.mkdir()
-    receipt = run_owned(command, cwd, directory, 30)
+    receipt = owned_command(command, cwd, directory, 30)
     require(receipt['returncode'] in expected and receipt['cleanup_ok'] and not receipt['timed_out']
             and not receipt['spawn_error'] and not receipt['descendants_after_exit'], 'guard command failed: ' + str(command))
     return (directory / 'stdout.raw').read_bytes(), receipt['returncode']
@@ -774,7 +860,7 @@ def artifact_hashes(output):
             and p.relative_to(output) != Path('artifact-hashes.json')}
 
 @validation
-def verify_artifact_members(output, hashes):
+def verify_artifact_members(output, hashes, expected=None):
     """Check local or downloaded evidence against all recorded and required members."""
     output = Path(output).absolute()
     require(output.is_dir() and output.resolve() == output and not output.is_symlink(), 'unsafe artifact directory')
@@ -787,12 +873,21 @@ def verify_artifact_members(output, hashes):
     required = {snapshot_member(name): source[name]['sha256'] for name in SNAPSHOT_SOURCES}
     require(len(required) == len(SNAPSHOT_SOURCES) and required.keys() <= hashes.keys(), 'missing required source snapshot')
     require(all(hashes[name] == digest for name, digest in required.items()), 'source snapshot hash drift')
+    if expected is None:
+        receipt = parse_json((output / 'evidence-receipt.json').read_bytes())
+        expected = receipt['expected']
+        require(set(receipt['final_members']) | {'evidence-receipt.json'} <= hashes.keys(), 'missing final evidence receipt/result')
+    require(type(expected) is dict and expected.keys() <= hashes.keys(), 'missing completed evidence member')
+    require(all(digest is not None and hashes[name] == digest for name, digest in expected.items()),
+            'completed evidence byte/hash drift')
     require(hashes == artifact_hashes(output), 'artifact member/hash completeness')
 
 def native(args):
-    global LEDGER
+    global LEDGER, SAFETY, EVIDENCE_ROOT, EXPECTED_EVIDENCE
     root=Path(__file__).resolve().parents[2]
     output=safe_output(args.output,root)
+    EVIDENCE_ROOT = output; EXPECTED_EVIDENCE = {}
+    for name in ('source-before.json','source-after.json','phase.json'): expect_evidence(output / name)
     LEDGER=output/'commands'; LEDGER.mkdir()
     candidate=os.environ.get('GITHUB_SHA','')
     ref=os.environ.get('GITHUB_REF','')
@@ -801,6 +896,7 @@ def native(args):
     phase={'phase':args.phase,**identity,'processes':[],'infrastructure_valid':False,'failed':True,
            'scratch_cleanup_ok':False,'source_guard_after':False,'artifact_members_ok':False,
            'smoke_state':'absent','owned_processes_gone':True}
+    SAFETY = phase
     owner=None
     baseline_config=None
     effect=None
@@ -810,6 +906,7 @@ def native(args):
         snapshots=output/'source-snapshots'; snapshots.mkdir()
         for name in SNAPSHOT_SOURCES:
             (output/snapshot_member(name)).write_bytes((root/name).read_bytes())
+            freeze_evidence(output/snapshot_member(name), initial['manifest'][name]['sha256'])
         phase['runtime']=runtime(root,args.phase!='guard')
         identity['runtime']=phase['runtime']
         if args.phase=='guard':
@@ -823,7 +920,8 @@ def native(args):
             archive=output/'scratch'; archive.mkdir()
             template=(root/ALLOWED[0]).read_bytes()
             variants=expand_setup(template)
-            for arm,raw in variants.items(): (archive/(arm+'-setup.ts')).write_bytes(raw)
+            for arm,raw in variants.items():
+                (archive/(arm+'-setup.ts')).write_bytes(raw); freeze_evidence(archive/(arm+'-setup.ts'))
             write_json(archive/'variants.json',{arm:hashlib.sha256(raw).hexdigest() for arm,raw in variants.items()})
             owner=materialize_scratch(root/'backend',run,attempt,template,archive)
             write_json(output/'scratch-ownership.json',{k:v for k,v in owner.items() if k!='variants'})
@@ -837,8 +935,7 @@ def native(args):
                     select_projection(owner,arm)
                     owned_scratch(owner)
                     command=['./node_modules/.bin/vitest','run','--config',str(Path(owner['path']).relative_to(root/'backend')/'config.ts'),'-t',scenario]
-                    receipt=run_owned(command,root/'backend',directory,900)
-                    phase['owned_processes_gone'] &= receipt['cleanup_ok']
+                    receipt=owned_command(command,root/'backend',directory,900)
                     require(receipt['cleanup_ok'], 'owned process/log drain incomplete; schedule stopped')
                     raw=(directory/'stdout.raw').read_bytes()+(directory/'stderr.raw').read_bytes()
                     audited=audit_process(receipt,raw,scenario,'*' if arm=='full' else 'id',root)
@@ -857,7 +954,8 @@ def native(args):
                     audited.update(block=block,scenario=scenario,projection=arm)
                     write_json(directory/'audit.json',audited)
                     for marker,name in [('E2_PREFLIGHT','preflight-record.json'),('E2_HISTORY_RESULT','history-record.json')]:
-                        try: (directory/name).write_bytes(record(raw,marker)[0]+b'\n')
+                        try:
+                            (directory/name).write_bytes(record(raw,marker)[0]+b'\n'); freeze_evidence(directory/name)
                         except ValueError: pass
                     return audited
                 except (ValueError,OSError) as error:
@@ -876,14 +974,32 @@ def native(args):
                         path=directory/scenario/name
                         if path.is_file(): raw+=path.read_bytes()
                 log=directory/'capacity.log'; log.write_bytes(raw)
+                freeze_evidence(log)
                 renderer=directory/'renderer'; renderer.mkdir()
-                receipt=run_owned(['node','tests/capacity/report.mjs',str(log)],root/'backend',renderer,120)
-                phase['owned_processes_gone'] &= receipt['cleanup_ok']
+                for name in ('measurements.json','RESULTS.md'): expect_evidence(directory/name)
+                receipt=owned_command(['node','tests/capacity/report.mjs',str(log)],root/'backend',renderer,120)
+                for name in ('measurements.json','RESULTS.md'): freeze_evidence(directory/name)
                 result=audit_renderer(receipt,directory)
                 write_json(renderer/'audit.json',result)
                 return result
             outcome=serial_phase(args.phase,execute,render)
             phase.update(outcome)
+            # Schedule membership is independent of the surviving filesystem,
+            # and raw-byte expectations also come from completion receipts.
+            for p in phase['processes']:
+                directory = output/p['block']/p['scenario']
+                if p['infrastructure_valid']:
+                    for name in ('liveness-before.json','source-before.json','source-after.json','liveness-after.json',
+                                 'resolved-config.json','audit.json','preflight-record.json','history-record.json','process.json'):
+                        expect_evidence(directory/name)
+                    for name in ('stdout','stderr'):
+                        freeze_evidence(directory/(name+'.raw'), p['process'].get(name+'_sha256'))
+            blocks = ('preflight',) if args.phase == 'preflight' else ('01-A','02-B','03-B','04-A')
+            for block, renderer in zip(blocks, phase['renderers']):
+                if not renderer['failed']:
+                    for name in ('capacity.log','measurements.json','RESULTS.md','renderer/stdout.raw',
+                                 'renderer/stderr.raw','renderer/process.json','renderer/audit.json'):
+                        expect_evidence(output/block/name)
             phase['resolved_config']=baseline_config
             total_expected=2 if args.phase=='preflight' else 8
             phase['infrastructure_valid'] &= len(phase['processes'])==total_expected
@@ -899,6 +1015,8 @@ def native(args):
     except (ValueError,OSError) as error:
         phase.update(infrastructure_valid=False,failed=True,error=str(error))
     finally:
+        if not phase['owned_processes_gone']:
+            phase.update(infrastructure_valid=False,failed=True)
         if owner is not None and phase['owned_processes_gone']:
             try:
                 cleanup_scratch(owner,output/'scratch'); phase['scratch_cleanup_ok']=True
@@ -910,18 +1028,27 @@ def native(args):
             phase['source_guard_after']=True
         except (ValueError,OSError) as error:
             phase.update(infrastructure_valid=False,failed=True,source_guard_after=False,source_error=str(error))
+        # Final conclusions/receipts are written after validation. All preceding
+        # members retain their completion hashes in this independent receipt.
+        pending = {'phase.json'}
+        expected = {name:digest for name,digest in EXPECTED_EVIDENCE.items() if name not in pending}
+        write_json(output/'evidence-receipt.json', {'expected':expected,
+                   'final_members':['phase.json'] + (['descriptive-effect.json'] if effect is not None else [])})
         hashes=artifact_hashes(output)
         try:
-            verify_artifact_members(output,hashes)
+            verify_artifact_members(output,hashes,{**expected,
+                                    'evidence-receipt.json':EXPECTED_EVIDENCE['evidence-receipt.json']})
             phase['artifact_members_ok']=True
         except (ValueError,OSError) as error:
             phase.update(infrastructure_valid=False,failed=True,artifact_error=str(error))
+        phase['evidence_status'] = 'COMPLETE' if phase['artifact_members_ok'] else 'INCOMPLETE'
         if effect is not None:
             effect['final_operations']={key:phase[key] is True for key in ('scratch_cleanup_ok','source_guard_after')}
             effect['final_exclusions']=[message for key,message in (
                 ('scratch_cleanup_ok','final scratch cleanup failed'),
                 ('source_guard_after','final source validation failed')) if not effect['final_operations'][key]]
             effect['artifact_members_ok']=phase['artifact_members_ok']
+            effect['evidence_status']=phase['evidence_status']
             if not phase['artifact_members_ok']: effect['final_exclusions'].append('required artifact membership failed')
             effect['final_failure_evidence']={key:phase[key] for key in ('cleanup_error','source_error','artifact_error') if key in phase}
             if effect['final_exclusions']:
