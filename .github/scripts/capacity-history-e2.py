@@ -464,6 +464,7 @@ def run_owned(command, cwd, directory, timeout):
     baseline = process_table()
     known = {}
     handles = {}
+    exited_handles = []
     ownership_errors = []
     unexplained = {}
     events = []
@@ -473,7 +474,11 @@ def run_owned(command, cwd, directory, timeout):
     process = None
     def alive(fd):
         poller = select.poll(); poller.register(fd, select.POLLIN)
-        return not poller.poll(0)
+        status = poller.poll(0)
+        require(not status or (len(status) == 1 and status[0][0] == fd
+                and status[0][1] & select.POLLIN
+                and not status[0][1] & ~(select.POLLIN | select.POLLHUP)), 'ambiguous pidfd exit status')
+        return not status
     def pin(pid, info, proof):
         fd = None
         try:
@@ -585,10 +590,20 @@ def run_owned(command, cwd, directory, timeout):
                 while discover() and time.monotonic() < end:
                     reap(); time.sleep(0.02)
             reap()
-            cleanup_ok = not discover() and code is not None and process.pid in known and not unexplained and not ownership_errors
+            remaining = discover()
+            # A partial /proc snapshot cannot prove exit. Check every retained
+            # generation, including absent descendants, before releasing it.
+            for pid, fd in handles.items():
+                try:
+                    require(not alive(fd), 'retained owned generation still alive')
+                    exited_handles.append(fd)
+                except (OSError, ValueError) as error:
+                    ownership_errors.append({'pid': pid, 'error': str(error)})
+            cleanup_ok = not remaining and code is not None and process.pid in known and not unexplained and not ownership_errors
         else:
             code = None; leaked = []; cleanup_ok = True
-    for fd in handles.values(): os.close(fd)
+    # Unproved handles stay pinned until this unsafe runner exits.
+    for fd in exited_handles: os.close(fd)
     receipt = {'command': command, 'cwd': str(cwd), 'pid': process.pid if process else None,
                'returncode': code, 'signal': -code if code is not None and code < 0 else None,
                'spawn_error': spawn_error, 'timed_out': timed_out, 'cleanup_ok': cleanup_ok,

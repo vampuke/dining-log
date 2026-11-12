@@ -1180,7 +1180,77 @@ class FinalizationControls(DisposableControls):
 
 
 class CommandPhaseControls(DisposableControls):
-    def controlled_phase(self, failure_at=None, mutation=None):
+    def omitted_descendant(self, raw, directory, status, run_owned):
+        """Pin two generations, then omit the child after leader reap.
+
+        Only OS interfaces are simulated; cleanup and finalization run unchanged.
+        The foreign baseline generation is never owned or signalled.
+        """
+        leader, child, foreign = 420001, 420002, 420003
+        handles = {leader: 520001, child: 520002}
+        trace = {'status': status, 'pinned': [], 'omitted_snapshots': 0,
+                 'polls': [], 'signals': [], 'numeric_signals': [], 'closed': [], 'waits': []}
+        def info(pid, start, ppid, sid):
+            return dict(pid=pid, start=start, ppid=ppid, sid=sid, pgid=sid, state='S')
+        outsider = info(foreign, 30, os.getpid(), foreign)
+        process = mock.Mock(pid=leader, returncode=None)
+        def table():
+            if process.returncode is not None:
+                trace['omitted_snapshots'] += 1
+                return {foreign: outsider}
+            if not trace.get('launched'): return {foreign: outsider}
+            return {foreign: outsider, leader: info(leader, 10, os.getpid(), leader),
+                    child: info(child, 11, leader, leader)}
+        def launch(*_, **kwargs):
+            trace['launched'] = True
+            kwargs['stdout'].write(raw)
+            return process
+        def pin(pid, *_):
+            trace['pinned'].append(pid)
+            return handles[pid]
+        class Poll:
+            def register(self, fd, *_): self.fd = fd
+            def poll(self, *_):
+                omitted = process.returncode is not None
+                result = []
+                if self.fd == handles[leader] and child in trace['pinned']:
+                    trace['leader_polls_after_child'] = trace.get('leader_polls_after_child', 0) + 1
+                    # Keep the parent alive through the child's pin validation.
+                    if trace['leader_polls_after_child'] >= 2:
+                        result = [(self.fd, select.POLLIN | (select.POLLHUP if omitted else 0))]
+                elif self.fd == handles[child] and omitted:
+                    if status == 'uncheckable':
+                        trace['polls'].append({'fd': self.fd, 'omitted': True, 'error': 'CONTROL pidfd unreadable'})
+                        raise OSError('CONTROL pidfd unreadable')
+                    if status == 'ambiguous': result = [(self.fd, select.POLLNVAL)]
+                    if status == 'exited': result = [(self.fd, select.POLLIN | select.POLLHUP)]
+                trace['polls'].append({'fd': self.fd, 'omitted': omitted, 'events': result})
+                return result
+        def poll():
+            process.returncode = 0
+            trace['leader_reaped'] = True
+            return 0
+        process.poll.side_effect = poll
+        process.wait.side_effect = lambda **_: poll()
+        def waitid(kind, fd, flags):
+            trace['waits'].append({'kind': kind, 'fd': fd, 'flags': flags})
+            if fd == handles[child] and status == 'exited':
+                trace['adopted_reaped'] = True
+                return mock.Mock(si_pid=child)
+            return None
+        with mock.patch.object(e2, 'process_table', side_effect=table), \
+             mock.patch.object(e2.subprocess, 'Popen', side_effect=launch), \
+             mock.patch.object(os, 'pidfd_open', side_effect=pin), \
+             mock.patch.object(select, 'poll', Poll), \
+             mock.patch.object(signal, 'pidfd_send_signal', side_effect=lambda fd, sig, *_: trace['signals'].append([fd, sig])), \
+             mock.patch.object(os, 'kill', side_effect=lambda pid, sig: trace['numeric_signals'].append([pid, sig])), \
+             mock.patch.object(os, 'close', side_effect=lambda fd: trace['closed'].append(fd)), \
+             mock.patch.object(os, 'waitid', side_effect=waitid):
+            receipt = run_owned(['CONTROL-omitted-descendant'], self.root, directory, 1)
+        trace['receipt'] = receipt
+        return receipt, trace
+
+    def controlled_phase(self, failure_at=None, mutation=None, snapshot_gap=None):
         """Run the real serial/finalization paths with only pure Python children.
 
         Guard/runtime and renderer command interfaces substitute bounded Python
@@ -1236,6 +1306,10 @@ class CommandPhaseControls(DisposableControls):
                     sample['stop_ms'] = sample['start_ms'] + sample['wall_ms']
                     sample['bookkeeping_stop_ms'] = sample['stop_ms'] + sample['bookkeeping_ms']
                 raw = probe_log(original, preflight, history)
+                if snapshot_gap is not None and 'snapshot_gap' not in trace:
+                    receipt, trace['snapshot_gap'] = self.omitted_descendant(raw, directory, snapshot_gap, original_owned)
+                    trace['original_raw_hashes'][str(directory.relative_to(output) / 'stdout.raw')] = receipt['stdout_sha256']
+                    return receipt
                 inp = self.root / ('input-%03d.raw' % len(trace['attempts'])); inp.write_bytes(raw)
                 actual = [sys.executable, '-B', '-c',
                           'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())', str(inp)]
@@ -1271,6 +1345,67 @@ class CommandPhaseControls(DisposableControls):
         (self.root / 'command-cleanup-trace.json').write_text(json.dumps(trace, indent=2))
         phase = json.loads((output / 'phase.json').read_text())
         return code, phase, output, trace
+
+    def assert_snapshot_gap_blocks(self, status):
+        code, phase, output, trace = self.controlled_phase(snapshot_gap=status)
+        gap = trace['snapshot_gap']
+        self.assertEqual(gap['pinned'], [420001, 420002], 'fixture must pin leader and live owned child before omission')
+        self.assertGreater(gap['omitted_snapshots'], 0, 'fixture must exercise the partial snapshot after leader reap')
+        self.assertTrue(gap['leader_reaped'])
+        receipt_path = output / '01-A/p1-4500/process.json'
+        receipt = json.loads(receipt_path.read_text())
+        self.assertEqual(receipt, gap['receipt'])
+        self.assertEqual(receipt['descendants_observed'][0]['ownership_proof']['kind'], 'observed-parent')
+        hashes = json.loads((output / 'artifact-hashes.json').read_text())
+        expected = json.loads((output / 'evidence-receipt.json').read_text())['expected']
+        for name in ('process.json', 'stdout.raw', 'stderr.raw'):
+            relative = '01-A/p1-4500/' + name
+            digest = hashlib.sha256((output / relative).read_bytes()).hexdigest()
+            self.assertEqual(hashes[relative], digest)
+            self.assertEqual(expected[relative], digest, 'failure evidence must retain completion bytes')
+        unsafe_index = next(i for i, argv in enumerate(trace['attempts']) if argv[0].endswith('/vitest'))
+        checks = {'cleanup_rejected': receipt['cleanup_ok'] is False,
+                  'latch_closed': phase['owned_processes_gone'] is False,
+                  'no_later_owned_command': trace['attempts'][unsafe_index + 1:] == [],
+                  'no_renderer': not any(argv[0] == 'node' for argv in trace['attempts']),
+                  'scratch_retained': (self.root / 'fixture-checkout/backend/test-owned-scratch').is_dir()
+                                      and not trace['scratch_deletions'] and not phase['scratch_cleanup_ok'],
+                  'no_foreign_signal': not gap['signals'] and not gap['numeric_signals'],
+                  'unproved_handle_retained': 520002 not in gap['closed'],
+                  'receipt_fail_closed': phase['failed'] is True and phase['infrastructure_valid'] is False and code == 1}
+        (self.root / 'snapshot-gap-checks.json').write_text(json.dumps(checks, indent=2))
+        self.assertEqual(checks, dict.fromkeys(checks, True), 'omitted retained pidfd must prohibit cleanup and all later work')
+        with mock.patch.object(e2, 'SAFETY', phase), mock.patch.object(e2, 'run_owned') as later:
+            with self.assertRaisesRegex(ValueError, 'owned command prohibited after unsafe cleanup'):
+                e2.owned_command(['CONTROL-later'], self.root, self.root / 'later', 1)
+            later.assert_not_called()
+            self.assertFalse(phase['owned_processes_gone'], 'a later command cannot reopen the latch')
+        self.assertTrue(receipt['ownership_errors'], 'the failed exit proof must be recorded')
+
+    def test_omitted_live_pinned_descendant_blocks_cleanup_and_later_work(self):
+        self.assert_snapshot_gap_blocks('live')
+
+    def test_omitted_uncheckable_pidfd_blocks_cleanup_and_later_work(self):
+        self.assert_snapshot_gap_blocks('uncheckable')
+
+    def test_omitted_ambiguous_pidfd_blocks_cleanup_and_later_work(self):
+        self.assert_snapshot_gap_blocks('ambiguous')
+
+    def test_omitted_exited_descendant_requires_pidfd_proof_and_adopted_reap(self):
+        code, phase, output, trace = self.controlled_phase(snapshot_gap='exited')
+        gap = trace['snapshot_gap']
+        self.assertEqual(gap['pinned'], [420001, 420002])
+        self.assertGreater(gap['omitted_snapshots'], 0)
+        self.assertTrue(gap['adopted_reaped'])
+        self.assertTrue(any(p['fd'] == 520002 and p['omitted'] and p.get('events') == [[520002, select.POLLIN | select.POLLHUP]]
+                            for p in json.loads((self.root / 'command-cleanup-trace.json').read_text())['snapshot_gap']['polls']),
+                        'cleanup needs independent retained pidfd exit proof after omission')
+        self.assertIn(520002, gap['closed'])
+        self.assertTrue(gap['receipt']['cleanup_ok']); self.assertFalse(gap['receipt']['ownership_errors'])
+        self.assertFalse(gap['signals']); self.assertFalse(gap['numeric_signals'])
+        self.assertEqual(code, 0); self.assertTrue(phase['owned_processes_gone'])
+        self.assertTrue(phase['artifact_members_ok']); self.assertTrue(phase['scratch_cleanup_ok'])
+        self.assertEqual(len(phase['processes']), 8); self.assertEqual(len(phase['renderers']), 4)
 
     def assert_unsafe_command(self, kind):
         code, phase, output, trace = self.controlled_phase(failure_at=kind)
