@@ -1295,6 +1295,10 @@ class FinalizationControls(DisposableControls):
             if artifact_mutation is not None: artifact_mutation(output)
             if cleanup_failed: raise ValueError('CONTROL final scratch cleanup failure')
         def collected(*_):
+            archive = output / 'scratch'
+            for name, content in (('config.ts', e2.CONFIG), ('setup.ts', e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())['full']),
+                                  ('config-facts.json', b'{"control_only":true}')):
+                (archive / name).write_bytes(content); e2.freeze_evidence(archive / name)
             # Final-operation controls substitute the schedule, but must supply
             # its actual required files and frozen mock completion receipts.
             for process in processes:
@@ -1539,6 +1543,8 @@ class CommandPhaseControls(DisposableControls):
                      isolatedStorage=False, remote_bindings=False, persistent_override=False,
                      test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
         (scratch / 'config-facts.json').write_text(json.dumps(facts))
+        (scratch / 'config.ts').write_bytes(e2.CONFIG)
+        (scratch / 'setup.ts').write_bytes(e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())['full'])
         owner = {'path': str(scratch), 'variants': {}}
         source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
                                for name in e2.SNAPSHOT_SOURCES}}
@@ -1616,7 +1622,10 @@ class CommandPhaseControls(DisposableControls):
         def cleanup(*_):
             if mutation: mutation(output)
             trace['scratch_deletions'].append(str(scratch))
-            for path in scratch.iterdir(): path.unlink()
+            for path in scratch.iterdir():
+                target = output / 'scratch' / path.name
+                target.write_bytes(path.read_bytes()); e2.freeze_evidence(target)
+                path.unlink()
             scratch.rmdir()
         args = mock.Mock(phase='abba', output=str(output), preflight=str(self.root / 'preflight'))
         with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root)}), \
@@ -1983,6 +1992,275 @@ class OriginalShapeControls(unittest.TestCase):
             value=dummy_original();mutate(value)
             with self.subTest(mutate=mutate),self.assertRaises(ValueError): e2.audit_original(emit(value),'p1-4500')
 
+
+
+class ScenarioWideControls(DisposableControls):
+    def drift_cohort(self, scenario, kind):
+        values = supportive_control_cohort()
+        for value in values:
+            if value['scenario'] != scenario: continue
+            probe = value['probe_audit']
+            second = value['block'] in ('03-B', '04-A')
+            for stage in ('plans_before', 'plans_after'):
+                for arm in ('full', 'id'):
+                    probe['history'][stage][arm]['results'][0]['detail'] = 'CONTROL plan Q' if kind == 'plan' and second else 'CONTROL plan P'
+            probe['original_plan'] = [r['detail'] for r in probe['history']['plans_before']['full']['results']]
+            for sample in probe['history']['samples']:
+                sample['meta']['rows_read'] = 11 if kind == 'rows' and second else 10
+        return values
+
+    def assert_scenario_drift(self, kind):
+        for scenario in ('p1-4500', 'plan-6000'):
+            with self.subTest(scenario=scenario):
+                report = e2.describe_effect(self.drift_cohort(scenario, kind))
+                (self.root / (scenario + '-' + kind + '-report.json')).write_text(json.dumps(report, indent=2))
+                print('CONTROL scenario drift', scenario, kind, 'actual status:', report['status'])
+                self.assertTrue(all(c['criterion_support'] for c in report['comparisons']))
+                self.assertEqual(report['status'], 'confounded')
+                expected = ['scenario-wide SQL plan changed', 'scenario-wide original emitted plan differs'] if kind == 'plan' else ['scenario-wide rows_read shifted']
+                for comparison in report['comparisons']:
+                    self.assertEqual(comparison['exclusions'], expected if comparison['scenario'] == scenario else [])
+
+    def test_between_pair_plan_drift_excludes_support(self):
+        self.assert_scenario_drift('plan')
+
+    def test_between_pair_rows_read_drift_excludes_support(self):
+        self.assert_scenario_drift('rows')
+
+    def test_globally_invariant_support_preserves_all_descriptive_measurements(self):
+        report = e2.describe_effect(supportive_control_cohort())
+        self.assertEqual(report['status'], 'result-size-related path support')
+        self.assertEqual(len(report['comparisons']), 4)
+        self.assertTrue(all(not c['exclusions'] and c['criterion_support'] for c in report['comparisons']))
+        self.assertEqual(report['issue19'], 'UNRESOLVED')
+
+    def test_every_block_stage_arm_and_original_plan_is_scenario_bound(self):
+        for scenario in ('p1-4500', 'plan-6000'):
+            for block in ('01-A', '02-B', '03-B', '04-A'):
+                for stage in ('plans_before', 'plans_after'):
+                    for arm in ('full', 'id'):
+                        with self.subTest(scenario=scenario, block=block, stage=stage, arm=arm):
+                            values = supportive_control_cohort()
+                            probe = next(v['probe_audit'] for v in values if (v['scenario'], v['block']) == (scenario, block))
+                            probe['history'][stage][arm]['results'][0]['detail'] += ' CONTROL drift'
+                            report = e2.describe_effect(values)
+                            self.assertEqual(report['status'], 'confounded')
+                            self.assertTrue(all('scenario-wide SQL plan changed' in c['exclusions'] for c in report['comparisons'] if c['scenario'] == scenario))
+                with self.subTest(scenario=scenario, block=block, original=True):
+                    values = supportive_control_cohort()
+                    probe = next(v['probe_audit'] for v in values if (v['scenario'], v['block']) == (scenario, block))
+                    probe['original_plan'] = ['CONTROL different original plan']
+                    report = e2.describe_effect(values)
+                    self.assertEqual(report['status'], 'confounded')
+                    self.assertTrue(all('scenario-wide original emitted plan differs' in c['exclusions'] for c in report['comparisons'] if c['scenario'] == scenario))
+
+    def test_equal_pair_local_sample_drift_is_still_scenario_confounded(self):
+        for scenario in ('p1-4500', 'plan-6000'):
+            for index in range(30):
+                with self.subTest(scenario=scenario, sample=index + 1):
+                    values = self.drift_cohort(scenario, 'none')
+                    for value in values:
+                        if value['scenario'] == scenario:
+                            value['probe_audit']['history']['samples'][index]['meta']['rows_read'] = 11
+                    report = e2.describe_effect(values)
+                    self.assertEqual(report['status'], 'confounded')
+                    self.assertTrue(all(c['exclusions'] == ['scenario-wide rows_read shifted'] for c in report['comparisons'] if c['scenario'] == scenario))
+
+
+class NativeScratchArchiveControls(DisposableControls):
+    members = ('config.ts', 'setup.ts', 'config-facts.json')
+
+    def native_scratch_control(self, mutation=None, missing_facts=False, copy_failure=None, freeze_failure=None):
+        """Real materialization/cleanup/completion/finalization/reopening; command seams use dummy bytes only."""
+        case = Path(tempfile.mkdtemp(prefix='native-scratch-', dir=self.root))
+        checkout = case / 'checkout'
+        for name in e2.SNAPSHOT_SOURCES:
+            target = checkout / name; target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((RUNNER.parents[2] / name).read_bytes())
+        output = case / 'evidence'
+        identity = dict(candidate='1' * 40, ref=e2.REF, run='12', attempt='1', runtime={'control_only': True})
+        facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True, isolatedStorage=False,
+                     remote_bindings=False, persistent_override=False,
+                     test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+        source = {'manifest': {name: {'sha256': hashlib.sha256((checkout / name).read_bytes()).hexdigest()}
+                               for name in e2.SNAPSHOT_SOURCES}}
+        trace = {'unlinks': [], 'freezes': [], 'cleanup_called': False}
+        cleanup = e2.cleanup_scratch
+        freeze = e2.freeze_evidence
+        unlink = Path.unlink
+        def command(argv, cwd, directory, timeout):
+            directory = Path(directory)
+            if argv[0].endswith('/vitest'):
+                scenario = argv[-1]
+                original, preflight, history = dummy_probe_raw(scenario, '*')
+                preflight['original_task']['filepath'] = str(checkout / 'backend/tests/capacity/capacity_test.ts')
+                history['original_task']['filepath'] = preflight['original_task']['filepath']
+                raw = probe_log(original, preflight, history)
+                if not missing_facts:
+                    config = Path(cwd) / argv[argv.index('--config') + 1]
+                    (config.parent / 'config-facts.json').write_text(json.dumps(facts))
+            elif argv[0] == 'node':
+                block = directory.parent
+                (block / 'measurements.json').write_bytes(b'{}')
+                (block / 'RESULTS.md').write_bytes(b'CONTROL renderer output')
+                raw = b'CONTROL renderer complete\n'
+            else:
+                raise AssertionError('unexpected native command: ' + repr(argv))
+            (directory / 'stdout.raw').write_bytes(raw)
+            (directory / 'stderr.raw').write_bytes(b'')
+            receipt = dict(returncode=0, cleanup_ok=True, timed_out=False, spawn_error=None, descendants_after_exit=[],
+                           stdout_sha256=hashlib.sha256(raw).hexdigest(), stderr_sha256=hashlib.sha256(b'').hexdigest())
+            e2.write_json(directory / 'process.json', receipt)
+            return receipt
+        def record_unlink(target, *args, **kwargs):
+            if target.parent.name.startswith('.capacity-e2-scratch-'):
+                name = 'scratch/' + target.name
+                trace['unlinks'].append({'name': name, 'ledger': copy.deepcopy(e2.EXPECTED_EVIDENCE),
+                                        'original_sha256': hashlib.sha256(target.read_bytes()).hexdigest()})
+            return unlink(target, *args, **kwargs)
+        def record_freeze(target, digest=None):
+            target = Path(target)
+            if target.parent == output / 'scratch' and target.name in self.members:
+                trace['freezes'].append({'name': target.name, 'exists': target.is_file()})
+                if target.name == freeze_failure: raise OSError('CONTROL scratch freeze failed')
+            return freeze(target, digest)
+        def real_cleanup(owner, archive):
+            trace['cleanup_called'] = True
+            if copy_failure:
+                # Exclusive-copy failure at the actual archive destination; preserve this foreign file.
+                (Path(archive) / copy_failure).write_bytes(b'CONTROL foreign archive member')
+            try:
+                return cleanup(owner, archive)
+            finally:
+                trace['cleanup_ledger'] = copy.deepcopy(e2.EXPECTED_EVIDENCE)
+                trace['scratch_exists_after'] = Path(owner['path']).exists()
+                if mutation: mutation(output)
+        with mock.patch.dict(os.environ, dict(RUNNER_TEMP=str(case), GITHUB_SHA=identity['candidate'], GITHUB_REF=identity['ref'],
+                                               GITHUB_RUN_ID=identity['run'], GITHUB_RUN_ATTEMPT=identity['attempt'])), \
+             mock.patch.object(e2, '__file__', str(checkout / '.github/scripts/capacity-history-e2.py')), \
+             mock.patch.object(e2, 'source_guard', return_value=source), \
+             mock.patch.object(e2, 'runtime', return_value=identity['runtime']), \
+             mock.patch.object(e2, 'no_smoke', return_value={'smoke_state': 'absent'}), \
+             mock.patch.object(e2, 'cleanup_scratch', side_effect=real_cleanup), \
+             mock.patch.object(e2, 'freeze_evidence', side_effect=record_freeze), \
+             mock.patch.object(Path, 'unlink', record_unlink), \
+             mock.patch.object(e2, 'run_owned', side_effect=command):
+            code = e2.native(mock.Mock(phase='preflight', output=str(output)))
+            phase = e2.parse_json((output / 'phase.json').read_bytes())
+            receipt = e2.parse_json((output / 'evidence-receipt.json').read_bytes())
+            try:
+                e2.preflight_gate(output, identity)
+                reopened = True
+            except (ValueError, OSError): reopened = False
+        trace.update(code=code, phase=phase, receipt=receipt, reopened=reopened)
+        (case / 'trace.json').write_text(json.dumps(trace, indent=2))
+        print('CONTROL native scratch', mutation.__name__ if mutation else 'clean', 'exit:', code,
+              'status:', phase['evidence_status'], 'reopened:', reopened,
+              'completion members:', sorted(n for n in receipt['expected'] if n in ('scratch/' + m for m in self.members)))
+        return output, trace
+
+    def test_real_cleanup_freezes_each_required_member_before_unlink(self):
+        output, trace = self.native_scratch_control()
+        self.assertTrue(trace['cleanup_called'])
+        self.assertEqual(trace['code'], 0)
+        self.assertTrue(trace['reopened'])
+        self.assertEqual(trace['phase']['evidence_status'], 'COMPLETE')
+        self.assertFalse(trace['scratch_exists_after'])
+        for member in self.members:
+            name = 'scratch/' + member
+            with self.subTest(member=member):
+                observed = next(v for v in trace['unlinks'] if v['name'] == name)
+                digest = hashlib.sha256((output / name).read_bytes()).hexdigest()
+                self.assertEqual(observed['original_sha256'], digest)
+                self.assertEqual(observed['ledger'].get(name), digest, 'must freeze copied bytes before unlinking original')
+                self.assertEqual(trace['receipt']['expected'].get(name), digest)
+        self.assertEqual({f['name'] for f in trace['freezes']}, set(self.members))
+
+    def assert_changed_archive(self, change):
+        for member in self.members:
+            with self.subTest(member=member, change=change):
+                def mutate(output):
+                    target = output / 'scratch' / member
+                    if change: target.write_bytes(target.read_bytes() + b'CONTROL changed after cleanup\n')
+                    else: target.unlink()
+                output, trace = self.native_scratch_control(mutation=mutate)
+                self.assertEqual(trace['code'], 1)
+                self.assertFalse(trace['phase']['artifact_members_ok'])
+                self.assertFalse(trace['phase']['infrastructure_valid'])
+                self.assertEqual(trace['phase']['evidence_status'], 'INCOMPLETE')
+                self.assertFalse(trace['reopened'])
+                self.assertIsNotNone(trace['receipt']['expected'].get('scratch/' + member))
+
+    def test_post_cleanup_removal_of_each_member_closes_real_finalization(self):
+        self.assert_changed_archive(False)
+
+    def test_post_cleanup_mutation_of_each_member_closes_real_finalization(self):
+        self.assert_changed_archive(True)
+
+    def test_unhashed_each_required_member_closes_verifier_and_reopening(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                output, trace = self.native_scratch_control()
+                name = 'scratch/' + member
+                receipt = trace['receipt']
+                del receipt['expected'][name]
+                (output / 'evidence-receipt.json').write_text(json.dumps(receipt))
+                hashes = e2.artifact_hashes(output)
+                (output / 'artifact-hashes.json').write_text(json.dumps(hashes))
+                with self.assertRaises(ValueError): e2.verify_artifact_members(output, hashes)
+                with self.assertRaises(ValueError): e2.preflight_gate(output, {k:trace['phase'][k] for k in ('candidate','ref','run','attempt','runtime')})
+
+    def test_rehashed_omission_of_each_required_member_closes_verifier(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                output, trace = self.native_scratch_control()
+                name = 'scratch/' + member
+                (output / name).unlink()
+                receipt = trace['receipt']; receipt['expected'].pop(name, None)
+                (output / 'evidence-receipt.json').write_text(json.dumps(receipt))
+                hashes = e2.artifact_hashes(output)
+                (output / 'artifact-hashes.json').write_text(json.dumps(hashes))
+                with self.assertRaises(ValueError): e2.verify_artifact_members(output, hashes)
+
+    def test_each_required_member_symlink_replacement_closes_finalization(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                def replace(output):
+                    target = output / 'scratch' / member
+                    saved = output.parent / ('foreign-' + member); saved.write_bytes(target.read_bytes())
+                    target.unlink(); target.symlink_to(saved)
+                _, trace = self.native_scratch_control(mutation=replace)
+                self.assertEqual(trace['code'], 1)
+                self.assertFalse(trace['phase']['artifact_members_ok'])
+                self.assertFalse(trace['reopened'])
+
+    def test_missing_config_facts_still_cleans_owned_scratch_and_stays_incomplete(self):
+        _, trace = self.native_scratch_control(missing_facts=True)
+        self.assertEqual(trace['code'], 1)
+        self.assertFalse(trace['scratch_exists_after'])
+        self.assertFalse(trace['phase']['artifact_members_ok'])
+        self.assertEqual(trace['phase']['evidence_status'], 'INCOMPLETE')
+        self.assertIsNone(trace['receipt']['expected'].get('scratch/config-facts.json'))
+        self.assertIn('scratch/config-facts.json', trace['receipt']['expected'])
+
+    def test_archive_copy_collision_preserves_foreign_bytes_and_closes_evidence(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                output, trace = self.native_scratch_control(copy_failure=member)
+                self.assertEqual((output / 'scratch' / member).read_bytes(), b'CONTROL foreign archive member')
+                self.assertEqual(trace['code'], 1)
+                self.assertFalse(trace['phase']['artifact_members_ok'])
+                self.assertEqual(trace['phase']['evidence_status'], 'INCOMPLETE')
+                self.assertFalse(trace['reopened'])
+
+    def test_freeze_failure_cannot_complete_evidence(self):
+        for member in self.members:
+            with self.subTest(member=member):
+                _, trace = self.native_scratch_control(freeze_failure=member)
+                self.assertEqual(trace['code'], 1)
+                self.assertFalse(trace['phase']['artifact_members_ok'])
+                self.assertEqual(trace['phase']['evidence_status'], 'INCOMPLETE')
+                self.assertFalse(trace['reopened'])
 
 if __name__ == "__main__":
     unittest.main()

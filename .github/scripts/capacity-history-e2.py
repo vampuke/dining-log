@@ -21,6 +21,7 @@ ALLOWED = ('.github/scripts/capacity-history-e2-probe.ts', '.github/scripts/capa
            '.github/scripts/test_capacity_history_e2.py', '.github/workflows/capacity-history-e2.yml')
 SNAPSHOT_SOURCES = ('backend/tests/capacity/capacity_test.ts', 'backend/vitest.capacity.config.ts',
                     'backend/package.json', 'backend/package-lock.json', *ALLOWED)
+REQUIRED_SCRATCH = ('scratch/config.ts', 'scratch/setup.ts', 'scratch/config-facts.json')
 
 def validation(fn):
     def checked(*args, **kwargs):
@@ -412,12 +413,35 @@ def select_projection(owner, projection):
 @validation
 def cleanup_scratch(owner, archive):
     path = owned_scratch(owner)
-    archive = Path(archive)
-    require(archive.is_dir() and not archive.is_symlink() and not archive.resolve().is_relative_to(path.parent), 'unsafe archive')
-    for item in path.iterdir():
-        (archive / item.name).write_bytes(item.read_bytes())
-        item.unlink()
+    archive = Path(archive).absolute()
+    require(archive.is_dir() and not archive.is_symlink() and archive.resolve() == archive
+            and not archive.resolve().is_relative_to(path.parent)
+            and archive.stat().st_uid == owner['uid'], 'unsafe archive')
+    for name in REQUIRED_SCRATCH: expect_evidence(archive / Path(name).name)
+    errors = []
+    for item in sorted(path.iterdir()):
+        target = archive / item.name
+        try:
+            raw = item.read_bytes()
+            # Exclusive creation rejects stale files and symlinks without touching them.
+            with target.open('xb') as copied: copied.write(raw)
+            require(target.is_file() and not target.is_symlink() and target.read_bytes() == raw,
+                    'scratch archive copy drift')
+            freeze_evidence(target)
+            if EXPECTED_EVIDENCE is not None and target.is_relative_to(EVIDENCE_ROOT):
+                require(EXPECTED_EVIDENCE.get(str(target.relative_to(EVIDENCE_ROOT))) == hashlib.sha256(raw).hexdigest(),
+                        'scratch archive completion hash missing or changed')
+        except (ValueError, OSError) as error:
+            errors.append(str(error))
+        else:
+            # Only copied and frozen originals may be discarded on success.
+            item.unlink()
+    if errors:
+        # A failed archive must not strand safely owned temporary sources. The
+        # unfilled ledger entries keep this cleanup from completing evidence.
+        for item in path.iterdir(): item.unlink()
     path.rmdir()
+    require(not errors, 'scratch archive failed: ' + '; '.join(errors))
 
 
 
@@ -726,6 +750,17 @@ def describe_effect(processes):
     if [(p.get('block'),p.get('scenario')) for p in processes] != expected: return report
     by = {(p['block'],p['scenario']): p['probe_audit'] for p in processes}
     for scenario in ('p1-4500','plan-6000'):
+        cohort = [by[block,scenario] for block in ('01-A','02-B','03-B','04-A')]
+        scenario_plans = [v['history'][stage][arm]['results'] for v in cohort
+                          for stage in ('plans_before','plans_after') for arm in ('full','id')]
+        scenario_exclusions = []
+        if any(plan != scenario_plans[0] for plan in scenario_plans):
+            scenario_exclusions.append('scenario-wide SQL plan changed')
+        if any(v['original_plan'] != [r['detail'] for r in scenario_plans[0]] for v in cohort):
+            scenario_exclusions.append('scenario-wide original emitted plan differs')
+        scenario_rows = [sample['meta']['rows_read'] for v in cohort for sample in v['history']['samples']]
+        if any(rows != scenario_rows[0] for rows in scenario_rows):
+            scenario_exclusions.append('scenario-wide rows_read shifted')
         for a,b in (('01-A','02-B'),('04-A','03-B')):
             full = by[a,scenario]; ident = by[b,scenario]
             fs=full['history']['samples']; bs=ident['history']['samples']
@@ -750,6 +785,7 @@ def describe_effect(processes):
             if any(v['preflight']['capture']['unexpected_log_calls'] for v in (full,ident)): exclusions.append('unexpected intercepted logging')
             if bookkeeping_full['p95']>max(1,0.25*fm['p95']) or bookkeeping_id['p95']>max(1,0.25*bm['p95']): exclusions.append('bookkeeping p95 exceeds overhead bound')
             if full['preflight']['binding'] != ident['preflight']['binding']: exclusions.append('binding identity facts drifted')
+            exclusions.extend(scenario_exclusions)
             report['comparisons'].append({'scenario':scenario,'full_block':a,'id_block':b,'full_wall_ms':fm,'id_wall_ms':bm,
                 'absolute_wall_p95_difference_ms':difference,'relative_wall_p95_ratio':ratio,
                 'id_smaller_every_call':small,'criterion_support':support,'exclusions':exclusions,
@@ -910,6 +946,15 @@ def verify_artifact_members(output, hashes, expected=None):
         expected = receipt['expected']
         require(set(receipt['final_members']) | {'evidence-receipt.json'} <= hashes.keys(), 'missing final evidence receipt/result')
     require(type(expected) is dict and expected.keys() <= hashes.keys(), 'missing completed evidence member')
+    # Native finalization has no phase.json yet; its predeclared ledger and
+    # archive identify the requirement. Reopening also binds the saved phase,
+    # so removing the entire archive and its receipt entries cannot erase it.
+    phase_path = output / 'phase.json'
+    scratch_required = ((output / 'scratch').exists() or any(name in expected for name in REQUIRED_SCRATCH)
+                        or (phase_path.is_file() and parse_json(phase_path.read_bytes())['phase'] != 'guard'))
+    if scratch_required:
+        require(set(REQUIRED_SCRATCH) <= expected.keys() and set(REQUIRED_SCRATCH) <= hashes.keys(),
+                'missing required scratch completion evidence')
     require(all(digest is not None and hashes[name] == digest for name, digest in expected.items()),
             'completed evidence byte/hash drift')
     require(hashes == artifact_hashes(output), 'artifact member/hash completeness')
@@ -920,6 +965,8 @@ def native(args):
     output=safe_output(args.output,root)
     EVIDENCE_ROOT = output; EXPECTED_EVIDENCE = {}
     for name in ('source-before.json','source-after.json','phase.json'): expect_evidence(output / name)
+    if args.phase != 'guard':
+        for name in REQUIRED_SCRATCH: expect_evidence(output / name)
     LEDGER=output/'commands'; LEDGER.mkdir()
     candidate=os.environ.get('GITHUB_SHA','')
     ref=os.environ.get('GITHUB_REF','')
