@@ -18,6 +18,8 @@ REF = 'refs/heads/' + BRANCH
 BACKEND_TREE = '29ba53b82cfa707e872f3571bebb42aecb6011b1'
 ALLOWED = ('.github/scripts/capacity-history-e2-probe.ts', '.github/scripts/capacity-history-e2.py',
            '.github/scripts/test_capacity_history_e2.py', '.github/workflows/capacity-history-e2.yml')
+SNAPSHOT_SOURCES = ('backend/tests/capacity/capacity_test.ts', 'backend/vitest.capacity.config.ts',
+                    'backend/package.json', 'backend/package-lock.json', *ALLOWED)
 
 def validation(fn):
     def checked(*args, **kwargs):
@@ -460,6 +462,7 @@ def run_owned(command, cwd, directory, timeout):
     directory = Path(directory)
     baseline = process_table()
     known = {}
+    unexplained = {}
     events = []
     start = time.monotonic()
     timed_out = False
@@ -472,12 +475,27 @@ def run_owned(command, cwd, directory, timeout):
             changed = False
             for pid, info in table.items():
                 if pid in known: continue
-                if pid == process.pid or info['ppid'] in known or (info['ppid'] == os.getpid() and pid not in baseline):
-                    known[pid] = info; changed = True
+                proof = None
+                if pid == process.pid and info['ppid'] == os.getpid() and info['sid'] == info['pgid'] == pid and pid not in baseline:
+                    proof = {'kind': 'launched', 'pid': pid, 'start': info['start']}
+                elif info['ppid'] in known and info['ppid'] in table and table[info['ppid']]['start'] == known[info['ppid']]['start']:
+                    proof = {'kind': 'observed-parent', 'pid': info['ppid'], 'start': known[info['ppid']]['start']}
+                elif process.pid in known and info['sid'] == process.pid and info['start'] >= known[process.pid]['start']:
+                    # start_new_session creates a private Linux session. Other
+                    # processes cannot join it; membership proves inheritance
+                    # from this command even after an unobserved parent exits.
+                    proof = {'kind': 'inherited-session', 'pid': process.pid, 'start': known[process.pid]['start']}
+                if proof:
+                    known[pid] = dict(info, ownership_proof=proof); changed = True
+        for pid, info in table.items():
+            if pid in known and info['start'] == known[pid]['start']: continue
+            previous = baseline.get(pid)
+            if info['ppid'] == os.getpid() and (previous is None or previous['start'] != info['start'] or previous['ppid'] != os.getpid()):
+                unexplained.setdefault((pid, info['start']), info)
         return {pid: table[pid] for pid, info in known.items() if pid in table and table[pid]['start'] == info['start']}
     def send(sig):
         live = discover()
-        # Exact PID plus Linux start time proves ownership, including escaped sessions.
+        # Ancestry proves ownership; Linux start time guards against PID reuse.
         for pid, info in live.items():
             if info['state'] == 'Z': continue
             try:
@@ -494,6 +512,7 @@ def run_owned(command, cwd, directory, timeout):
         except OSError as error:
             spawn_error = str(error)
         if process is not None:
+            discover()  # Retain the launched identity before poll can reap it.
             while process.poll() is None:
                 discover()
                 if time.monotonic() - start >= timeout:
@@ -518,13 +537,14 @@ def run_owned(command, cwd, directory, timeout):
                 while discover() and time.monotonic() < end:
                     reap(); time.sleep(0.02)
             reap()
-            cleanup_ok = not discover() and code is not None
+            cleanup_ok = not discover() and code is not None and process.pid in known and not unexplained
         else:
             code = None; leaked = []; cleanup_ok = True
     receipt = {'command': command, 'cwd': str(cwd), 'pid': process.pid if process else None,
                'returncode': code, 'signal': -code if code is not None and code < 0 else None,
                'spawn_error': spawn_error, 'timed_out': timed_out, 'cleanup_ok': cleanup_ok,
                'descendants_observed': [v for k,v in known.items() if process and k != process.pid],
+               'unexplained_adopted': list(unexplained.values()),
                'descendants_after_exit': leaked, 'cleanup_signals': events,
                'stdout_sha256': hashlib.sha256((directory / 'stdout.raw').read_bytes()).hexdigest(),
                'stderr_sha256': hashlib.sha256((directory / 'stderr.raw').read_bytes()).hexdigest()}
@@ -542,11 +562,19 @@ def audit_process(receipt, raw, scenario, projection, root):
     if value['original_audit'] is not None:
         try: value['probe_audit'] = audit_probe(raw, value['original_audit'], scenario, projection, root)
         except ValueError as error: value['audit_errors'].append({'probe': str(error)})
+    value['original_failed'] = bool((value['original_audit'] or {}).get('performance_failed')
+                                   or (value['probe_audit'] or {}).get('original_task_state') == 'fail')
+    if not value['audit_errors']:
+        state = value['probe_audit']['original_task_state']
+        if value['original_audit']['performance_failed'] and state != 'fail':
+            value['audit_errors'].append({'process': 'original task/gates contradiction'})
+        if type(receipt['returncode']) is not int or receipt['returncode'] != (1 if state == 'fail' else 0):
+            value['audit_errors'].append({'process': 'unexplained or contradictory combined exit'})
     valid = (not value['audit_errors'] and receipt['returncode'] in (0,1) and not receipt['timed_out']
-             and receipt['cleanup_ok'] and not receipt['spawn_error'] and not receipt['descendants_after_exit'])
+             and receipt['cleanup_ok'] and not receipt['spawn_error'] and not receipt['descendants_after_exit']
+             and not receipt.get('unexplained_adopted'))
     value['infrastructure_valid'] = bool(valid)
-    value['failed'] = (not valid or receipt['returncode'] != 0 or value['original_audit']['performance_failed']
-                       or value['probe_audit']['original_task_state'] != 'pass')
+    value['failed'] = not valid or receipt['returncode'] != 0 or value['original_failed']
     return value
 
 def serial_phase(phase, execute, render):
@@ -573,7 +601,7 @@ def audit_renderer(receipt, directory):
     present = all((directory / name).is_file() and not (directory / name).is_symlink()
                   and (directory / name).stat().st_size > 0 for name in ('measurements.json','RESULTS.md'))
     failed = (receipt['returncode'] != 0 or not receipt['cleanup_ok'] or receipt['timed_out']
-              or receipt['spawn_error'] or receipt['descendants_after_exit'] or not present)
+              or receipt['spawn_error'] or receipt['descendants_after_exit'] or receipt.get('unexplained_adopted') or not present)
     return {'process': receipt, 'outputs_present': present, 'failed': bool(failed)}
 
 def preflight_gate(path, identity):
@@ -598,7 +626,10 @@ def preflight_gate(path, identity):
             raw += content
         audited = audit_process(process['process'], raw, process['scenario'], '*', Path(__file__).resolve().parents[2])
         require(audited['infrastructure_valid'], 'preflight re-audit failed')
+        for key in ('original_audit', 'probe_audit', 'original_failed', 'failed', 'audit_errors'):
+            require(process.get(key) == audited[key], 'preflight recorded audit drift')
     require(receipt['scratch_cleanup_ok'] is True and receipt['source_guard_after'] is True, 'preflight cleanup/source receipt missing')
+    require(receipt['failed'] is any(p['failed'] for p in receipt['processes']), 'preflight failure receipt drift')
     return receipt
 
 # Descriptive inference, separate from all original 100 ms gates.
@@ -731,6 +762,33 @@ def safe_output(output, root):
     output.mkdir(parents=True,mode=0o700)
     return output
 
+def snapshot_member(name):
+    return 'source-snapshots/source__' + name.replace('/', '__')
+
+def artifact_hashes(output):
+    # Keep upload-artifact's credential/hidden-file exclusion. Only the fixed
+    # tracked source allowlist gets visible snapshot names.
+    return {str(p.relative_to(output)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(output.rglob('*')) if p.is_file() and not p.is_symlink()
+            and all(not part.startswith('.') for part in p.relative_to(output).parts)
+            and p.relative_to(output) != Path('artifact-hashes.json')}
+
+@validation
+def verify_artifact_members(output, hashes):
+    """Check local or downloaded evidence against all recorded and required members."""
+    output = Path(output).absolute()
+    require(output.is_dir() and output.resolve() == output and not output.is_symlink(), 'unsafe artifact directory')
+    for p in output.rglob('*'):
+        require(not p.is_symlink() and (p.is_file() or p.is_dir())
+                and all(not part.startswith('.') for part in p.relative_to(output).parts), 'unsafe artifact member')
+    require(type(hashes) is dict and all(type(name) is str and type(digest) is str
+            and re.fullmatch('[0-9a-f]{64}', digest) for name, digest in hashes.items()), 'invalid artifact hash manifest')
+    source = parse_json((output / 'source-before.json').read_bytes())['manifest']
+    required = {snapshot_member(name): source[name]['sha256'] for name in SNAPSHOT_SOURCES}
+    require(len(required) == len(SNAPSHOT_SOURCES) and required.keys() <= hashes.keys(), 'missing required source snapshot')
+    require(all(hashes[name] == digest for name, digest in required.items()), 'source snapshot hash drift')
+    require(hashes == artifact_hashes(output), 'artifact member/hash completeness')
+
 def native(args):
     global LEDGER
     root=Path(__file__).resolve().parents[2]
@@ -741,15 +799,17 @@ def native(args):
     run=os.environ.get('GITHUB_RUN_ID',''); attempt=os.environ.get('GITHUB_RUN_ATTEMPT','')
     identity={'candidate':candidate,'ref':ref,'run':run,'attempt':attempt}
     phase={'phase':args.phase,**identity,'processes':[],'infrastructure_valid':False,'failed':True,
-           'scratch_cleanup_ok':False,'source_guard_after':False,'smoke_state':'absent','owned_processes_gone':True}
+           'scratch_cleanup_ok':False,'source_guard_after':False,'artifact_members_ok':False,
+           'smoke_state':'absent','owned_processes_gone':True}
     owner=None
     baseline_config=None
+    effect=None
     try:
         initial=source_guard(root,candidate,ref)
         write_json(output/'source-before.json',initial)
         snapshots=output/'source-snapshots'; snapshots.mkdir()
-        for name in ('backend/tests/capacity/capacity_test.ts','backend/vitest.capacity.config.ts','backend/package.json','backend/package-lock.json',*ALLOWED):
-            (snapshots/name.replace('/','__')).write_bytes((root/name).read_bytes())
+        for name in SNAPSHOT_SOURCES:
+            (output/snapshot_member(name)).write_bytes((root/name).read_bytes())
         phase['runtime']=runtime(root,args.phase!='guard')
         identity['runtime']=phase['runtime']
         if args.phase=='guard':
@@ -834,7 +894,7 @@ def native(args):
             if (phase['original_samples'],phase['original_gate_evaluations'],phase['probe_calls'])!=expected:
                 phase.update(infrastructure_valid=False,failed=True)
             if args.phase=='abba' and phase['infrastructure_valid']:
-                write_json(output/'descriptive-effect.json',describe_effect(phase['processes']))
+                effect=describe_effect(phase['processes'])
             if phase.get('preflight_original_failed'): phase['failed']=True
     except (ValueError,OSError) as error:
         phase.update(infrastructure_valid=False,failed=True,error=str(error))
@@ -849,9 +909,29 @@ def native(args):
             write_json(output/'source-after.json',after)
             phase['source_guard_after']=True
         except (ValueError,OSError) as error:
-            phase.update(infrastructure_valid=False,failed=True,source_error=str(error))
+            phase.update(infrastructure_valid=False,failed=True,source_guard_after=False,source_error=str(error))
+        hashes=artifact_hashes(output)
+        try:
+            verify_artifact_members(output,hashes)
+            phase['artifact_members_ok']=True
+        except (ValueError,OSError) as error:
+            phase.update(infrastructure_valid=False,failed=True,artifact_error=str(error))
+        if effect is not None:
+            effect['final_operations']={key:phase[key] is True for key in ('scratch_cleanup_ok','source_guard_after')}
+            effect['final_exclusions']=[message for key,message in (
+                ('scratch_cleanup_ok','final scratch cleanup failed'),
+                ('source_guard_after','final source validation failed')) if not effect['final_operations'][key]]
+            effect['artifact_members_ok']=phase['artifact_members_ok']
+            if not phase['artifact_members_ok']: effect['final_exclusions'].append('required artifact membership failed')
+            effect['final_failure_evidence']={key:phase[key] for key in ('cleanup_error','source_error','artifact_error') if key in phase}
+            if effect['final_exclusions']:
+                effect['status']='infrastructure-invalid'
+                phase.update(infrastructure_valid=False,failed=True)
+                for comparison in effect['comparisons']: comparison['exclusions'].extend(effect['final_exclusions'])
+            write_json(output/'descriptive-effect.json',effect)
+            hashes['descriptive-effect.json']=hashlib.sha256((output/'descriptive-effect.json').read_bytes()).hexdigest()
         write_json(output/'phase.json',phase)
-        hashes={str(p.relative_to(output)):hashlib.sha256(p.read_bytes()).hexdigest() for p in output.rglob('*') if p.is_file() and not p.is_symlink()}
+        hashes['phase.json']=hashlib.sha256((output/'phase.json').read_bytes()).hexdigest()
         write_json(output/'artifact-hashes.json',hashes)
     return int(phase['failed'])
 
