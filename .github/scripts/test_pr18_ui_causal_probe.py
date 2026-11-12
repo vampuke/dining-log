@@ -305,5 +305,68 @@ class GateASourceContracts(unittest.TestCase):
         self.assertFalse((changed | added) - ALLOWED)
 
 
+class GateAFailureReadinessPrecedenceContracts(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.probe = subject()
+
+    def test_failure_font_precedes_h3_owner_provenance(self):
+        """Artificial early-branch regression; never Android/native evidence."""
+        rows = scalar_fixture_rows()
+        next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")["owner"]["resourcesFont"] = 1
+        next(row for row in rows if row["stage"] == "composition-owner-boundary")["sameVmAsActivity"] = False
+        self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
+    def test_failure_lifecycle_precedes_h1_selector_falsification(self):
+        """Artificial early-branch regression; never Android/native evidence."""
+        rows = scalar_fixture_rows()
+        next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")["owner"]["lifecycle"] = "CREATED"
+        next(row for row in rows if row["stage"] == "composition-owner-boundary")["initialRestoredTab"] = "restaurants"
+        self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
+    def test_failure_font_and_lifecycle_precede_each_early_branch(self):
+        """Artificial readiness contradictions crossed with both early returns."""
+        for key, value in (("sameVmAsActivity", False), ("initialRestoredTab", "restaurants")):
+            for field, contradiction in (("resourcesFont", 1), ("lifecycle", "CREATED")):
+                with self.subTest(boundary_field=key, failure_field=field):
+                    rows = scalar_fixture_rows()
+                    next(row for row in rows if row["stage"] == "composition-owner-boundary")[key] = value
+                    next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")["owner"][field] = contradiction
+                    self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
+    def test_failure_owner_contradictions_precede_each_early_branch(self):
+        """Artificial mismatched/absent IDs; never Android/native evidence."""
+        for key, value in (("sameVmAsActivity", False), ("initialRestoredTab", "restaurants")):
+            for name in ("activity", "window", "registry", "provider", "store"):
+                for mutation in ("different_failure_id", "failure_id_absent", "rendered_id_absent", "both_ids_absent"):
+                    with self.subTest(boundary_field=key, owner=name, mutation=mutation):
+                        rows = scalar_fixture_rows()
+                        next(row for row in rows if row["stage"] == "composition-owner-boundary")[key] = value
+                        rendered = next(row for row in rows if row["stage"] == "after-production-render" and row["requestedFont"] == 2)
+                        failure = next(row for row in rows if row["stage"] == "failure-list-RESTAURANT")
+                        if mutation == "different_failure_id":
+                            failure["owner"][name]["id"] = 999
+                        elif mutation == "failure_id_absent":
+                            failure["owner"][name].update(id=None, present=False)
+                        elif mutation == "rendered_id_absent":
+                            rendered["owner"][name].update(id=None, present=False)
+                        else:
+                            for row in (rendered, failure):
+                                row["owner"][name].update(id=None, present=False)
+                        self.assertEqual(self.probe.case_chain(rows), "H4_NOT_ESTABLISHED")
+
+    def test_partial_readiness_record_stops_before_classification(self):
+        """Missing existing scalar records stop without introducing a schema."""
+        for key, value in ((None, None), ("sameVmAsActivity", False), ("initialRestoredTab", "restaurants")):
+            for missing_stage in ("after-production-render", "failure-list-RESTAURANT"):
+                with self.subTest(boundary_field=key, missing_stage=missing_stage):
+                    rows = scalar_fixture_rows()
+                    if key is not None:
+                        next(row for row in rows if row["stage"] == "composition-owner-boundary")[key] = value
+                    rows = [row for row in rows if not (row["stage"] == missing_stage and row["requestedFont"] == 2)]
+                    with self.assertRaisesRegex(ValueError, f"Missing/duplicate {missing_stage} at font 2"):
+                        self.probe.case_chain(rows)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

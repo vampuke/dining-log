@@ -272,6 +272,13 @@ def case_chain(rows):
             return "H4_OWNER_FONT_READINESS_UNCERTAIN"
     if any(row["navigation"] or row["screens"] for row in (before, cleared)):
         return "H4_DISPOSAL_BOUNDARY_UNCERTAIN"
+    failure = at("failure-list-RESTAURANT", 2)
+    # H4: the failure must retain the ready owner observed after this render.
+    if (failure["owner"]["resourcesFont"] != failure["requestedFont"] or
+            failure["owner"]["lifecycle"] != "RESUMED" or
+            not all(ident(failure, name) is not None and ident(failure, name) == ident(rendered, name)
+                    for name in ("activity", "window", "registry", "provider", "store"))):
+        return "H4_NOT_ESTABLISHED"
     if not all(boundary[key] for key in ("localOwnerMatchesActivity", "localRegistryMatchesActivity",
                "extrasVmOwnerMatchesLocal", "extrasRegistryOwnerMatchesLocal", "sameVmAsActivity")):
         return "H3_OWNER_PROVENANCE_DIFFERENT"
@@ -279,7 +286,7 @@ def case_chain(rows):
         return "H1_PROXIMATE_SELECTOR_FALSIFIED"
     saved, callback = at("natural-save-complete", 2), at("natural-save-callback", 2)
     causal_order = (terminal, before, cleared, callback, incoming, saved,
-                    at("before-production-render", 2), boundary, rendered, at("failure-list-RESTAURANT", 2))
+                    at("before-production-render", 2), boundary, rendered, failure)
     if any(a["sequence"] >= b["sequence"] for a, b in zip(causal_order, causal_order[1:])):
         raise ValueError("Natural-save/owner/failure observations do not follow the original causal boundary")
     absent = all(not cleared["owner"][name]["present"] for name in ("productVm", "internalVm"))
@@ -301,13 +308,6 @@ def case_chain(rows):
              boundary["boundaryVm"]["id"] == ident(rendered, "productVm") and
              terminal["callbacks"]["accountScope"]["id"] != rendered["callbacks"]["accountScope"]["id"] and
              terminal["callbacks"]["generation"] == rendered["callbacks"]["generation"] == 1)
-    failure = at("failure-list-RESTAURANT", 2)
-    # H4: the failure must retain the ready owner observed after this render.
-    if (failure["owner"]["resourcesFont"] != failure["requestedFont"] or
-            failure["owner"]["lifecycle"] != "RESUMED" or
-            not all(ident(failure, name) is not None and ident(failure, name) == ident(rendered, name)
-                    for name in ("activity", "window", "registry", "provider", "store"))):
-        return "H4_NOT_ESTABLISHED"
     fresh = fresh and failure["sameVmAsHelper"] and ident(failure, "productVm") == ident(rendered, "productVm")
     composition_view = boundary["compositionView"]
     native_ready = (all(composition_view[key] for key in ("attached", "shown", "focused", "matchesActivityRoot", "matchesActivityToken")) and
