@@ -3,6 +3,7 @@
 import ctypes
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -17,6 +18,11 @@ BLOCKS = ("01-A", "02-B", "03-B", "04-A")
 SCENARIOS = ("p1-4500", "plan-6000")
 STATE = Path("/tmp/android-worker-state")
 WORKER_LOG = Path("/tmp/android-worker.log")
+
+
+def require_smoke_base():
+    if os.environ.get("DINING_SMOKE_BASE_URL") != "http://127.0.0.1:8787/api/v1":
+        raise RuntimeError("Requires exact local smoke base http://127.0.0.1:8787/api/v1")
 
 
 def save(path, value):
@@ -55,6 +61,20 @@ def owned(proc, identity):
     return rows
 
 
+def completed_reaping(proc, identity, block):
+    if proc.poll() != 0 or (block / "cleanup.reaper.exit").read_text() != "0\n":
+        raise RuntimeError("Subreaper exit is not normal successful completion")
+    expected = {"schemaVersion": 1, "path": "after-TERM-no-children",
+                "identity": {key: identity[key] for key in ("pid", "ppid", "pgid", "sid", "start_ticks", "argv")},
+                "runnerSha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+    try:
+        proof = json.loads((block / "reaper.complete.json").read_text())
+        if proof != expected:
+            raise ValueError("Mismatched owner/source/path")
+    except (OSError, ValueError) as error:
+        raise RuntimeError("Subreaper completion proof missing or mismatched") from error
+
+
 def stop_group(proc, identity, block):
     before = []
     try:
@@ -69,7 +89,12 @@ def stop_group(proc, identity, block):
             (block / "ownership.exit").write_text("0\n")
         os.killpg(proc.pid, signal.SIGTERM)
         save(block / "cleanup.signal.json", {"pgid": proc.pid, "signal": "TERM", "identity": identity})
-        proc.wait(timeout=20)
+        (block / "cleanup.reaper.exit").write_text("NOT_COMPLETED\n")
+        code = proc.wait(timeout=20)
+        (block / "cleanup.reaper.exit").write_text(str(code) + "\n")
+        if code != 0:
+            raise RuntimeError("Subreaper exit was abnormal: " + str(code))
+        completed_reaping(proc, identity, block)
         survivors = [row for old in before if (row := process(old["pid"])) is not None and row["start_ticks"] == old["start_ticks"]]
         save(block / "cleanup.survivors.json", survivors)
         if members(proc.pid) or survivors:
@@ -85,6 +110,8 @@ def stop_group(proc, identity, block):
 
 
 def smoke_group(block):
+    require_smoke_base()
+    reaper_source = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     # Keep a verifiable session leader after the existing starter backgrounds Wrangler.
     # Reap adopted grandchildren on TERM so B can prove an empty group, including zombies.
     if ctypes.CDLL(None, use_errno=True).prctl(36, 1, 0, 0, 0) != 0:
@@ -104,6 +131,11 @@ def smoke_group(block):
                 pass
         except ChildProcessError:
             if stopping:
+                identity = process(os.getpid())
+                save(block / "reaper.complete.json", {
+                    "schemaVersion": 1, "path": "after-TERM-no-children",
+                    "identity": {key: identity[key] for key in ("pid", "ppid", "pgid", "sid", "start_ticks", "argv")},
+                    "runnerSha256": reaper_source})
                 return
         time.sleep(0.05)
 
@@ -143,7 +175,9 @@ def workerds(rows):
     return [row for row in rows if row["state"] != "Z" and row["argv"] and "workerd" in row["argv"][0]]
 
 
-def liveness(proc, identity, treatment, witnesses):
+def liveness(proc, identity, treatment, witnesses, block):
+    if treatment:
+        completed_reaping(proc, identity, block)
     rows = members(proc.pid) if treatment else owned(proc, identity)
     if treatment:
         if rows:
@@ -165,7 +199,59 @@ def source(repo):
             "trackedSha256": {name: hashlib.sha256((repo / name).read_bytes()).hexdigest() for name in tracked}}
 
 
+def validate_measurements(result):
+    # Completeness only. Original tests own quantiles and every performance gate.
+    if (any(type(result.get(key)) is not int or result[key] != expected
+            for key, expected in (("schemaVersion", 1), ("repetitions", 30), ("p95LimitMs", 100))) or
+            result.get("wallClock") != "Date.now (1 ms resolution; Workers performance.now is not used)"):
+        raise RuntimeError("Missing original measurement schema/repetitions/100ms identity")
+    query_ids = ("updated_page", "rating_page", "aggregate_search_hit", "aggregate_search_miss",
+                 "restaurant_detail", "restaurant_dishes", "restaurant_visits", "detail_children_batch", "entity_revisions_10")
+    queries = result.get("queries")
+    if (not isinstance(queries, list) or len(queries) != len(query_ids) or
+            {query["id"] for query in queries} != set(query_ids)):
+        raise RuntimeError("Missing/extra/duplicate SQL measurement records")
+
+    def number(value):
+        return type(value) in (int, float) and math.isfinite(value)
+
+    for query in queries:
+        count = 3 if query["id"] == "detail_children_batch" else 1
+        statements = query.get("statements")
+        if (not isinstance(statements, list) or len(statements) != count or
+                any(not isinstance(statement.get("sql"), str) or not statement["sql"] or
+                    not isinstance(statement.get("params"), list) for statement in statements)):
+            raise RuntimeError("Incomplete original SQL statement records")
+        samples = query.get("samples")
+        if not isinstance(samples, list) or len(samples) != 30:
+            raise RuntimeError("SQL measurement requires exactly 30 complete samples")
+        for sample in samples:
+            if (not isinstance(sample, dict) or
+                    set(sample) != {"wallMs", "sqlMs", "rowsRead", "rowsWritten", "returnedRows"} or
+                    any(not number(sample[key]) for key in ("wallMs", "sqlMs", "rowsRead", "rowsWritten")) or
+                    not isinstance(sample["returnedRows"], list) or len(sample["returnedRows"]) != count or
+                    any(type(value) is not int or value < 0 for value in sample["returnedRows"])):
+                raise RuntimeError("Incomplete original SQL sample")
+    detail = next(query for query in queries if query["id"] == "restaurant_detail")
+    params = detail["statements"][0]["params"]
+    if (len(params) != 2 or not isinstance(params[1], str) or
+            not re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", params[1])):
+        raise RuntimeError("Missing original SQL/API restaurant identity")
+    base = "/restaurants/" + params[1]
+    paths = {"/restaurants?limit=20", "/restaurants?sort=rating_desc&limit=20",
+             "/search?q=%E6%8B%9B%E7%89%8C%E6%B5%8B%E8%AF%95", "/search?q=capacity_missing_51a71c",
+             base, base + "/dishes", base + "/visits", base + "/revisions?limit=10"}
+    api = result.get("actualAPI")
+    if not isinstance(api, list) or len(api) != 8 or {record["path"] for record in api} != paths:
+        raise RuntimeError("Missing/extra/duplicate API measurement records")
+    for record in api:
+        samples = record.get("samples")
+        if not isinstance(samples, list) or len(samples) != 30 or any(not number(value) for value in samples):
+            raise RuntimeError("API measurement requires exactly 30 complete samples")
+
+
 def main():
+    require_smoke_base()
     repo = Path.cwd().resolve()
     output = Path(os.environ["E1_OUTPUT"]).resolve()
     if os.environ.get("GITHUB_ACTIONS") != "true" or sys.platform != "linux" or output.is_relative_to(repo):
@@ -244,14 +330,14 @@ def main():
             phase = "liveness"
             save(block / "source.capacity-start.json", source(repo))
             for scenario in SCENARIOS:
-                rows = liveness(proc, identity, name.endswith("B"), witnesses)
+                rows = liveness(proc, identity, name.endswith("B"), witnesses, block)
                 save(block / (scenario + ".liveness.json"), rows)
                 if source(repo) != before:
                     raise RuntimeError("Source changed before capacity")
                 failed |= not run_logged(["./node_modules/.bin/vitest", "run", "--config", "vitest.capacity.config.ts", "-t", scenario],
                                          block / (scenario + ".log"), repo / "backend",
-                                         guard=lambda: liveness(proc, identity, name.endswith("B"), witnesses))
-            rows = liveness(proc, identity, name.endswith("B"), witnesses)
+                                         guard=lambda: liveness(proc, identity, name.endswith("B"), witnesses, block))
+            rows = liveness(proc, identity, name.endswith("B"), witnesses, block)
             save(block / "smoke.measurements-end.json", rows)
             combined = b"".join((block / (scenario + ".log")).read_bytes() for scenario in SCENARIOS)
             (block / "capacity.log").write_bytes(combined)
@@ -262,6 +348,8 @@ def main():
                        if (match := re.search(r"CAPACITY_RESULT (\{.*\})", line))]
             if [result["scenario"]["name"] for result in results] != list(SCENARIOS):
                 raise RuntimeError("Missing/duplicate scenario evidence")
+            for result in results:
+                validate_measurements(result)
             hashes = {result["scenario"]["name"]: result["seed"]["fixtureSha256"] for result in results}
             if any(not re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes.values()):
                 raise RuntimeError("Missing fixture hashes")
@@ -315,6 +403,7 @@ def main():
 
 
 if __name__ == "__main__":
+    require_smoke_base()
     if len(sys.argv) == 3 and sys.argv[1] == "--smoke-group":
         smoke_group(Path(sys.argv[2]))
     else:

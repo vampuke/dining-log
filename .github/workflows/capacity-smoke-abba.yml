@@ -48,6 +48,7 @@ jobs:
         env:
           E1_OUTPUT: ${{ runner.temp }}/capacity-smoke-abba
         run: |
+          set +e
           set -uo pipefail
           npm ci 2>&1 | tee "$E1_OUTPUT/npm-ci.log"
           codes=("${PIPESTATUS[@]}")
