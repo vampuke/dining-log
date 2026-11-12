@@ -766,12 +766,40 @@ assert (root/'escaped').exists()
 
     def test_timeout_terminates_owned_child_and_preserves_raw_failure(self):
         directory = self.root / 'timeout'; directory.mkdir()
-        command = [sys.executable, '-B', '-c', "import time; print('CONTROL before timeout',flush=True); time.sleep(2)"]
-        value = e2.run_owned(command, self.root, directory, 0.1)
+        command = [sys.executable, '-B', '-c', "import signal; print('CONTROL before timeout',flush=True); signal.pause()"]
+        real_popen = subprocess.Popen
+        owned = []
+        def ready_popen(*args, **kwargs):
+            started = time.monotonic()
+            process = real_popen(*args, **kwargs)
+            owned.append(process)
+            def cleanup_owned():
+                if process.poll() is None: process.kill()
+                process.wait(timeout=2)
+            self.addCleanup(cleanup_owned)
+            stdout = Path(kwargs['stdout'].name)
+            deadline = started + 5
+            # run_owned starts its clock before Popen; return only after the
+            # real child flushed and the unchanged 100 ms deadline elapsed.
+            # signal.pause keeps it alive until the runner signals it.
+            while time.monotonic() < deadline:
+                self.assertIsNone(process.poll(), 'owned child exited before timeout readiness')
+                if b'CONTROL before timeout\n' in stdout.read_bytes() and time.monotonic() - started >= 0.1:
+                    return process
+                time.sleep(.005)
+            self.fail('owned child did not flush CONTROL before timeout within 5s')
+        with mock.patch.object(e2.subprocess, 'Popen', side_effect=ready_popen):
+            value = e2.run_owned(command, self.root, directory, 0.1)
         self.assertTrue(value.get('timed_out'))
         self.assertNotEqual(value.get('returncode'), 0)
         self.assertTrue(value.get('cleanup_ok'))
         self.assertIn(b'CONTROL before timeout', (directory / 'stdout.raw').read_bytes())
+        self.assertEqual(len(owned), 1)
+        self.assertEqual(value['pid'], owned[0].pid)
+        self.assertIn(value['signal'], (signal.SIGTERM, signal.SIGKILL))
+        self.assertTrue(value['cleanup_signals'])
+        self.assertEqual({event['pid'] for event in value['cleanup_signals']}, {owned[0].pid})
+        self.assertTrue(all(event['identity'] == 'pidfd' for event in value['cleanup_signals']))
 
     def test_owned_descendant_is_drained_and_unowned_process_survives(self):
         unrelated = subprocess.Popen([sys.executable, '-B', '-c', 'import time; time.sleep(4)'])
