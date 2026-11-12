@@ -893,6 +893,58 @@ class RendererControls(DisposableControls):
             self.assertTrue(e2.audit_renderer(dict(good, **patch), self.root).get('failed'))
 
 
+def finalize_preflight_control(path, phase):
+    """Complete stdlib prerequisite evidence; no native commands or measurements."""
+    source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
+                           for name in e2.SNAPSHOT_SOURCES}}
+    facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True,
+                 isolatedStorage=False, remote_bindings=False, persistent_override=False,
+                 test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+    for name in e2.SNAPSHOT_SOURCES:
+        target = path / e2.snapshot_member(name); target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes((RUNNER.parents[2] / name).read_bytes())
+    for name in ('source-before.json', 'source-after.json'):
+        e2.write_json(path / name, source)
+    variants = e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())
+    scratch = path / 'scratch'; scratch.mkdir(exist_ok=True)
+    for name, content in [('config.ts', e2.CONFIG), ('setup.ts', variants['full']),
+                          ('full-setup.ts', variants['full']), ('id-setup.ts', variants['id'])]:
+        (scratch / name).write_bytes(content)
+    e2.write_json(scratch / 'variants.json', {arm: hashlib.sha256(raw).hexdigest() for arm, raw in variants.items()})
+    e2.write_json(scratch / 'config-facts.json', facts)
+    for process in phase['processes']:
+        process.update(block='preflight', projection='full')
+        directory = path / 'preflight' / process['scenario']
+        for name, value in [('process.json', process['process']), ('audit.json', process),
+                            ('preflight-record.json', process['probe_audit']['preflight']),
+                            ('history-record.json', process['probe_audit']['history']),
+                            ('source-before.json', source), ('source-after.json', source),
+                            ('resolved-config.json', facts), ('liveness-before.json', {'smoke_state': 'absent'}),
+                            ('liveness-after.json', {'smoke_state': 'absent'})]:
+            e2.write_json(directory / name, value)
+    directory = path / 'preflight'; renderer = directory / 'renderer'; renderer.mkdir(exist_ok=True)
+    raw = b''.join((directory / s / n).read_bytes() for s in ('p1-4500', 'plan-6000') for n in ('stdout.raw', 'stderr.raw'))
+    for target, content in [(directory / 'capacity.log', raw), (directory / 'measurements.json', b'{}'),
+                            (directory / 'RESULTS.md', b'CONTROL renderer output'),
+                            (renderer / 'stdout.raw', b'CONTROL renderer completed'), (renderer / 'stderr.raw', b'')]:
+        target.write_bytes(content)
+    renderer_process = dict(returncode=0, cleanup_ok=True, timed_out=False, spawn_error=None, descendants_after_exit=[],
+                            stdout_sha256=hashlib.sha256((renderer / 'stdout.raw').read_bytes()).hexdigest(),
+                            stderr_sha256=hashlib.sha256(b'').hexdigest())
+    rendered = e2.audit_renderer(renderer_process, directory)
+    e2.write_json(renderer / 'process.json', renderer_process)
+    e2.write_json(renderer / 'audit.json', rendered)
+    e2.write_json(renderer / 'source-before.json', source)
+    phase.update(renderers=[rendered], resolved_config=facts, artifact_members_ok=True, evidence_status='COMPLETE',
+                 owned_processes_gone=True, original_samples=1020, original_gate_evaluations=52, probe_calls=60)
+    e2.write_json(path / 'phase.json', phase)
+    expected = {name: digest for name, digest in e2.artifact_hashes(path).items()
+                if name not in ('phase.json', 'evidence-receipt.json')}
+    for name, digest in expected.items(): e2.freeze_evidence(path / name, digest)
+    e2.write_json(path / 'evidence-receipt.json', {'expected': expected, 'final_members': ['phase.json']})
+    e2.write_json(path / 'artifact-hashes.json', e2.artifact_hashes(path))
+
+
 class PreflightControls(DisposableControls):
     def complete_preflight(self, path, code=0, state='pass', gate_failed=False):
         identity = {'candidate': '1'*40, 'ref': e2.REF, 'run': '12', 'attempt': '1',
@@ -916,6 +968,7 @@ class PreflightControls(DisposableControls):
                  'infrastructure_valid': True, 'failed': any(p['failed'] for p in processes),
                  'scratch_cleanup_ok': True, 'source_guard_after': True, 'smoke_state': 'absent'}
         (path / 'phase.json').write_text(json.dumps(phase))
+        finalize_preflight_control(path, phase)
         return identity, phase
 
     def test_exit_consistency_reopening_truth_table_reaudits_raw_records(self):
@@ -961,6 +1014,225 @@ class PreflightControls(DisposableControls):
         receipt = dict(identity, infrastructure_valid=True, phase='preflight', processes=[])
         (self.root / 'phase.json').write_text(json.dumps(receipt))
         with self.assertRaises(ValueError): e2.preflight_gate(self.root, identity)
+
+
+class FinalizedPreflightControls(DisposableControls):
+    def control(self, name='complete', performance_failure=False):
+        path = self.root / name
+        identity, phase = PreflightControls.complete_preflight(
+            self, path, 1 if performance_failure else 0, 'fail' if performance_failure else 'pass', performance_failure)
+        self.assertEqual(e2.preflight_gate(path, identity), phase, 'complete prerequisite must reopen')
+        return path, identity, phase
+
+    def members(self):
+        return ('artifact-hashes.json', 'evidence-receipt.json', 'source-after.json',
+                e2.snapshot_member(e2.ALLOWED[1]), 'preflight/renderer/process.json',
+                'preflight/renderer/stdout.raw', 'preflight/RESULTS.md', 'preflight/measurements.json',
+                'preflight/p1-4500/process.json', 'preflight/p1-4500/source-after.json',
+                'preflight/p1-4500/audit.json', 'preflight/p1-4500/history-record.json',
+                'scratch/config.ts', 'scratch/setup.ts', 'scratch/config-facts.json', 'phase.json')
+
+    def test_finalized_pair_reopens_and_retains_legitimate_original_failure(self):
+        for failed in (False, True):
+            path, identity, phase = self.control(str(failed), failed)
+            e2.verify_artifact_members(path, e2.parse_json((path / 'artifact-hashes.json').read_bytes()))
+            self.assertIs(phase['failed'], failed)
+            self.assertEqual(phase['processes'][0]['process']['returncode'], int(failed))
+            self.assertIs(phase['processes'][0]['original_audit']['performance_failed'], failed)
+
+    def test_each_missing_finalized_member_closes_reopening(self):
+        for index, name in enumerate(self.members()):
+            with self.subTest(member=name):
+                path, identity, _ = self.control(str(index))
+                (path / name).unlink()
+                with self.assertRaises(ValueError, msg='missing finalized member: ' + name):
+                    e2.preflight_gate(path, identity)
+
+    def test_each_changed_finalized_member_closes_reopening(self):
+        for index, name in enumerate(self.members()):
+            with self.subTest(member=name):
+                path, identity, _ = self.control(str(index))
+                file = path / name; file.write_bytes(file.read_bytes() + b'\nCONTROL changed completion bytes')
+                with self.assertRaises(ValueError, msg='changed finalized member: ' + name):
+                    e2.preflight_gate(path, identity)
+
+    def test_rehashed_omission_cannot_drop_recorded_prerequisite_members(self):
+        for index, name in enumerate(self.members()[2:]):
+            with self.subTest(member=name):
+                path, identity, _ = self.control(str(index))
+                (path / name).unlink()
+                # Recomputing the upload inventory cannot erase completion history.
+                (path / 'artifact-hashes.json').write_text(json.dumps(e2.artifact_hashes(path)))
+                with self.assertRaises(ValueError, msg='completed evidence omitted from final inventory: ' + name):
+                    e2.preflight_gate(path, identity)
+
+    def test_required_snapshot_cannot_be_omitted_from_both_inventories(self):
+        path, identity, _ = self.control()
+        name = e2.snapshot_member(e2.ALLOWED[1])
+        (path / name).unlink()
+        receipt = e2.parse_json((path / 'evidence-receipt.json').read_bytes())
+        receipt['expected'].pop(name)
+        (path / 'evidence-receipt.json').write_text(json.dumps(receipt))
+        (path / 'artifact-hashes.json').write_text(json.dumps(e2.artifact_hashes(path)))
+        with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
+    def test_receipt_membership_and_hash_manifest_shapes_close_reopening(self):
+        mutations = (
+            ('evidence-receipt.json', lambda x: x.__setitem__('final_members', [])),
+            ('evidence-receipt.json', lambda x: x['expected'].__setitem__('source-after.json', None)),
+            ('artifact-hashes.json', lambda x: x.__setitem__('../outside', '1' * 64)),
+            ('artifact-hashes.json', lambda x: x.pop('phase.json')),
+        )
+        for index, (name, mutate) in enumerate(mutations):
+            with self.subTest(index=index):
+                path, identity, _ = self.control(str(index))
+                file = path / name; value = e2.parse_json(file.read_bytes()); mutate(value)
+                file.write_text(json.dumps(value))
+                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
+    def test_final_manifest_must_be_a_valid_json_object(self):
+        for index, raw in enumerate((b'null', b'[]', b'"CONTROL"', b'{', b'{}')):
+            with self.subTest(raw=raw):
+                path, identity, _ = self.control(str(index))
+                (path / 'artifact-hashes.json').write_bytes(raw)
+                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
+    def test_unexpected_hidden_symlink_and_visible_members_close_reopening(self):
+        for kind in ('hidden', 'symlink', 'visible', 'directory-symlink'):
+            with self.subTest(kind=kind):
+                path, identity, _ = self.control(kind)
+                if kind == 'hidden': (path / '.unexpected').write_bytes(b'CONTROL')
+                elif kind == 'visible': (path / 'unexpected').write_bytes(b'CONTROL')
+                elif kind == 'symlink': (path / 'linked-source').symlink_to(path / 'source-after.json')
+                else:
+                    link = self.root / 'linked-directory'; link.symlink_to(path, target_is_directory=True); path = link
+                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
+    def test_final_manifest_write_failure_after_valid_phase_never_reopens(self):
+        path = self.root / 'native-finalization'
+        identity = {'candidate': '1' * 40, 'ref': e2.REF, 'run': '12', 'attempt': '1', 'runtime': {'node': 'v22.CONTROL'}}
+        source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
+                               for name in e2.SNAPSHOT_SOURCES}}
+        writer = e2.write_json
+        def collected(*_):
+            with mock.patch.object(e2, 'EXPECTED_EVIDENCE', None):
+                _, phase = PreflightControls.complete_preflight(self, path, 1, 'fail', True)
+            for name in ('phase.json', 'artifact-hashes.json', 'evidence-receipt.json'): (path / name).unlink()
+            for name, digest in e2.artifact_hashes(path).items(): e2.freeze_evidence(path / name, digest)
+            return phase
+        def failed_writer(target, value):
+            if Path(target).name == 'artifact-hashes.json':
+                raise OSError('CONTROL final manifest write failed after phase.json')
+            return writer(target, value)
+        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root), 'GITHUB_SHA': identity['candidate'],
+                                         'GITHUB_REF': identity['ref'], 'GITHUB_RUN_ID': identity['run'], 'GITHUB_RUN_ATTEMPT': identity['attempt']}), \
+             mock.patch.object(e2, 'source_guard', return_value=source), \
+             mock.patch.object(e2, 'runtime', return_value=identity['runtime']), \
+             mock.patch.object(e2, 'materialize_scratch', return_value={'path': str(self.root / 'CONTROL-owned-scratch')}), \
+             mock.patch.object(e2, 'cleanup_scratch'), \
+             mock.patch.object(e2, 'serial_phase', side_effect=collected), \
+             mock.patch.object(e2, 'run_owned', side_effect=AssertionError('native command forbidden')):
+            # Fixture collection may write its own manifest; fail only the real final write.
+            def schedule(*args):
+                value = collected(*args)
+                patcher = mock.patch.object(e2, 'write_json', side_effect=failed_writer)
+                patcher.start(); self.addCleanup(patcher.stop)
+                return value
+            with mock.patch.object(e2, 'serial_phase', side_effect=schedule):
+                with self.assertRaisesRegex(OSError, 'CONTROL final manifest write failed'):
+                    e2.native(mock.Mock(phase='preflight', output=str(path)))
+        self.assertTrue(e2.parse_json((path / 'phase.json').read_bytes())['infrastructure_valid'])
+        self.assertFalse((path / 'artifact-hashes.json').exists())
+        with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
+    def workflow_gate(self, path, identity):
+        workflow = (RUNNER.parents[2] / e2.ALLOWED[3]).read_text()
+        step = workflow.split('      - name: Read preflight infrastructure gate\n', 1)[1].split('      - name: Native serial ABBA\n', 1)[0]
+        code = step.split("          python3 -B - <<'PY'\n", 1)[1].split('          PY\n', 1)[0]
+        code = '\n'.join(line[10:] for line in code.splitlines())
+        target = self.root / ('workflow-' + path.parents[1].name); target.mkdir()
+        script = target / 'gate.py'; script.write_text(code)
+        output = target / 'github-output'
+        env = dict(os.environ, RUNNER_TEMP=str(path.parents[1]), GITHUB_OUTPUT=str(output),
+                   GITHUB_SHA=identity['candidate'], GITHUB_REF=identity['ref'], GITHUB_RUN_ID=identity['run'], GITHUB_RUN_ATTEMPT=identity['attempt'])
+        result = subprocess.run([sys.executable, '-B', str(script)], cwd=RUNNER.parents[2], env=env, capture_output=True, timeout=5)
+        (target / 'stdout').write_bytes(result.stdout); (target / 'stderr').write_bytes(result.stderr)
+        (target / 'exit').write_text(str(result.returncode))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return output.read_text().strip()
+
+    def test_workflow_gate_requires_finalized_validator_and_exact_attempt_identity(self):
+        for index, change in enumerate(('valid', 'missing-manifest', 'candidate', 'ref', 'run', 'attempt')):
+            path = self.root / str(index) / 'capacity-history-e2' / 'preflight'
+            identity, _ = PreflightControls.complete_preflight(self, path, 1, 'fail', True)
+            if change == 'missing-manifest': (path / 'artifact-hashes.json').unlink()
+            elif change != 'valid': identity[change] += '-drift'
+            with self.subTest(change=change):
+                self.assertEqual(self.workflow_gate(path, identity), 'valid=' + str(change == 'valid').lower())
+
+
+class OriginalPlanControls(unittest.TestCase):
+    def audited_plan(self, plans, missing=False):
+        raw, preflight, history = dummy_probe_raw()
+        result = json.loads(raw[len(b'CAPACITY_RESULT '):])
+        query = result['queries'][-1]
+        if missing: query.pop('plans')
+        else: query['plans'] = plans
+        raw = emit(result)
+        original = e2.audit_original(raw, 'p1-4500')
+        preflight['capture'].update({key: original[key] for key in
+                                     ('payload_sha256', 'payload_utf8_bytes', 'raw_emit_sha256')})
+        return e2.audit_probe(probe_log(raw, preflight, history), original, 'p1-4500', 'id', RUNNER.parents[2])
+
+    def test_missing_original_plan_invalidates_probe(self):
+        with self.assertRaises(ValueError): self.audited_plan(None, missing=True)
+
+    def test_null_original_plan_invalidates_probe(self):
+        for plans in (None, [None]):
+            with self.subTest(plans=plans), self.assertRaises(ValueError): self.audited_plan(plans)
+
+    def test_empty_original_plan_invalidates_probe(self):
+        for plans in ([], [[]], [['']], [['CONTROL ONLY plan', '']]):
+            with self.subTest(plans=plans), self.assertRaises(ValueError): self.audited_plan(plans)
+
+    def test_extra_original_plan_invalidates_probe(self):
+        with self.assertRaises(ValueError): self.audited_plan([['CONTROL ONLY plan'], ['extra']])
+
+    def test_non_string_original_plan_invalidates_probe(self):
+        for plans in ('CONTROL ONLY plan', ['CONTROL ONLY plan'], [[1]], [[True]], [['CONTROL ONLY plan', None]]):
+            with self.subTest(plans=plans), self.assertRaises(ValueError): self.audited_plan(plans)
+
+    def test_exactly_one_selected_history_statement_is_required_by_probe(self):
+        raw, preflight, history = dummy_probe_raw()
+        statement = dict(sql=HISTORY, params=[USER, 'restaurant', SELECTED['p1-4500']])
+        for statements in ([], None, [statement] * 2):
+            original = e2.audit_original(raw, 'p1-4500')
+            original['result']['queries'][-1]['statements'] = statements
+            with self.subTest(statements=statements), self.assertRaises(ValueError):
+                e2.audit_probe(probe_log(raw, preflight, history), original, 'p1-4500', 'id', RUNNER.parents[2])
+
+    def test_valid_original_plan_is_returned_and_equality_preserves_support(self):
+        plan = ['CONTROL ONLY plan']
+        self.assertEqual(self.audited_plan([plan])['original_plan'], plan)
+        report = e2.describe_effect(supportive_control_cohort())
+        self.assertEqual(report['status'], 'result-size-related path support')
+        self.assertTrue(all(not c['exclusions'] for c in report['comparisons']))
+
+    def test_valid_original_plan_mismatch_is_an_exclusion(self):
+        plan = ['CONTROL different original plan']
+        self.assertEqual(self.audited_plan([plan])['original_plan'], plan)
+        values = supportive_control_cohort()
+        values[0]['probe_audit']['original_plan'] = plan
+        report = e2.describe_effect(values)
+        self.assertEqual(report['status'], 'confounded')
+        self.assertIn('original emitted plan differs', report['comparisons'][0]['exclusions'])
+
+    def test_effect_comparison_has_no_nullable_original_plan_bypass(self):
+        values = supportive_control_cohort()
+        values[0]['probe_audit']['original_plan'] = None
+        report = e2.describe_effect(values)
+        self.assertEqual(report['status'], 'confounded')
+        self.assertIn('original emitted plan differs', report['comparisons'][0]['exclusions'])
 
 
 class InferenceControls(unittest.TestCase):

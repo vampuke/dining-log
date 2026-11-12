@@ -217,9 +217,18 @@ def audit_probe(raw, original, scenario, projection, root):
     attest(history['attestation_after'], original['result'], scenario)
     require([(r['label'],r['sql'],r['params'],r['results']) for r in preflight['attestation_before']['reads']] == [(r['label'],r['sql'],r['params'],r['results']) for r in history['attestation_after']['reads']], 'post-probe corpus/content drift')
     measurement = history['measurement']
-    full_sql = original['result']['queries'][-1]['statements'][0]['sql']
+    queries = [q for q in original['result']['queries'] if q['id'] == 'entity_revisions_10']
+    require(len(queries) == 1, 'single original history query')
+    query = queries[0]
+    require(type(query['statements']) is list and len(query['statements']) == 1, 'single original history statement')
+    plans = query['plans']
+    require(type(plans) is list and len(plans) == 1, 'single original history plan')
+    original_plan = plans[0]
+    require(type(original_plan) is list and original_plan
+            and all(type(detail) is str and detail for detail in original_plan), 'nonempty original history plan strings')
+    full_sql = query['statements'][0]['sql']
     id_sql = full_sql.replace('SELECT *', 'SELECT id', 1)
-    params = original['result']['queries'][-1]['statements'][0]['params']
+    params = query['statements'][0]['params']
     require(measurement == {'full_sql': full_sql, 'id_sql': id_sql, 'params': params,
                             'sql': full_sql if projection == '*' else id_sql}, 'single projection SQL')
     for stage in ('plans_before', 'plans_after'):
@@ -240,7 +249,7 @@ def audit_probe(raw, original, scenario, projection, root):
             require(sample['start_ms'] >= history['samples'][index-2]['bookkeeping_stop_ms'], 'serial probe clock reversal')
     return {'probe_calls': len(history['samples']), 'reference_ids': [r['id'] for r in rows],
             'original_task_state': selected[0]['state'],
-            'preflight': preflight, 'history': history, 'original_plan': original['result']['queries'][-1]['plans'][0]}
+            'preflight': preflight, 'history': history, 'original_plan': original_plan}
 
 @validation
 def attest(value, original, scenario):
@@ -670,6 +679,7 @@ def audit_renderer(receipt, directory):
               or receipt['spawn_error'] or receipt['descendants_after_exit'] or receipt.get('unexplained_adopted') or not present)
     return {'process': receipt, 'outputs_present': present, 'failed': bool(failed)}
 
+@validation
 def preflight_gate(path, identity):
     path = Path(path)
     require(path.is_dir() and not path.is_symlink(), 'missing preflight directory')
@@ -696,6 +706,13 @@ def preflight_gate(path, identity):
             require(process.get(key) == audited[key], 'preflight recorded audit drift')
     require(receipt['scratch_cleanup_ok'] is True and receipt['source_guard_after'] is True, 'preflight cleanup/source receipt missing')
     require(receipt['failed'] is any(p['failed'] for p in receipt['processes']), 'preflight failure receipt drift')
+    manifest = path / 'artifact-hashes.json'
+    require(manifest.is_file() and not manifest.is_symlink(), 'missing finalized preflight hash manifest')
+    try:
+        hashes = parse_json(manifest.read_bytes())
+        verify_artifact_members(path, hashes)
+    except OSError as error:
+        raise ValueError('missing finalized preflight evidence') from error
     return receipt
 
 # Descriptive inference, separate from all original 100 ms gates.
@@ -725,8 +742,8 @@ def describe_effect(processes):
             all_plans=[v['history'][stage][arm]['results'] for v in (full,ident) for stage in ('plans_before','plans_after') for arm in ('full','id')]
             if any(plan!=all_plans[0] for plan in all_plans): exclusions.append('SQL plan changed, including possible covering index')
             for v in (full,ident):
-                original=v.get('original_plan')
-                if original is not None and original != [r['detail'] for r in all_plans[0]]: exclusions.append('original emitted plan differs')
+                original=v['original_plan']
+                if original != [r['detail'] for r in all_plans[0]]: exclusions.append('original emitted plan differs')
             if abs(d1_full['p95']-d1_id['p95'])>1: exclusions.append('D1-reported duration shifted by more than 1 ms')
             if any(a['meta']['rows_read']!=b['meta']['rows_read'] for a,b in zip(fs,bs)): exclusions.append('rows_read shifted')
             if any(a['ordered_ids']!=b['ordered_ids'] for a,b in zip(fs,bs)): exclusions.append('ordered IDs changed')

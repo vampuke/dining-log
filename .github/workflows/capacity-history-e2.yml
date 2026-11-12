@@ -89,14 +89,21 @@ jobs:
         shell: bash
         run: |
           python3 -B - <<'PY'
-          import json, os
+          import importlib.util, json, os
           from pathlib import Path
-          p = Path(os.environ['RUNNER_TEMP'], 'capacity-history-e2/preflight/phase.json')
+          p = Path(os.environ['RUNNER_TEMP'], 'capacity-history-e2/preflight')
           valid = False
           try:
-              value = json.loads(p.read_text())
-              valid = value.get('infrastructure_valid') is True and value.get('scratch_cleanup_ok') is True and value.get('source_guard_after') is True
-          except (OSError, ValueError):
+              spec = importlib.util.spec_from_file_location('capacity_history_e2', '.github/scripts/capacity-history-e2.py')
+              e2 = importlib.util.module_from_spec(spec)
+              spec.loader.exec_module(e2)
+              value = json.loads((p / 'phase.json').read_text())
+              identity = {key: os.environ[env] for key, env in (
+                  ('candidate', 'GITHUB_SHA'), ('ref', 'GITHUB_REF'), ('run', 'GITHUB_RUN_ID'), ('attempt', 'GITHUB_RUN_ATTEMPT'))}
+              identity['runtime'] = value['runtime']
+              e2.preflight_gate(p, identity)
+              valid = True
+          except (OSError, ValueError, KeyError, TypeError):
               pass
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write('valid='+str(valid).lower()+'\n')
