@@ -1250,7 +1250,8 @@ class CommandPhaseControls(DisposableControls):
         trace['receipt'] = receipt
         return receipt, trace
 
-    def controlled_phase(self, failure_at=None, mutation=None, snapshot_gap=None):
+    def controlled_phase(self, failure_at=None, mutation=None, snapshot_gap=None,
+                         source_failure_at=None, invalid_audit=False, performance_failure=False):
         """Run the real serial/finalization paths with only pure Python children.
 
         Guard/runtime and renderer command interfaces substitute bounded Python
@@ -1275,6 +1276,9 @@ class CommandPhaseControls(DisposableControls):
         def guard(*_, **__):
             trace['guards'] += 1
             e2.read_command(['CONTROL-guard', str(trace['guards'])], self.root)
+            if trace['guards'] == source_failure_at:
+                trace['source_failure'] = 'CONTROL frozen source validation failed after safe drain'
+                raise ValueError(trace['source_failure'])
             return source
         def runtime(*_, **__):
             trace['runtimes'] += 1
@@ -1298,7 +1302,18 @@ class CommandPhaseControls(DisposableControls):
                 return receipt
             if kind == 'vitest':
                 scenario = argv[-1]; projection = '*' if trace['arm'] == 'full' else 'id'
-                original, preflight, history = dummy_probe_raw(scenario, projection)
+                product_failed = performance_failure and scenario == 'p1-4500'
+                original, preflight, history = dummy_probe_raw(scenario, projection, 'fail' if product_failed else 'pass')
+                if product_failed:
+                    value = json.loads(original[len(b'CAPACITY_RESULT '):])
+                    query = value['queries'][0]
+                    for sample in query['samples']: sample['wallMs'] = 101
+                    query['wallMs'] = quantiles([101] * 30)
+                    original = emit(value)
+                    payload = original[len(b'CAPACITY_RESULT '):-1]
+                    preflight['capture'].update(payload_sha256=hashlib.sha256(payload).hexdigest(),
+                                                payload_utf8_bytes=len(payload),
+                                                raw_emit_sha256=hashlib.sha256(original[:-1]).hexdigest())
                 preflight['original_task']['filepath'] = str(checkout / 'backend/tests/capacity/capacity_test.ts')
                 history['original_task']['filepath'] = preflight['original_task']['filepath']
                 for sample in history['samples']:
@@ -1306,14 +1321,17 @@ class CommandPhaseControls(DisposableControls):
                     sample['stop_ms'] = sample['start_ms'] + sample['wall_ms']
                     sample['bookkeeping_stop_ms'] = sample['stop_ms'] + sample['bookkeeping_ms']
                 raw = probe_log(original, preflight, history)
+                if invalid_audit: raw = b'CONTROL missing original and probe records\n'
                 if snapshot_gap is not None and 'snapshot_gap' not in trace:
                     receipt, trace['snapshot_gap'] = self.omitted_descendant(raw, directory, snapshot_gap, original_owned)
                     trace['original_raw_hashes'][str(directory.relative_to(output) / 'stdout.raw')] = receipt['stdout_sha256']
                     return receipt
                 inp = self.root / ('input-%03d.raw' % len(trace['attempts'])); inp.write_bytes(raw)
                 actual = [sys.executable, '-B', '-c',
-                          'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes())', str(inp)]
+                          'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes()); sys.exit(int(sys.argv[2]))',
+                          str(inp), '1' if product_failed else '0']
             elif kind == 'renderer':
+                trace.setdefault('renderer_guard_counts', []).append(trace['guards'])
                 actual = [sys.executable, '-B', '-c',
                           "import pathlib,sys; p=pathlib.Path(sys.argv[1]); (p/'measurements.json').write_text('{}'); (p/'RESULTS.md').write_text('CONTROL renderer output'); print('CONTROL renderer completed')",
                           str(directory.parent)]
@@ -1345,6 +1363,64 @@ class CommandPhaseControls(DisposableControls):
         (self.root / 'command-cleanup-trace.json').write_text(json.dumps(trace, indent=2))
         phase = json.loads((output / 'phase.json').read_text())
         return code, phase, output, trace
+
+    def assert_clean_source_failure(self, guard_count, expected_scenarios, reason):
+        code, phase, output, trace = self.controlled_phase(source_failure_at=guard_count)
+        self.assertIn('source_failure', trace, 'control must fail source validation with drained processes')
+        self.assertFalse(trace['fake_owned_remains'])
+        self.assertTrue(phase['owned_processes_gone'], 'source failure must not be modeled as unsafe cleanup')
+        self.assertFalse(any(argv[0] == 'node' for argv in trace['attempts']),
+                         'source-invalid checkout must launch no renderer process')
+        self.assertEqual(len(phase['processes']), expected_scenarios)
+        self.assertEqual(code, 1); self.assertTrue(phase['failed']); self.assertFalse(phase['infrastructure_valid'])
+        self.assertEqual(phase['evidence_status'], 'INCOMPLETE', 'renderer skip leaves final execution evidence incomplete')
+        self.assertLess(phase['probe_calls'], 240, 'schedule remains incomplete')
+        skipped = json.loads((output / '01-A/renderer-skipped.json').read_text())
+        self.assertTrue(skipped['failed']); self.assertTrue(skipped['skipped'])
+        self.assertEqual(skipped['reason'], reason)
+        self.assertEqual(skipped['evidence_status'], 'INCOMPLETE')
+        self.assertEqual(phase['renderers'], [skipped])
+        hashes = json.loads((output / 'artifact-hashes.json').read_text())
+        expected = json.loads((output / 'evidence-receipt.json').read_text())['expected']
+        name = '01-A/renderer-skipped.json'
+        self.assertEqual(hashes[name], hashlib.sha256((output / name).read_bytes()).hexdigest())
+        self.assertEqual(expected[name], hashes[name], 'skip receipt must be durable evidence')
+        for path in (output / 'commands').glob('*/process.json'):
+            self.assertTrue(json.loads(path.read_text())['cleanup_ok'], 'guard commands really drained safely')
+
+    def test_clean_post_scenario_source_failure_prohibits_renderer(self):
+        self.assert_clean_source_failure(3, 1, 'scenario infrastructure invalid')
+
+    def test_clean_second_scenario_source_failure_prohibits_renderer(self):
+        self.assert_clean_source_failure(5, 2, 'scenario infrastructure invalid')
+
+    def test_renderer_prelaunch_source_failure_prohibits_node(self):
+        self.assert_clean_source_failure(6, 2, 'renderer source validation failed')
+
+    def test_clean_invalid_audit_prohibits_renderer(self):
+        code, phase, output, trace = self.controlled_phase(invalid_audit=True)
+        self.assertTrue(phase['owned_processes_gone'])
+        self.assertFalse(any(argv[0] == 'node' for argv in trace['attempts']),
+                         'any infrastructure-invalid scenario must prohibit renderer execution')
+        self.assertEqual(code, 1); self.assertFalse(phase['infrastructure_valid'])
+        self.assertEqual(len(phase['processes']), 1)
+        self.assertEqual(json.loads((output / '01-A/renderer-skipped.json').read_text())['reason'],
+                         'scenario infrastructure invalid')
+
+    def test_real_renderer_path_continues_after_valid_performance_failure(self):
+        code, phase, output, trace = self.controlled_phase(performance_failure=True)
+        self.assertEqual(code, 1); self.assertTrue(phase['failed']); self.assertTrue(phase['infrastructure_valid'])
+        self.assertTrue(phase['owned_processes_gone'])
+        self.assertEqual(len(phase['processes']), 8); self.assertEqual(len(phase['renderers']), 4)
+        self.assertEqual(trace['renderer_guard_counts'], [6, 11, 16, 21],
+                         'each real renderer needs its own immediately preceding source guard')
+        for block, renderer in zip(('01-A', '02-B', '03-B', '04-A'), phase['renderers']):
+            self.assertFalse(renderer['failed'])
+            self.assertTrue((output / block / 'renderer/source-before.json').is_file())
+        for process in phase['processes']:
+            self.assertTrue(process['infrastructure_valid'])
+            self.assertEqual(process['original_failed'], process['scenario'] == 'p1-4500')
+            self.assertEqual(process['process']['returncode'], 1 if process['original_failed'] else 0)
 
     def assert_snapshot_gap_blocks(self, status):
         code, phase, output, trace = self.controlled_phase(snapshot_gap=status)
@@ -1483,6 +1559,120 @@ class CommandPhaseControls(DisposableControls):
                 original += raw + (output / block / scenario / 'stderr.raw').read_bytes()
             self.assertEqual((output / block / 'capacity.log').read_bytes(), original)
             self.assertEqual(original.count(b'CAPACITY_RESULT '), 2, 'both raw original emits remain unnormalized')
+
+
+class SingleSerializationControls(DisposableControls):
+    def sample_loop_control(self, projection, drift=False):
+        """Execute the checked-in setup helpers and 30-call body with Node-only data.
+
+        Count every stringify/encode while each call is active, including helper
+        calls. Reference/oracle construction finishes before the extracted loop.
+        """
+        source = RUNNER.with_name('capacity-history-e2-probe.ts').read_text()
+        helpers = source.split('// Root file afterAll executes', 1)[0]
+        helpers = '\n'.join(line for line in helpers.splitlines() if not line.startswith('import '))
+        helpers = helpers.replace("'__E2_PROJECTION__'", json.dumps(projection))
+        body = source.split("    const reference=before.reads.find", 1)[1].split('    const plansAfter=await plans', 1)[0]
+        body = '    const reference=before.reads.find' + body
+        directory = self.root / (('full' if projection == '*' else 'id') + ('-drift' if drift else ''))
+        directory.mkdir()
+        harness = r'''
+const crypto = require('node:crypto');
+const sha256 = raw => crypto.createHash('sha256').update(raw).digest();
+const originalStringify = JSON.stringify;
+const NativeEncoder = TextEncoder;
+const traces = [], expected = [];
+let active, calls = 0, clockCalls = 0;
+JSON.stringify = function(value, ...args) {
+  if(active) active.serializations.push({kind:value===active.returned ? 'complete' :
+    value===active.returned.results ? 'results' : value===active.returned.meta ? 'meta' :
+    active.returned.results.includes(value) ? 'row' : 'derived', after_timing:clockCalls===2});
+  return originalStringify(value, ...args);
+};
+globalThis.TextEncoder = class extends NativeEncoder {
+  encode(value) {
+    if(active) active.encodings.push({complete:value===expected[calls-1].json, after_timing:clockCalls===2});
+    return super.encode(value);
+  }
+};
+const fullRows = Array.from({length:10}, (_, i) => ({
+  id:'00000000-0000-4000-8000-'+String(i+20).padStart(12,'0'),
+  diff_json:originalStringify([{field:'review',before:'"\\,{}[]\n\r\t餐😀é',after:String.fromCharCode(0xd800)}]),
+  search_text:'é餐😀"\\,{}[]\n'.repeat(i+1), created_at:1793448000000-i, deleted_at:null
+}));
+const referenceRows = fullRows.map(row => ({id:row.id, row_json_utf8_bytes:Buffer.byteLength(originalStringify(row))}));
+const rows = ARM==='*' ? fullRows : fullRows.map(row=>({id:row.id}));
+const orders = [['success','meta','results'],['success','results','meta'],['meta','success','results'],
+  ['meta','results','success'],['results','success','meta'],['results','meta','success']];
+const returned = Array.from({length:30}, (_, index) => {
+  const meta = {duration:0.5,size_after:123+index,rows_read:10,rows_written:0,last_row_id:0,changed_db:false,changes:0};
+  const values = {success:true,meta,results:rows};
+  const result = Object.fromEntries(orders[index%6].map(key=>[key,values[key]]));
+  const json = originalStringify(result), bytes = Buffer.from(json);
+  expected.push({json, json_result_utf8_bytes:bytes.byteLength,
+    json_result_sha256:crypto.createHash('sha256').update(bytes).digest('hex'),
+    json_representation:{property_order:Object.keys(result),meta_json:originalStringify(meta),
+      members:Object.keys(result).map(key=>({key,key_json_utf8_bytes:Buffer.byteLength(originalStringify(key)),
+        value_json_utf8_bytes:Buffer.byteLength(originalStringify(result[key]))})),
+      row_json_utf8_bytes:rows.map(row=>Buffer.byteLength(originalStringify(row)))}});
+  return result;
+});
+if(DRIFT) rows[0].search_text += 'CONTROL changed after reference';
+const env = {DB:{prepare() {
+  clockCalls=0; calls++;
+  active={returned:returned[calls-1],serializations:[],encodings:[]}; traces.push(active);
+  return {bind(){return this;},async all(){return active.returned;}};
+}}};
+Date.now = () => {
+  clockCalls++;
+  const value=1000+20*calls+[0,2,3][clockCalls-1];
+  if(clockCalls===3) active=undefined;
+  return value;
+};
+'''.replace('ARM', json.dumps(projection)).replace('DRIFT', 'true' if drift else 'false')
+        setup = "const before={reads:[{label:'history_full',results:referenceRows}]};\nconst context={full_sql:'CONTROL full',id_sql:'CONTROL id',params:[],name:'CONTROL'};\nconst task={}, plansBefore={}; let evidence;\n"
+        tail = "\nreturn samples;\n})().then(samples=>finish({samples}),error=>finish({error:String(error)}));\nfunction finish(value) { active=undefined; console.log=savedLog; for(const trace of traces) delete trace.returned; savedLog(originalStringify({...value,traces,expected,reference:referenceRows})); }\n"
+        script = directory / 'sample-control.cjs'
+        script.write_text(harness + helpers + '\n(async()=>{\n' + setup + body + tail)
+        command = ['node', str(script)]
+        receipt = subprocess.run(command, capture_output=True, timeout=10)
+        (directory / 'stdout').write_bytes(receipt.stdout); (directory / 'stderr').write_bytes(receipt.stderr)
+        (directory / 'receipt.json').write_text(json.dumps({'command':command,'exit_code':receipt.returncode,
+            'probe_sha256':hashlib.sha256(source.encode()).hexdigest(),'controlled_only':True}, indent=2))
+        self.assertEqual(receipt.returncode, 0, receipt.stderr.decode())
+        return json.loads(receipt.stdout)
+
+    def test_single_returned_payload_serialization_and_encoding_per_sample(self):
+        for projection in ('*', 'id'):
+            with self.subTest(projection=projection):
+                value = self.sample_loop_control(projection)
+                self.assertIsNone(value.get('error'))
+                self.assertEqual(len(value['samples']), 30); self.assertEqual(len(value['traces']), 30)
+                for index, trace in enumerate(value['traces'], 1):
+                    self.assertEqual(trace['serializations'], [{'kind':'complete','after_timing':True}],
+                                     f'sample {index}: returned payload must be serialized exactly once after timing')
+                    self.assertEqual(trace['encodings'], [{'complete':True,'after_timing':True}],
+                                     f'sample {index}: complete representation must be UTF-8 encoded exactly once')
+
+    def test_single_representation_preserves_utf8_components_order_and_sha(self):
+        for projection in ('*', 'id'):
+            with self.subTest(projection=projection):
+                value = self.sample_loop_control(projection)
+                self.assertIsNone(value.get('error'))
+                ids = [row['id'] for row in value['reference']]
+                lengths = {row['id']:row['row_json_utf8_bytes'] for row in value['reference']}
+                for index, (sample, expected) in enumerate(zip(value['samples'], value['expected']), 1):
+                    for key in ('json_result_utf8_bytes', 'json_result_sha256', 'json_representation'):
+                        self.assertEqual(sample[key], expected[key])
+                    e2.audit_sample(sample, index, ids, lengths, projection)
+                self.assertEqual(len(value['samples']), 30)
+                self.assertEqual(len({tuple(s['json_representation']['property_order']) for s in value['samples']}), 6)
+
+    def test_single_representation_rejects_attested_row_length_drift(self):
+        value = self.sample_loop_control('*', drift=True)
+        self.assertIn('row projection bytes', value.get('error', ''))
+        self.assertNotIn('samples', value)
+        self.assertEqual(len(value['traces']), 1, 'drift cannot continue to later calls')
 
 
 class AdditionalControls(DisposableControls):

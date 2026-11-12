@@ -7,6 +7,7 @@ const projection = '__E2_PROJECTION__';
 const savedDB = env.DB;
 const savedLog = console.log;
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 let rawEmit;
 let emitCount = 0;
 let unexpectedLogCalls = 0;
@@ -74,6 +75,53 @@ function historyEvidence(row) {
     diff_json: textEvidence(row.diff_json), search_text: textEvidence(row.search_text),
     review_diff: { change_count: diff.length, field: diff[0].field, before_utf16_length: diff[0].before.length,
       after_utf16_length: diff[0].after.length }, row_json_utf8_bytes: length(json), row_sha256: hash(json), column_order: Object.keys(row) };
+}
+
+// Read component spans from the one compact JSON byte buffer. ASCII delimiters
+// cannot occur inside a UTF-8 multibyte sequence; quoted/escaped bytes are skipped.
+function jsonRepresentation(bytes) {
+  function end(start) {
+    let depth=0, quoted=false;
+    for(let i=start;i<bytes.byteLength;i++) {
+      const b=bytes[i];
+      if(quoted) {
+        if(b===92) i++;
+        else if(b===34) { quoted=false; if(depth===0) return i+1; }
+      } else if(b===34) quoted=true;
+      else if(b===123 || b===91) depth++;
+      else if(b===125 || b===93) {
+        if(depth===0) return i;
+        if(--depth===0) return i+1;
+      } else if(b===44 && depth===0) return i;
+    }
+    throw new Error('incomplete JSON component');
+  }
+  check(bytes[0]===123 && bytes[bytes.byteLength-1]===125, 'complete JSON object');
+  const members=[], order=[], rowBytes=[];
+  let metaJson;
+  for(let cursor=1;cursor<bytes.byteLength-1;) {
+    check(bytes[cursor]===34, 'JSON member key');
+    const keyEnd=end(cursor);
+    const key=JSON.parse(decoder.decode(bytes.subarray(cursor,keyEnd)));
+    check(bytes[keyEnd]===58, 'JSON member colon');
+    const start=keyEnd+1, stop=end(start);
+    order.push(key);
+    members.push({key,key_json_utf8_bytes:keyEnd-cursor,value_json_utf8_bytes:stop-start});
+    if(key==='meta') metaJson=decoder.decode(bytes.subarray(start,stop));
+    if(key==='results') {
+      check(bytes[start]===91 && bytes[stop-1]===93, 'JSON results array');
+      for(let row=start+1;row<stop-1;) {
+        check(bytes[row]===123, 'JSON result row');
+        const rowEnd=end(row);
+        rowBytes.push(rowEnd-row);
+        check(rowEnd===stop-1 || bytes[rowEnd]===44, 'JSON row separator');
+        row=rowEnd===stop-1 ? rowEnd : rowEnd+1;
+      }
+    }
+    check(stop===bytes.byteLength-1 || bytes[stop]===44, 'JSON member separator');
+    cursor=stop===bytes.byteLength-1 ? stop : stop+1;
+  }
+  return {property_order:order,members,row_json_utf8_bytes:rowBytes,meta_json:metaJson};
 }
 
 // These are explicit original-predicate read-only attestations, always in this order.
@@ -188,6 +236,7 @@ afterAll(async suite => {
     const reference=before.reads.find((r)=>r.label==='history_full').results;
     const ids=reference.map((r)=>r.id);
     const rowLengths=Object.fromEntries(reference.map((r)=>[r.id,r.row_json_utf8_bytes]));
+    const expectedRowBytes=projection==='*' ? ids.map(id=>rowLengths[id]) : ids.map(id=>length(JSON.stringify({id})));
     const sql=projection==='*' ? context.full_sql : context.id_sql;
     const samples=[];
     evidence={schemaVersion:1,scenario:context.name,projection,original_task:task,
@@ -206,16 +255,15 @@ afterAll(async suite => {
       if(samples.length) check(start>=samples[samples.length-1].bookkeeping_stop_ms,'serial clock reversal');
       readonly(result);
       const ordered=result.results.map(r=>r.id);
-      check(equal(ordered,ids),'probe ordered identities');
+      check(ordered.length===ids.length && ordered.every((id,i)=>id===ids[i]),'probe ordered identities');
       let json=JSON.stringify(result);
       let bytes=encoder.encode(json);
-      const rowBytes=result.results.map(r=>length(JSON.stringify(r)));
-      check(equal(rowBytes,projection==='*' ? ids.map((id)=>rowLengths[id]) : ids.map((id)=>length(JSON.stringify({id})))), 'row projection bytes');
-      const order=Object.keys(result);
-      const members=order.map(key=>({key,key_json_utf8_bytes:length(JSON.stringify(key)),value_json_utf8_bytes:length(JSON.stringify(result[key]))}));
+      const representation=jsonRepresentation(bytes);
+      const rowBytes=representation.row_json_utf8_bytes;
+      check(rowBytes.length===expectedRowBytes.length && rowBytes.every((size,i)=>size===expectedRowBytes[i]), 'row projection bytes');
       const sample={index,start_ms:start,stop_ms:stop,wall_ms:stop-start,d1_reported_duration_ms:result.meta.duration,
         meta:result.meta,returned_count:result.results.length,ordered_ids:ordered,json_result_utf8_bytes:bytes.byteLength,json_result_sha256:hash(bytes),
-        json_representation:{property_order:order,members,row_json_utf8_bytes:rowBytes,meta_json:JSON.stringify(result.meta)}};
+        json_representation:representation};
       result=undefined; json=undefined; bytes=undefined;
       samples.push(sample);
       delete evidence.current_call;

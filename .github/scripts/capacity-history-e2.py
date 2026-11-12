@@ -983,6 +983,11 @@ def native(args):
                     result={'failed':True,'skipped_unsafe_cleanup':True,'error':'renderer not launched before owned log drain'}
                     write_json(directory/'renderer-unsafe.json',result)
                     return result
+                if any(not value['infrastructure_valid'] for value in values):
+                    result={'failed':True,'skipped':True,'reason':'scenario infrastructure invalid',
+                            'evidence_status':'INCOMPLETE','scenarios':values}
+                    write_json(directory/'renderer-skipped.json',result)
+                    return result
                 raw=b''
                 for scenario in ('p1-4500','plan-6000'):
                     for name in ('stdout.raw','stderr.raw'):
@@ -992,6 +997,14 @@ def native(args):
                 freeze_evidence(log)
                 renderer=directory/'renderer'; renderer.mkdir()
                 for name in ('measurements.json','RESULTS.md'): expect_evidence(directory/name)
+                try:
+                    before=source_guard(root,candidate,ref,owner['path'])
+                    write_json(renderer/'source-before.json',before)
+                except (ValueError,OSError) as error:
+                    result={'failed':True,'skipped':True,'reason':'renderer source validation failed',
+                            'evidence_status':'INCOMPLETE','error':str(error)}
+                    write_json(directory/'renderer-skipped.json',result)
+                    return result
                 receipt=owned_command(['node','tests/capacity/report.mjs',str(log)],root/'backend',renderer,120)
                 for name in ('measurements.json','RESULTS.md'): freeze_evidence(directory/name)
                 result=audit_renderer(receipt,directory)
@@ -1056,7 +1069,8 @@ def native(args):
             phase['artifact_members_ok']=True
         except (ValueError,OSError) as error:
             phase.update(infrastructure_valid=False,failed=True,artifact_error=str(error))
-        phase['evidence_status'] = 'COMPLETE' if phase['artifact_members_ok'] else 'INCOMPLETE'
+        renderer_skipped=any(result.get('skipped') for result in phase.get('renderers', []))
+        phase['evidence_status'] = 'COMPLETE' if phase['artifact_members_ok'] and not renderer_skipped else 'INCOMPLETE'
         if effect is not None:
             effect['final_operations']={key:phase[key] is True for key in ('scratch_cleanup_ok','source_guard_after')}
             effect['final_exclusions']=[message for key,message in (
