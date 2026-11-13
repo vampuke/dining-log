@@ -3709,10 +3709,6 @@ class SupplementalConfigInputControls(DisposableControls):
         self.assertEqual(target.read_bytes(), frozen)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 # Execute the complete setup and its registered root hook. No Vitest import,
 # Workers process, or D1 database is constructed by this deterministic control.
 PROBE_LIFECYCLE_VM = r"""
@@ -3956,3 +3952,24 @@ class ConsoleLifecycleControls(unittest.TestCase):
                        raw.replace(b'E2_PREFLIGHT ',b'E2_PREFLIGHT malformed '),raw+b'E2_HISTORY_ERROR {}\n'):
             with self.subTest(prefix=broken[-40:]), self.assertRaises(ValueError):
                 e2.audit_probe(broken,e2.audit_original(parts[0],'p1-4500'),'p1-4500','id',RUNNER.parents[2])
+
+
+class TestRunnerPlacementControls(unittest.TestCase):
+    def test_main_guard_is_last_after_every_test_class(self):
+        import ast
+
+        module = ast.parse(Path(__file__).read_bytes(), filename=__file__)
+        expected = ast.parse('if __name__ == "__main__":\n    unittest.main()\n').body[0]
+        guards = [node for node in module.body if isinstance(node, ast.If)
+                  and ast.dump(node.test) == ast.dump(expected.test)]
+        self.assertEqual(len(guards), 1, 'exactly one unittest main guard required')
+        guard = guards[0]
+        self.assertEqual(ast.dump(guard), ast.dump(expected), 'unchanged unittest main invocation required')
+        self.assertIs(module.body[-1], guard, 'unittest main guard must be the final executable module statement')
+        for node in ast.walk(module):
+            if isinstance(node, ast.ClassDef):
+                self.assertLess(node.end_lineno, guard.lineno, node.name + ' must be defined before unittest main')
+
+
+if __name__ == "__main__":
+    unittest.main()
