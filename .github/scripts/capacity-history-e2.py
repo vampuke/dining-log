@@ -360,19 +360,25 @@ def expand_setup(template):
     return variants
 
 CONFIG = b"""import original from '../vitest.capacity.config';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
-import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync } from 'node:fs';
+import { dirname, resolve, basename } from 'node:path';
+import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 export default async function(configEnv) {
   // Use the frozen backend file in place: copying it would rebase main/migrations.
   // Wrangler also reads adjacent .dev.vars, so reject supplemental inputs unread.
-  const scratch = dirname(fileURLToPath(import.meta.url));
-  const backend = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
-  for (const directory of [backend, scratch]) {
+  // Vite relocates this module; only Python-owned source facts identify paths.
+  const paths = __E2_PATH_FACTS__;
+  const scratch = paths.scratch.path;
+  const backend = paths.backend.path;
+  if (process.cwd() !== backend || realpathSync(process.cwd()) !== backend ||
+      dirname(scratch) !== backend || basename(scratch) !== '.capacity-e2-scratch-' + paths.run + '-' + paths.attempt) {
+    throw new Error('unsafe capacity config directory');
+  }
+  for (const entry of [paths.backend, paths.scratch]) {
+    const directory = entry.path;
     const info = lstatSync(directory);
     if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid() ||
-        realpathSync(directory) !== directory ||
+        realpathSync(directory) !== directory || info.ino !== entry.inode || info.dev !== entry.device || info.uid !== entry.uid ||
         readdirSync(directory).some(name => /^\.(dev\.vars|env)(\.|$)/.test(name))) {
       throw new Error('unsafe capacity config directory');
     }
@@ -381,14 +387,26 @@ export default async function(configEnv) {
       readdirSync(scratch).some(name => /^wrangler\.(toml|json|jsonc)$/.test(name))) {
     throw new Error('foreign scratch Wrangler config');
   }
-  const wranglerPath = resolve(backend, 'wrangler.toml');
+  if (existsSync(resolve(scratch, 'config-facts.json'))) throw new Error('stale capacity config facts');
+  for (const [name, entry] of Object.entries({config: paths.config, setup: paths.setup, wrangler: paths.wrangler})) {
+    const expected = name === 'wrangler' ? resolve(backend, 'wrangler.toml') : resolve(scratch, name === 'config' ? 'config.ts' : 'setup.ts');
+    const info = lstatSync(entry.path);
+    if (entry.path !== expected || realpathSync(entry.path) !== expected || !info.isFile() || info.isSymbolicLink() ||
+        info.uid !== process.getuid() || info.uid !== entry.uid || info.ino !== entry.inode || info.dev !== entry.device) {
+      throw new Error('unsafe capacity config file');
+    }
+  }
+  const setupHash = createHash('sha256').update(readFileSync(paths.setup.path)).digest('hex');
+  if (!Object.values(paths.setup_sha256).includes(setupHash)) throw new Error('scratch setup byte drift');
+  const configHash = createHash('sha256').update(readFileSync(paths.config.path)).digest('hex');
+  const wranglerPath = paths.wrangler.path;
   const wranglerInfo = lstatSync(wranglerPath);
   if (!wranglerInfo.isFile() || wranglerInfo.isSymbolicLink() || wranglerInfo.uid !== process.getuid() ||
       realpathSync(wranglerPath) !== wranglerPath || dirname(wranglerPath) !== backend) {
     throw new Error('tracked Wrangler config ownership/hash drift');
   }
   const wranglerHash = createHash('sha256').update(readFileSync(wranglerPath)).digest('hex');
-  if (wranglerHash !== 'c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f') {
+  if (wranglerHash !== paths.wrangler_sha256 || wranglerHash !== 'c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f') {
     throw new Error('tracked Wrangler config ownership/hash drift');
   }
   const resolved = await (typeof original === 'function' ? original(configEnv) : original);
@@ -416,14 +434,15 @@ export default async function(configEnv) {
   if (JSON.stringify(normalizedPool) !== poolBefore) {
     throw new Error('non-path pool option drift');
   }
-  const setup = fileURLToPath(new URL('./setup.ts', import.meta.url));
+  const setup = paths.setup.path;
   const result = { ...resolved, test: { ...resolved.test, setupFiles: [setup] } };
   if (result.plugins !== resolved.plugins || result.test.poolOptions !== resolved.test.poolOptions) {
     throw new Error('original plugin/pool identity lost');
   }
   const names = Object.keys(workers.miniflare.bindings).sort();
   const hashes = Object.fromEntries(names.map(k => [k, createHash('sha256').update(JSON.stringify(workers.miniflare.bindings[k])).digest('hex')]));
-  writeFileSync(new URL('./config-facts.json', import.meta.url), JSON.stringify({
+  writeFileSync(resolve(scratch, 'config-facts.json'), JSON.stringify({
+    path_facts: paths, config_sha256: configHash,
     inherited_once: true, plugins_same: true, pool_options_same: true,
     pool_options_except_wrangler_path_same: true,
     pool_options_sha256: createHash('sha256').update(poolBefore).digest('hex'),
@@ -432,29 +451,81 @@ export default async function(configEnv) {
     isolatedStorage: workers.isolatedStorage, wrangler_config: workers.wrangler.configPath,
     compatibilityDate: workers.miniflare.compatibilityDate, binding_names: names, binding_hashes: hashes,
     remote_bindings: false, persistent_override: false, setup_path: setup
-  }));
+  }), { flag: 'wx' });
   return result;
 }
 """
 
 @validation
-def materialize_scratch(backend, run, attempt, template, archive):
+def materialize_scratch(backend, run, attempt, template, archive, manifest=None):
     backend = Path(backend)
     path = backend / ('.capacity-e2-scratch-' + run + '-' + attempt)
-    require(backend.is_dir() and not backend.is_symlink() and backend.absolute() == backend.resolve(), 'unsafe backend root')
+    require(backend.is_absolute() and backend.is_dir() and not backend.is_symlink() and backend.absolute() == backend.resolve()
+            and backend.stat().st_uid == os.getuid(), 'unsafe backend root')
     require(re.fullmatch('[0-9]+', run) and re.fullmatch('[0-9]+', attempt), 'unsafe run/attempt')
     require(not path.exists() and not path.is_symlink(), 'scratch already exists')
     path.mkdir(mode=0o700)
     variants = expand_setup(template)
-    (path / 'config.ts').write_bytes(CONFIG)
-    (path / 'setup.ts').write_bytes(variants['full'])
-    return {'path': str(path.absolute()), 'backend': str(backend.absolute()), 'inode': path.stat().st_ino,
-            'device': path.stat().st_dev, 'uid': os.getuid(), 'variants': variants}
+    with (path / 'config.ts').open('xb'): pass
+    with (path / 'setup.ts').open('xb') as setup: setup.write(variants['full'])
+    def checked(target, directory=False):
+        info = target.lstat()
+        require(not target.is_symlink() and target.resolve() == target and info.st_uid == os.getuid()
+                and (stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)), 'unsafe injected path ownership')
+        return {'path': str(target), 'inode': info.st_ino, 'device': info.st_dev, 'uid': info.st_uid}
+    facts = {'schema_version': 1, 'run': run, 'attempt': attempt,
+             'backend': checked(backend, True), 'scratch': checked(path, True),
+             'config': checked(path / 'config.ts'), 'setup': checked(path / 'setup.ts'),
+             'wrangler': checked(backend / 'wrangler.toml'), 'wrangler_sha256': WRANGLER_SHA256,
+             'setup_sha256': {arm: hashlib.sha256(raw).hexdigest() for arm, raw in variants.items()}}
+    raw = (backend / 'wrangler.toml').read_bytes()
+    require(hashlib.sha256(raw).hexdigest() == WRANGLER_SHA256, 'tracked Wrangler byte drift')
+    if manifest is not None:
+        entry = manifest['backend/wrangler.toml']
+        require(entry['sha256'] == WRANGLER_SHA256
+                and entry['blob'] == hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest(),
+                'tracked Wrangler source binding drift')
+    generated = render_config(facts)
+    (path / 'config.ts').write_bytes(generated)
+    owner = {'path': str(path), 'backend': str(backend), 'inode': path.stat().st_ino,
+             'device': path.stat().st_dev, 'uid': os.getuid(), 'variants': variants,
+             'path_facts': facts, 'config_sha256': hashlib.sha256(generated).hexdigest()}
+    owned_scratch(owner)
+    return owner
+
+@validation
+def path_facts_guard(facts, backend, run, attempt):
+    require(type(facts) is dict and set(facts) == {'schema_version','run','attempt','backend','scratch','config','setup','wrangler','wrangler_sha256','setup_sha256'}
+            and facts['schema_version'] == 1 and type(facts['schema_version']) is int
+            and type(run) is str and re.fullmatch('[0-9]+', run) and type(attempt) is str and re.fullmatch('[0-9]+', attempt)
+            and facts['run'] == run and facts['attempt'] == attempt, 'injected path facts identity drift')
+    backend = Path(backend)
+    scratch = backend / ('.capacity-e2-scratch-' + run + '-' + attempt)
+    for name, target in [('backend', backend), ('scratch', scratch), ('config', scratch/'config.ts'),
+                         ('setup', scratch/'setup.ts'), ('wrangler', backend/'wrangler.toml')]:
+        entry = facts[name]
+        require(type(entry) is dict and set(entry) == {'path','inode','device','uid'} and entry['path'] == str(target)
+                and type(entry['path']) is str and target.is_absolute() and os.path.normpath(entry['path']) == entry['path']
+                and all(type(entry[k]) is int and 0 <= entry[k] < 2**53 for k in ('inode','device','uid')),
+                'unsafe injected path facts')
+    require(len({facts[name]['uid'] for name in ('backend','scratch','config','setup','wrangler')}) == 1
+            and facts['wrangler_sha256'] == WRANGLER_SHA256 and type(facts['setup_sha256']) is dict
+            and set(facts['setup_sha256']) == {'full','id'}
+            and all(type(v) is str and re.fullmatch('[0-9a-f]{64}', v) for v in facts['setup_sha256'].values()), 'injected byte facts drift')
+
+@validation
+def render_config(facts):
+    path_facts_guard(facts, facts['backend']['path'], facts['run'], facts['attempt'])
+    token = b'__E2_PATH_FACTS__'
+    require(CONFIG.count(token) == 1, 'one path facts placeholder required')
+    return CONFIG.replace(token, json.dumps(facts, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode('ascii'), 1)
 
 @validation
 def select_projection(owner, projection):
     path = owned_scratch(owner)
     require(projection in ('full','id'), 'unknown projection')
+    # An aborted startup must never reuse a previous process's resolution.
+    (path / 'config-facts.json').unlink(missing_ok=True)
     (path / 'setup.ts').write_bytes(owner['variants'][projection])
 
 @validation
@@ -498,7 +569,22 @@ def owned_scratch(owner):
     require({'config.ts','setup.ts'} <= {p.name for p in path.iterdir()} <= {'config.ts','setup.ts','config-facts.json'}, 'unexpected scratch file')
     for p in path.iterdir():
         require(not p.is_symlink() and p.is_file() and p.stat().st_uid == owner['uid'], 'unsafe scratch member')
-    require((path / 'config.ts').read_bytes() == CONFIG and (path / 'setup.ts').read_bytes() in owner['variants'].values(), 'scratch source drift')
+    facts = owner['path_facts']
+    path_facts_guard(facts, owner['backend'], facts['run'], facts['attempt'])
+    for name in ('backend','scratch','config','setup','wrangler'):
+        target = Path(facts[name]['path']); info = target.lstat()
+        require(not target.is_symlink() and target.resolve() == target and info.st_ino == facts[name]['inode']
+                and info.st_dev == facts[name]['device'] and info.st_uid == facts[name]['uid'] == os.getuid(), 'injected path ownership drift')
+    require((path / 'config.ts').read_bytes() == render_config(facts)
+            and hashlib.sha256((path / 'config.ts').read_bytes()).hexdigest() == owner['config_sha256']
+            and (path / 'setup.ts').read_bytes() in owner['variants'].values()
+            and hashlib.sha256(Path(facts['wrangler']['path']).read_bytes()).hexdigest() == WRANGLER_SHA256, 'scratch source drift')
+    receipt = path / 'config-facts.json'
+    if receipt.exists():
+        resolved = parse_json(receipt.read_bytes())
+        require(resolved.get('path_facts') == facts and resolved.get('config_sha256') == owner['config_sha256']
+                and resolved.get('setup_path') == facts['setup']['path']
+                and resolved.get('wrangler_config') == facts['wrangler']['path'], 'foreign scratch config facts')
     return path
 
 # Native entry is fail-closed before any local scratch or Node launch.
@@ -834,7 +920,7 @@ def audit_renderer(receipt, directory):
     return {'process': receipt, 'outputs_present': present, 'failed': bool(failed)}
 
 @validation
-def resolved_config_guard(facts, backend, manifest):
+def resolved_config_guard(facts, backend, manifest, owner=None):
     require(facts.get('inherited_once') is True and facts.get('plugins_same') is True and facts.get('pool_options_same') is True
             and facts.get('pool_options_except_wrangler_path_same') is True
             and facts.get('isolatedStorage') is False and facts.get('remote_bindings') is False and facts.get('persistent_override') is False
@@ -845,6 +931,36 @@ def resolved_config_guard(facts, backend, manifest):
             and facts.get('wrangler_sha256') == WRANGLER_SHA256 == manifest['backend/wrangler.toml']['sha256']
             and type(facts.get('pool_options_sha256')) is str
             and re.fullmatch('[0-9a-f]{64}', facts['pool_options_sha256']), 'unsafe resolved config path/hash')
+    paths = facts['path_facts']
+    path_facts_guard(paths, backend, paths['run'], paths['attempt'])
+    require(facts.get('setup_path') == paths['setup']['path']
+            and facts.get('config_sha256') == hashlib.sha256(render_config(paths)).hexdigest(), 'resolved generated config drift')
+    if owner is not None:
+        require(paths == owner['path_facts'] and facts['config_sha256'] == owner['config_sha256'], 'resolved path ownership drift')
+
+@validation
+def archived_config_guard(output, source, identity=None):
+    """Rebuild exact injected bytes; no live scratch exists after cleanup/upload."""
+    owner = parse_json((output / 'scratch-ownership.json').read_bytes())
+    require(type(owner) is dict and set(owner) == {'path','backend','inode','device','uid','path_facts','config_sha256'},
+            'archived path receipt shape drift')
+    paths = owner['path_facts']
+    path_facts_guard(paths, owner['backend'], paths['run'], paths['attempt'])
+    require(owner['path'] == paths['scratch']['path'] and all(owner[k] == paths['scratch'][k] for k in ('inode','device','uid')),
+            'archived scratch owner drift')
+    if identity is not None:
+        require(paths['run'] == identity['run'] and paths['attempt'] == identity['attempt'], 'archived run/attempt drift')
+    config = (output / 'scratch/config.ts').read_bytes()
+    require(config == render_config(paths) and hashlib.sha256(config).hexdigest() == owner['config_sha256'], 'archived generated config byte drift')
+    template = (output / snapshot_member(ALLOWED[0])).read_bytes()
+    variants = expand_setup(template)
+    require(paths['setup_sha256'] == {arm:hashlib.sha256(raw).hexdigest() for arm, raw in variants.items()}
+            and (output / 'scratch/setup.ts').read_bytes() in variants.values(), 'archived setup byte/path drift')
+    facts = parse_json((output / 'scratch/config-facts.json').read_bytes())
+    resolved_config_guard(facts, owner['backend'], source, owner)
+    wrangler = (output / snapshot_member('backend/wrangler.toml')).read_bytes()
+    require(hashlib.sha256(wrangler).hexdigest() == paths['wrangler_sha256'], 'archived tracked Wrangler byte drift')
+    return owner
 
 @validation
 def preflight_gate(path, identity):
@@ -883,7 +999,9 @@ def preflight_gate(path, identity):
         # Bind the archived resolution to the recorded native cwd and frozen source.
         backend = Path(receipt['processes'][0]['process']['cwd'])
         require(backend.is_absolute() and '..' not in backend.parts, 'unsafe preflight backend path')
-        resolved_config_guard(facts, backend, source)
+        owner = archived_config_guard(path, source, receipt)
+        require(str(backend) == owner['backend'], 'preflight embedded backend drift')
+        resolved_config_guard(facts, backend, source, owner)
         require(parse_json((path / 'scratch/config-facts.json').read_bytes()) == facts, 'preflight config archive drift')
         for process in receipt['processes']:
             directory = path / 'preflight' / process['scenario']
@@ -1111,9 +1229,12 @@ def verify_artifact_members(output, hashes, expected=None):
     if scratch_required:
         require(set(REQUIRED_SCRATCH) <= expected.keys() and set(REQUIRED_SCRATCH) <= hashes.keys(),
                 'missing required scratch completion evidence')
+        require('scratch-ownership.json' in expected and 'scratch-ownership.json' in hashes, 'missing generated path facts')
     require(all(digest is not None and hashes[name] == digest for name, digest in expected.items()),
             'completed evidence byte/hash drift')
     require(hashes == artifact_hashes(output), 'artifact member/hash completeness')
+    if scratch_required:
+        archived_config_guard(output, source, parse_json(phase_path.read_bytes()) if phase_path.is_file() else None)
 
 def native(args):
     global LEDGER, SAFETY, EVIDENCE_ROOT, EXPECTED_EVIDENCE
@@ -1158,7 +1279,7 @@ def native(args):
             for arm,raw in variants.items():
                 (archive/(arm+'-setup.ts')).write_bytes(raw); freeze_evidence(archive/(arm+'-setup.ts'))
             write_json(archive/'variants.json',{arm:hashlib.sha256(raw).hexdigest() for arm,raw in variants.items()})
-            owner=materialize_scratch(root/'backend',run,attempt,template,archive)
+            owner=materialize_scratch(root/'backend',run,attempt,template,archive,initial['manifest'])
             write_json(output/'scratch-ownership.json',{k:v for k,v in owner.items() if k!='variants'})
             def execute(block,arm,scenario):
                 nonlocal baseline_config
@@ -1181,9 +1302,12 @@ def native(args):
                     facts_path=Path(owner['path'])/'config-facts.json'
                     require(facts_path.is_file() and not facts_path.is_symlink(), 'missing native resolved config facts')
                     facts=parse_json(facts_path.read_bytes())
-                    resolved_config_guard(facts, root/'backend', before['manifest'])
+                    resolved_config_guard(facts, root/'backend', before['manifest'], owner)
                     if baseline_config is None: baseline_config=facts
-                    require(facts==baseline_config, 'resolved binding/config drift')
+                    # Preflight and ABBA own fresh inodes at the same exact paths.
+                    semantic = lambda value: {k:v for k,v in value.items() if k not in ('path_facts','config_sha256')}
+                    require(semantic(facts)==semantic(baseline_config), 'resolved binding/config drift')
+                    baseline_config=facts
                     write_json(directory/'resolved-config.json',facts)
                     audited.update(block=block,scenario=scenario,projection=arm)
                     write_json(directory/'audit.json',audited)

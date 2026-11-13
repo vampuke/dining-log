@@ -562,6 +562,7 @@ class SourceScratchControls(DisposableControls):
 
     def scratch(self):
         backend = self.root / "backend"; backend.mkdir()
+        (backend / 'wrangler.toml').write_bytes((RUNNER.parents[2] / 'backend/wrangler.toml').read_bytes())
         archive = self.root / "archive"; archive.mkdir()
         return e2.materialize_scratch(backend, "123", "2", b"const projection = '__E2_PROJECTION__';\n", archive)
 
@@ -1065,7 +1066,9 @@ def finalize_preflight_control(path, phase):
     """Complete stdlib prerequisite evidence; no native commands or measurements."""
     source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
                            for name in e2.SNAPSHOT_SOURCES}}
-    facts = control_config_facts(RUNNER.parents[2] / 'backend')
+    owner = control_scratch_owner(RUNNER.parents[2] / 'backend', phase['run'], phase['attempt'])
+    facts = control_config_facts(RUNNER.parents[2] / 'backend', owner)
+    e2.write_json(path / 'scratch-ownership.json', {k:v for k,v in owner.items() if k != 'variants'})
     for name in e2.SNAPSHOT_SOURCES:
         target = path / e2.snapshot_member(name); target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((RUNNER.parents[2] / name).read_bytes())
@@ -1073,7 +1076,7 @@ def finalize_preflight_control(path, phase):
         e2.write_json(path / name, source)
     variants = e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())
     scratch = path / 'scratch'; scratch.mkdir(exist_ok=True)
-    for name, content in [('config.ts', e2.CONFIG), ('setup.ts', variants['full']),
+    for name, content in [('config.ts', e2.render_config(owner['path_facts'])), ('setup.ts', variants['full']),
                           ('full-setup.ts', variants['full']), ('id-setup.ts', variants['id'])]:
         (scratch / name).write_bytes(content)
     e2.write_json(scratch / 'variants.json', {arm: hashlib.sha256(raw).hexdigest() for arm, raw in variants.items()})
@@ -1112,9 +1115,25 @@ def finalize_preflight_control(path, phase):
     e2.write_json(path / 'artifact-hashes.json', e2.artifact_hashes(path))
 
 
-def control_config_facts(backend):
+def control_scratch_owner(backend, run='12', attempt='1'):
+    """Invented inode facts for archive-only controls; never a live ownership proof."""
+    backend = Path(backend)
+    scratch = backend / ('.capacity-e2-scratch-' + run + '-' + attempt)
+    variants = e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())
+    entry = lambda path: dict(path=str(path), inode=1, device=1, uid=os.getuid())
+    paths = dict(schema_version=1, run=run, attempt=attempt, backend=entry(backend), scratch=entry(scratch),
+                 config=entry(scratch / 'config.ts'), setup=entry(scratch / 'setup.ts'), wrangler=entry(backend / 'wrangler.toml'),
+                 wrangler_sha256=e2.WRANGLER_SHA256,
+                 setup_sha256={arm:hashlib.sha256(raw).hexdigest() for arm, raw in variants.items()})
+    return dict(path=str(scratch), backend=str(backend), inode=1, device=1, uid=os.getuid(), variants=variants,
+                path_facts=paths, config_sha256=hashlib.sha256(e2.render_config(paths)).hexdigest())
+
+
+def control_config_facts(backend, owner=None):
     """Dummy resolved facts, retaining the real frozen Wrangler byte identity."""
-    return dict(inherited_once=True, plugins_same=True, pool_options_same=True,
+    owner = owner or control_scratch_owner(backend)
+    return dict(path_facts=owner['path_facts'], config_sha256=owner['config_sha256'],
+                setup_path=owner['path_facts']['setup']['path'], inherited_once=True, plugins_same=True, pool_options_same=True,
                 pool_options_except_wrangler_path_same=True,
                 wrangler_original_config='./wrangler.toml', wrangler_config=str(Path(backend) / 'wrangler.toml'),
                 wrangler_sha256=WranglerPathControls.WRANGLER_SHA256,
@@ -1336,7 +1355,7 @@ class FinalizedPreflightControls(DisposableControls):
                                          'GITHUB_REF': identity['ref'], 'GITHUB_RUN_ID': identity['run'], 'GITHUB_RUN_ATTEMPT': identity['attempt']}), \
              mock.patch.object(e2, 'source_guard', return_value=source), \
              mock.patch.object(e2, 'runtime', return_value=identity['runtime']), \
-             mock.patch.object(e2, 'materialize_scratch', return_value={'path': str(self.root / 'CONTROL-owned-scratch')}), \
+             mock.patch.object(e2, 'materialize_scratch', return_value=control_scratch_owner(RUNNER.parents[2] / 'backend')), \
              mock.patch.object(e2, 'cleanup_scratch'), \
              mock.patch.object(e2, 'serial_phase', side_effect=collected), \
              mock.patch.object(e2, 'run_owned', side_effect=AssertionError('native command forbidden')):
@@ -1498,7 +1517,8 @@ class FinalizationControls(DisposableControls):
         outcome = {'processes': processes, 'renderers': [{'failed': False} for _ in range(4)],
                    'failed': False, 'infrastructure_valid': True}
         args = mock.Mock(phase='abba', output=str(output), preflight=str(self.root / 'CONTROL-preflight'))
-        owner = {'path': str(self.root / 'CONTROL-owned-scratch'), 'variants': {}}
+        owner = control_scratch_owner(RUNNER.parents[2] / 'backend')
+        facts = control_config_facts(RUNNER.parents[2] / 'backend', owner)
         source = {'control_only': True, 'manifest': {
             name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
             for name in self.snapshot_sources()}}
@@ -1508,8 +1528,8 @@ class FinalizationControls(DisposableControls):
             if cleanup_failed: raise ValueError('CONTROL final scratch cleanup failure')
         def collected(*_):
             archive = output / 'scratch'
-            for name, content in (('config.ts', e2.CONFIG), ('setup.ts', e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())['full']),
-                                  ('config-facts.json', b'{"control_only":true}')):
+            for name, content in (('config.ts', e2.render_config(owner['path_facts'])), ('setup.ts', owner['variants']['full']),
+                                  ('config-facts.json', json.dumps(facts).encode())):
                 (archive / name).write_bytes(content); e2.freeze_evidence(archive / name)
             # Final-operation controls substitute the schedule, but must supply
             # its actual required files and frozen mock completion receipts.
@@ -1539,11 +1559,11 @@ class FinalizationControls(DisposableControls):
             return outcome
         # Exercise native's finalization code only. All command/DB/runtime and
         # scratch materialization interfaces are replaced; no backend writes.
-        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root)}), \
+        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root), 'GITHUB_RUN_ID': '12', 'GITHUB_RUN_ATTEMPT': '1'}), \
              mock.patch.object(e2, 'LEDGER', None), \
              mock.patch.object(e2, 'source_guard', side_effect=guards), \
              mock.patch.object(e2, 'runtime', return_value={'control_only': True}), \
-             mock.patch.object(e2, 'preflight_gate', return_value={'resolved_config': {'control_only': True}, 'failed': False}), \
+             mock.patch.object(e2, 'preflight_gate', return_value={'resolved_config': facts, 'failed': False}), \
              mock.patch.object(e2, 'materialize_scratch', return_value=owner), \
              mock.patch.object(e2, 'serial_phase', side_effect=collected), \
              mock.patch.object(e2, 'cleanup_scratch', side_effect=cleanup), \
@@ -1750,12 +1770,12 @@ class CommandPhaseControls(DisposableControls):
         for name in e2.SNAPSHOT_SOURCES:
             target = checkout / name; target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((RUNNER.parents[2] / name).read_bytes())
-        scratch = checkout / 'backend/test-owned-scratch'; scratch.mkdir()
-        facts = control_config_facts(checkout / 'backend')
+        owner = control_scratch_owner(checkout / 'backend')
+        scratch = Path(owner['path']); scratch.mkdir()
+        facts = control_config_facts(checkout / 'backend', owner)
         (scratch / 'config-facts.json').write_text(json.dumps(facts))
-        (scratch / 'config.ts').write_bytes(e2.CONFIG)
+        (scratch / 'config.ts').write_bytes(e2.render_config(owner['path_facts']))
         (scratch / 'setup.ts').write_bytes(e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())['full'])
-        owner = {'path': str(scratch), 'variants': {}}
         source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
                                for name in e2.SNAPSHOT_SOURCES}}
         trace = {'attempts': [], 'scratch_deletions': [], 'fake_owned_remains': False,
@@ -1825,7 +1845,7 @@ class CommandPhaseControls(DisposableControls):
                           str(directory.parent)]
             else:
                 actual = [sys.executable, '-B', '-c', "print('CONTROL guard/runtime')"]
-            receipt = original_owned(actual, self.root, directory, 3)
+            receipt = original_owned(actual, checkout / 'backend', directory, 3)
             if kind == 'vitest':
                 trace['original_raw_hashes'][str(directory.relative_to(output) / 'stdout.raw')] = receipt['stdout_sha256']
             return receipt
@@ -1838,7 +1858,7 @@ class CommandPhaseControls(DisposableControls):
                 path.unlink()
             scratch.rmdir()
         args = mock.Mock(phase='abba', output=str(output), preflight=str(self.root / 'preflight'))
-        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root)}), \
+        with mock.patch.dict(os.environ, {'RUNNER_TEMP': str(self.root), 'GITHUB_RUN_ID': '12', 'GITHUB_RUN_ATTEMPT': '1'}), \
              mock.patch.object(e2, '__file__', str(checkout / '.github/scripts/capacity-history-e2.py')), \
              mock.patch.object(e2, 'LEDGER', None), \
              mock.patch.object(e2, 'source_guard', side_effect=guard), \
@@ -1935,7 +1955,7 @@ class CommandPhaseControls(DisposableControls):
                   'latch_closed': phase['owned_processes_gone'] is False,
                   'no_later_owned_command': trace['attempts'][unsafe_index + 1:] == [],
                   'no_renderer': not any(argv[0] == 'node' for argv in trace['attempts']),
-                  'scratch_retained': (self.root / 'fixture-checkout/backend/test-owned-scratch').is_dir()
+                  'scratch_retained': (self.root / 'fixture-checkout/backend/.capacity-e2-scratch-12-1').is_dir()
                                       and not trace['scratch_deletions'] and not phase['scratch_cleanup_ok'],
                   'no_foreign_signal': not gap['signals'] and not gap['numeric_signals'],
                   'unproved_handle_retained': 520002 not in gap['closed'],
@@ -2292,14 +2312,21 @@ class NativeScratchArchiveControls(DisposableControls):
         identity = dict(candidate='1' * 40, ref=e2.REF, run='12', attempt='1', runtime={'control_only': True})
         facts = control_config_facts(checkout / 'backend')
         if facts_mutation: facts_mutation(facts)
-        source = {'manifest': {name: {'sha256': hashlib.sha256((checkout / name).read_bytes()).hexdigest()}
+        source = {'manifest': {name: {'sha256': hashlib.sha256((checkout / name).read_bytes()).hexdigest(),
+                                     'blob': hashlib.sha1(b'blob ' + str((checkout / name).stat().st_size).encode() + b'\0' + (checkout / name).read_bytes()).hexdigest()}
                                for name in e2.SNAPSHOT_SOURCES}}
         trace = {'unlinks': [], 'freezes': [], 'cleanup_called': False}
         cleanup = e2.cleanup_scratch
+        materialize = e2.materialize_scratch
         freeze = e2.freeze_evidence
         unlink = Path.unlink
         read_bytes = Path.read_bytes
         open_path = Path.open
+        def materialized(*args):
+            owner = materialize(*args)
+            facts.update(path_facts=owner['path_facts'], config_sha256=owner['config_sha256'],
+                         setup_path=owner['path_facts']['setup']['path'])
+            return owner
         def guard(root, candidate, ref, scratch=None):
             if final_guard and scratch is None and trace['cleanup_called']:
                 return final_guard(root, candidate, ref)
@@ -2330,7 +2357,7 @@ class NativeScratchArchiveControls(DisposableControls):
             e2.write_json(directory / 'process.json', receipt)
             return receipt
         def record_unlink(target, *args, **kwargs):
-            if target.parent.name.startswith('.capacity-e2-scratch-'):
+            if trace['cleanup_called'] and target.parent.name.startswith('.capacity-e2-scratch-') and target.exists():
                 name = 'scratch/' + target.name
                 trace['unlinks'].append({'name': name, 'ledger': copy.deepcopy(e2.EXPECTED_EVIDENCE),
                                         'original_sha256': hashlib.sha256(target.read_bytes()).hexdigest()})
@@ -2350,11 +2377,17 @@ class NativeScratchArchiveControls(DisposableControls):
                 # Exclusive-copy failure at the actual archive destination; preserve this foreign file.
                 (Path(archive) / copy_failure).write_bytes(b'CONTROL foreign archive member')
             read_failed = False
+            ownership_read = False
             def fault_read(target):
-                nonlocal read_failed
+                nonlocal read_failed, ownership_read
                 if archive_failure:
                     stage, member = archive_failure
                     if stage == 'read' and target == scratch / member and not read_failed:
+                        # config facts now have a prerequisite ownership read;
+                        # this control targets the subsequent archive copy read.
+                        if member == 'config-facts.json' and not ownership_read:
+                            ownership_read = True
+                            return read_bytes(target)
                         read_failed = True
                         raise OSError('CONTROL scratch read failed')
                     if stage == 'verification' and target == Path(archive) / member:
@@ -2380,6 +2413,7 @@ class NativeScratchArchiveControls(DisposableControls):
              mock.patch.object(e2, 'runtime', return_value=identity['runtime']), \
              mock.patch.object(e2, 'no_smoke', return_value={'smoke_state': 'absent'}), \
              mock.patch.object(e2, 'cleanup_scratch', side_effect=real_cleanup), \
+             mock.patch.object(e2, 'materialize_scratch', side_effect=materialized), \
              mock.patch.object(e2, 'freeze_evidence', side_effect=record_freeze), \
              mock.patch.object(Path, 'unlink', record_unlink), \
              mock.patch.object(e2, 'run_owned', side_effect=command):
@@ -2588,6 +2622,183 @@ class ExecutorPoolControls(DisposableControls):
                 self.assertFalse((scratch / 'config-facts.json').exists())
 
 
+class RelocatedConfigControls(DisposableControls):
+    def relocated(self, body_mutation=None, path_mutation=None, cwd_mutation=False):
+        backend = self.root / 'backend'; backend.mkdir()
+        (backend / 'wrangler.toml').write_bytes((RUNNER.parents[2] / 'backend/wrangler.toml').read_bytes())
+        archive = self.root / 'archive'; archive.mkdir()
+        owner = e2.materialize_scratch(backend, '12', '1', b"const projection = '__E2_PROJECTION__';\n", archive)
+        scratch = Path(owner['path'])
+        relocated = backend / 'node_modules/.vite-temp'; relocated.mkdir(parents=True)
+        # Inert marker: the old wrapper inspects this foreign module parent as
+        # its backend and fails the existing supplemental-input guard before
+        # calling the original config. The actual backend/scratch have none.
+        (relocated.parent / '.env.control').write_bytes(b'')
+        module = relocated / 'config.ts.timestamp-control.mjs'
+        raw = (scratch / 'config.ts').read_bytes()
+        if body_mutation: raw = body_mutation(raw)
+        if path_mutation: path_mutation(owner, scratch)
+        harness = self.root / 'relocation-control.mjs'
+        harness.write_text('''import assert from 'node:assert/strict';
+import { SourceTextModule, SyntheticModule } from 'node:vm';
+import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+let calls=0;
+const resolved={plugins:[{name:'inert-original-plugin'}],test:{include:['tests/capacity/capacity_test.ts'],testTimeout:600000,hookTimeout:60000,
+  poolOptions:{workers:{isolatedStorage:false,wrangler:{configPath:'./wrangler.toml'},
+    miniflare:{compatibilityDate:'2025-06-17',bindings:{TEST_MIGRATIONS:['CONTROL ONLY']}}}}}};
+const workers=resolved.test.poolOptions.workers, miniflare=workers.miniflare, bindings=miniflare.bindings, wrangler=workers.wrangler;
+const before=structuredClone(resolved.test.poolOptions);
+const source=new SourceTextModule(Buffer.from(process.argv[1],'hex').toString(),{
+  identifier:pathToFileURL(process.argv[2]).href,
+  initializeImportMeta(meta,module){meta.url=module.identifier;}
+});
+await source.link(async specifier=>{
+  if(specifier==='../vitest.capacity.config') return new SyntheticModule(['default'],function(){
+    this.setExport('default',async()=>{calls++;return resolved;});
+  });
+  assert.ok(specifier.startsWith('node:'));
+  const builtin=await import(specifier), names=Object.keys(builtin);
+  return new SyntheticModule(names,function(){for(const name of names)this.setExport(name,builtin[name]);});
+});
+await source.evaluate();
+try {
+  const result=await source.namespace.default({});
+  assert.equal(calls,1); assert.equal(result.plugins,resolved.plugins);
+  assert.equal(result.test.poolOptions,resolved.test.poolOptions);
+  assert.equal(result.test.poolOptions.workers,workers); assert.equal(workers.wrangler,wrangler);
+  assert.equal(workers.miniflare,miniflare); assert.equal(miniflare.bindings,bindings);
+  const normalized=structuredClone(result.test.poolOptions);normalized.workers.wrangler.configPath='./wrangler.toml';
+  assert.deepEqual(normalized,before);
+  assert.deepEqual(result.test.setupFiles,[process.argv[3]]);
+  assert.equal(wrangler.configPath,process.argv[4]);
+  console.log(JSON.stringify({module_url:source.identifier,setup_path:result.test.setupFiles[0],wrangler_path:wrangler.configPath,calls}));
+} catch(error){console.error('original_calls='+calls);throw error;}
+''')
+        result = subprocess.run(['node', '--experimental-vm-modules', '--input-type=module', '-e', harness.read_text(), raw.hex(), str(module),
+                                 str(scratch / 'setup.ts'), str(backend / 'wrangler.toml')],
+                                cwd=self.root if cwd_mutation else backend, capture_output=True, text=True, timeout=10)
+        print('CONTROL relocated config:', result.returncode, result.stdout.strip(), result.stderr.strip())
+        receipt = os.environ.get('E2_CONFIG_CONTROL_RECEIPT')
+        if receipt:
+            target = Path(receipt); target.mkdir(parents=True, exist_ok=True)
+            (target / 'config.ts').write_bytes(raw)
+            (target / 'receipt.json').write_text(json.dumps({
+                'control_only': True, 'owner': {k:v for k,v in owner.items() if k != 'variants'},
+                'module_url': module.as_uri(), 'generated_sha256': hashlib.sha256(raw).hexdigest(),
+                'returncode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}, indent=2))
+        return result, owner, scratch
+
+    def test_generated_config_survives_vite_module_relocation(self):
+        result, owner, scratch = self.relocated()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        effective = json.loads(result.stdout)
+        self.assertEqual(effective['setup_path'], str(scratch / 'setup.ts'))
+        self.assertEqual(effective['wrangler_path'], str(Path(owner['backend']) / 'wrangler.toml'))
+        self.assertTrue((scratch / 'config-facts.json').is_file())
+
+    def test_old_module_relative_directories_and_setup_are_rejected(self):
+        mutations = {
+            'directories': lambda raw: raw.replace(b'const scratch = paths.scratch.path;',
+                    b"const scratch = dirname(new URL(import.meta.url).pathname);").replace(
+                    b'const backend = paths.backend.path;', b"const backend = new URL('../', import.meta.url).pathname.replace(/\\/$/, '');"),
+            'setup': lambda raw: raw.replace(b'const setup = paths.setup.path;',
+                    b"const setup = new URL('./setup.ts', import.meta.url).pathname;")
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                case = RelocatedConfigControls(); case.root = self.root / name; case.root.mkdir()
+                result, _, scratch = case.relocated(body_mutation=mutate)
+                self.assertNotEqual(result.returncode, 0)
+                if name == 'directories':
+                    self.assertIn('unsafe capacity config directory', result.stderr)
+                    self.assertIn('original_calls=0', result.stderr)
+                else:
+                    facts = e2.parse_json((scratch / 'config-facts.json').read_bytes())
+                    with self.assertRaises(ValueError):
+                        e2.resolved_config_guard(facts, scratch.parent, {'backend/wrangler.toml': {'sha256': e2.WRANGLER_SHA256}})
+
+    def test_live_path_bytes_symlinks_and_foreign_facts_fail_before_original(self):
+        def changed_setup(owner, scratch): (scratch / 'setup.ts').write_bytes(b'changed setup')
+        def symlink_setup(owner, scratch):
+            target = scratch.parent / 'foreign-setup.ts'; target.write_bytes((scratch / 'setup.ts').read_bytes())
+            (scratch / 'setup.ts').unlink(); (scratch / 'setup.ts').symlink_to(target)
+        def changed_wrangler(owner, scratch): (scratch.parent / 'wrangler.toml').write_bytes(b'changed Wrangler')
+        def stale_facts(owner, scratch): (scratch / 'config-facts.json').write_bytes(b'CONTROL foreign receipt')
+        for name, mutate in [('setup-bytes', changed_setup), ('setup-symlink', symlink_setup),
+                             ('wrangler-bytes', changed_wrangler), ('stale-facts', stale_facts)]:
+            with self.subTest(name=name):
+                case = RelocatedConfigControls(); case.root = self.root / name; case.root.mkdir()
+                result, _, scratch = case.relocated(path_mutation=mutate)
+                self.assertNotEqual(result.returncode, 0)
+                if name != 'stale-facts': self.assertIn('original_calls=0', result.stderr)
+                else: self.assertEqual((scratch / 'config-facts.json').read_bytes(), b'CONTROL foreign receipt')
+
+    def test_runtime_rejects_wrong_cwd_and_injected_path_tampering(self):
+        mutations = {
+            'run': lambda raw: raw.replace(b'"run":"12"', b'"run":"13"'),
+            'attempt': lambda raw: raw.replace(b'"attempt":"1"', b'"attempt":"2"'),
+            'outside-setup': lambda raw: raw.replace(b'/.capacity-e2-scratch-12-1/setup.ts', b'/node_modules/.vite-temp/setup.ts'),
+            'wrong-inode': lambda raw: raw.replace(b'"inode":', b'"inode":0,"ignored":'),
+            'cwd': None,
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                case = RelocatedConfigControls(); case.root = self.root / name; case.root.mkdir()
+                result, _, scratch = case.relocated(body_mutation=mutate, cwd_mutation=name == 'cwd')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('original_calls=0', result.stderr)
+                self.assertFalse((scratch / 'config-facts.json').exists())
+
+    def test_exact_injection_and_json_escaping_use_owned_canonical_paths(self):
+        case = RelocatedConfigControls(); case.root = self.root / 'quote"-backslash\\-雪'; case.root.mkdir()
+        result, owner, _ = case.relocated()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        generated = e2.render_config(owner['path_facts'])
+        self.assertNotIn(b'__E2_PATH_FACTS__', generated)
+        self.assertNotIn(b'import.meta.url', generated)
+        for broken in (e2.CONFIG.replace(b'__E2_PATH_FACTS__', b'null'), e2.CONFIG + b'__E2_PATH_FACTS__'):
+            with mock.patch.object(e2, 'CONFIG', broken), self.assertRaises(ValueError): e2.render_config(owner['path_facts'])
+
+    def test_reopening_rejects_rehashed_path_facts_and_generated_byte_drift(self):
+        mutations = {
+            'missing-facts': lambda owner: owner.pop('path_facts'),
+            'extra-facts': lambda owner: owner['path_facts'].update(extra='/foreign'),
+            'wrong-run': lambda owner: owner['path_facts'].update(run='13'),
+            'wrong-attempt': lambda owner: owner['path_facts'].update(attempt='2'),
+            'relative': lambda owner: owner['path_facts']['setup'].update(path='./setup.ts'),
+            'relocated': lambda owner: owner['path_facts']['setup'].update(path=owner['backend']+'/node_modules/.vite-temp/setup.ts'),
+            'outside': lambda owner: owner['path_facts']['wrangler'].update(path='/foreign/wrangler.toml'),
+            'traversal': lambda owner: owner['path_facts']['setup'].update(path=owner['path']+'/../setup.ts'),
+            'inode': lambda owner: owner['path_facts']['scratch'].update(inode=2),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                path = self.root / name
+                identity, _ = PreflightControls.complete_preflight(self, path)
+                owner = e2.parse_json((path / 'scratch-ownership.json').read_bytes()); mutate(owner)
+                e2.write_json(path / 'scratch-ownership.json', owner)
+                self.refresh_receipts(path)
+                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+        for name in ('scratch-ownership.json', 'scratch/config.ts', 'scratch/setup.ts', e2.snapshot_member('backend/wrangler.toml')):
+            with self.subTest(member=name):
+                path = self.root / name.replace('/', '-')
+                identity, _ = PreflightControls.complete_preflight(self, path)
+                member = path / name
+                if name == 'scratch-ownership.json': member.unlink()
+                else: member.write_bytes(member.read_bytes() + b'changed bytes')
+                self.refresh_receipts(path)
+                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
+    def refresh_receipts(self, path):
+        # Refresh both inventories: semantic binding must independently close.
+        receipt = e2.parse_json((path / 'evidence-receipt.json').read_bytes())
+        inventory = e2.artifact_hashes(path)
+        receipt['expected'] = {name:inventory[name] for name in receipt['expected'] if name in inventory}
+        e2.write_json(path / 'evidence-receipt.json', receipt)
+        e2.write_json(path / 'artifact-hashes.json', e2.artifact_hashes(path))
+
+
 class WranglerPathControls(DisposableControls):
     members = NativeScratchArchiveControls.members
     WRANGLER_SHA256 = 'c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f'
@@ -2615,18 +2826,18 @@ class WranglerPathControls(DisposableControls):
         raw = (RUNNER.parents[2] / 'backend/wrangler.toml').read_bytes()
         self.assertEqual(hashlib.sha256(raw).hexdigest(), self.WRANGLER_SHA256)
         target.write_bytes(raw)
-        scratch = backend / '.capacity-e2-scratch-12-1'; scratch.mkdir(exist_ok=True)
-        (scratch / 'config.ts').write_bytes(e2.CONFIG)
-        (scratch / 'setup.ts').write_text('CONTROL ONLY; no setup execution')
+        archive = self.root / 'archive'; archive.mkdir()
+        owner = e2.materialize_scratch(backend, '12', '1', b"const projection = '__E2_PROJECTION__';\n", archive)
+        scratch = Path(owner['path'])
         if target_mutation: target_mutation(backend, target, scratch)
-        body = '\n'.join(line for line in e2.CONFIG.decode().splitlines() if not line.startswith('import '))
+        body = '\n'.join(line for line in (scratch / 'config.ts').read_text().splitlines() if not line.startswith('import '))
         body = body.replace('export default async function(configEnv)', 'async function configure(configEnv)')
         if body_mutation: body = body_mutation(body)
         harness = scratch / 'config-control.mjs'
         harness.write_text('''import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
-import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync } from 'node:fs';
+import { dirname, resolve, basename } from 'node:path';
+import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 let calls=0;
 const resolved={plugins:[{name:'original-workers-plugin'}],test:{include:['tests/capacity/capacity_test.ts'],testTimeout:600000,hookTimeout:60000,
@@ -2652,7 +2863,7 @@ const bytes=readFileSync(adapterTarget);
 assert.equal(adapterTarget,originalTarget);
 assert.equal(createHash('sha256').update(bytes).digest('hex'),''' + json.dumps(self.WRANGLER_SHA256) + ''');
 ''')
-        result = subprocess.run(['node', str(harness)], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(['node', str(harness)], cwd=backend, capture_output=True, text=True, timeout=10)
         print('CONTROL pinned Wrangler resolution:', result.returncode, result.stdout.strip(), result.stderr.strip())
         return result, backend, scratch
 
