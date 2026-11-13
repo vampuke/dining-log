@@ -224,7 +224,64 @@ def dummy_probe_raw(scenario="p1-4500", projection="id", state="pass"):
 
 
 def probe_log(original, preflight, history):
-    return original + b"E2_PREFLIGHT " + json.dumps(preflight, separators=(",", ":")).encode() + b"\nE2_HISTORY_RESULT " + json.dumps(history, separators=(",", ":")).encode() + b"\n"
+    state = preflight['original_task']['leaves'][0]['state']
+    backend = str(Path(preflight['original_task']['filepath']).parents[2])
+    return ((' RUN  v3.2.4 ' + backend + '\n\n').encode() + original +
+            b"E2_PREFLIGHT " + json.dumps(preflight, separators=(",", ":")).encode() +
+            b"\nE2_HISTORY_RESULT " + json.dumps(history, separators=(",", ":")).encode() + b"\n" +
+            framework_summary(state))
+
+
+def framework_summary(state):
+    """Pinned default reporter stdout, synthetic durations; never native evidence."""
+    result = 'failed' if state == 'fail' else 'passed'
+    return (f'\n Test Files  1 {result} (1)\n'
+            f'      Tests  1 {result} | 1 skipped (2)\n'
+            '   Start at  15:00:00\n'
+            '   Duration  1.23s (transform 10ms, setup 10ms, collect 10ms, tests 1.10s, environment 0ms, prepare 10ms)\n\n').encode()
+
+
+def framework_stderr(state):
+    if state != 'fail': return b''
+    return (('\n' + '⎯' * 7 + ' Failed Tests 1 ' + '⎯' * 7 + '\n\n').encode()
+            + b' FAIL  tests/capacity/capacity_test.ts > CONTROL selected leaf\n'
+            b'AssertionError: CONTROL p95 exceeds 100ms\n'
+            b'---------- [1/1] ----------\n\n')
+
+
+def control_streams(raw):
+    task = e2.record(raw, 'E2_PREFLIGHT')[1]['original_task']
+    return raw, framework_stderr(next(l['state'] for l in task['leaves'] if l['mode'] == 'run'))
+
+
+def framework_mutations(stdout, stderr):
+    """Complete records remain intact; only final framework evidence changes."""
+    prefix = stdout[:stdout.index(b'\n Test Files')]
+    summary = stdout[len(prefix):]
+    return {
+        'missing': (prefix, stderr),
+        'truncated': (stdout[:-4], stderr),
+        'duplicate': (stdout + summary, stderr),
+        'malformed': (stdout.replace(b'   Duration  ', b'   Duration  bogus '), stderr),
+        'extra-test': (stdout.replace(b'1 failed | 1 skipped (2)', b'2 failed | 1 skipped (3)'), stderr),
+        'extra-file': (stdout.replace(b'1 failed (1)', b'2 failed (2)'), stderr),
+        'suite-error': (stdout, stderr + '⎯⎯ Failed Suites 1 ⎯⎯\n'.encode()),
+        'unhandled-after-summary': (stdout, stderr + '⎯⎯ Unhandled Errors ⎯⎯\nError: Failed to run tests\n'.encode()),
+        'error-count': (stdout.replace(b'   Start at ', b'     Errors  1 error\n   Start at '), stderr),
+        'split-stream-summary': (prefix + summary[:summary.index(b'   Duration')], stderr + summary[summary.index(b'   Duration'):]),
+        'stderr-summary': (prefix, stderr + summary),
+        'terminal-edit': (stdout.replace(b'   Duration', b'\x1b[2K   Duration'), stderr),
+        'carriage-return': (stdout.replace(b'   Duration', b'\r   Duration'), stderr),
+        'invalid-utf8': (stdout + b'\xff\n', stderr),
+        'wrong-version': (stdout.replace(b'v3.2.4', b'v3.2.7'), stderr),
+        'missing-failed-test-banner': (stdout, b''),
+        'duplicate-failed-test-banner': (stdout, stderr + stderr),
+        'extra-failed-test-banner': (stdout, stderr.replace(b'Failed Tests 1', b'Failed Tests 2')),
+        'malformed-failed-test-banner': (stdout, stderr + b'Failed Tests bogus\n'),
+        'misplaced-failed-test-banner': (stdout.replace(b'\n Test Files', stderr + b'\n Test Files'), b''),
+        'post-probe-console': (stdout.replace(b'\n Test Files', b'\nstdout | CONTROL payload\n\n Test Files'), stderr),
+        'post-summary-output': (stdout + b'CONTROL later output\n', stderr),
+    }
 
 
 def exit_probe_raw(scenario='p1-4500', state='pass', gate_failed=False):
@@ -261,7 +318,7 @@ def supportive_control_cohort():
                 sample['bookkeeping_stop_ms'] = sample['stop_ms'] + sample['bookkeeping_ms']
             receipt = {'returncode': 0, 'timed_out': False, 'cleanup_ok': True,
                        'spawn_error': None, 'descendants_after_exit': []}
-            audited = e2.audit_process(receipt, probe_log(original, preflight, history), scenario, projection, RUNNER.parents[2])
+            audited = e2.audit_process(receipt, control_streams(probe_log(original, preflight, history)), scenario, projection, RUNNER.parents[2])
             e2.require(audited['infrastructure_valid'], 'invalid supportive control fixture')
             audited.update(block=block, scenario=scenario)
             processes.append(audited)
@@ -817,6 +874,89 @@ assert (root/'escaped').exists()
 
 
 class ExitControls(DisposableControls):
+    def test_framework_completion_mutations_close_selected_failure(self):
+        streams = control_streams(exit_probe_raw(state='fail', gate_failed=True))
+        receipt = dict(returncode=1, timed_out=False, cleanup_ok=True, spawn_error=None, descendants_after_exit=[])
+        clean = e2.audit_process(receipt, streams, 'p1-4500', '*', RUNNER.parents[2])
+        self.assertTrue(clean['framework_audit']['clean'])
+        self.assertTrue(clean['infrastructure_valid'])
+        for name, changed in framework_mutations(*streams).items():
+            with self.subTest(name=name):
+                audited = e2.audit_process(receipt, changed, 'p1-4500', '*', RUNNER.parents[2])
+                self.assertEqual(audited['probe_audit']['probe_calls'], 30)
+                self.assertTrue(audited['original_failed'])
+                self.assertFalse(audited['framework_audit']['clean'])
+                self.assertTrue(audited['framework_audit']['errors'])
+                self.assertFalse(audited['infrastructure_valid'])
+                self.assertEqual(audited['process']['returncode'], 1)
+
+    def test_clean_framework_pass_and_failure_accept_sgr_and_crlf_without_changing_bytes(self):
+        for state in ('pass', 'fail'):
+            stdout, stderr = control_streams(exit_probe_raw(state=state, gate_failed=state == 'fail'))
+            for color in (False, True):
+                with self.subTest(state=state, color=color):
+                    colored_stdout = stdout.replace(b' RUN  v3.2.4 ', b'\x1b[36m RUN \x1b[0m v3.2.4 ')
+                    colored_stdout = colored_stdout.replace(b' Test Files  ', b'\x1b[2m Test Files \x1b[0m ')
+                    colored_stderr = b''.join(b'\x1b[31m' + line + b'\x1b[0m\n' for line in stderr.splitlines())
+                    streams = tuple(s.replace(b'\n', b'\r\n') for s in (colored_stdout, colored_stderr)) if color else (stdout, stderr)
+                    receipt = dict(returncode=1 if state == 'fail' else 0, timed_out=False,
+                                   cleanup_ok=True, spawn_error=None, descendants_after_exit=[])
+                    audited = e2.audit_process(receipt, streams, 'p1-4500', '*', RUNNER.parents[2])
+                    self.assertTrue(audited['infrastructure_valid'], audited['audit_errors'])
+                    facts = audited['framework_audit']
+                    self.assertTrue(facts['clean'])
+                    self.assertEqual(facts['summary_count'], 1)
+                    self.assertEqual(facts['summary']['tests']['total'], 2)
+                    self.assertEqual(facts['stdout_sha256'], hashlib.sha256(streams[0]).hexdigest())
+                    self.assertEqual(facts['stderr_sha256'], hashlib.sha256(streams[1]).hexdigest())
+
+    def test_payload_summary_strings_and_unexpected_logging_cannot_authorize_completion(self):
+        original, preflight, history = dummy_probe_raw(projection='*')
+        history['control_payload'] = framework_summary('pass').decode()
+        raw = probe_log(original, preflight, history)
+        raw = raw[:raw.index(b'\n Test Files')]
+        receipt = dict(returncode=0, timed_out=False, cleanup_ok=True, spawn_error=None, descendants_after_exit=[])
+        audited = e2.audit_process(receipt, (raw, b''), 'p1-4500', '*', RUNNER.parents[2])
+        self.assertFalse(audited['infrastructure_valid'])
+        preflight['capture']['unexpected_log_calls'] = 1
+        audited = e2.audit_process(receipt, (probe_log(original, preflight, history), b''), 'p1-4500', '*', RUNNER.parents[2])
+        self.assertFalse(audited['framework_audit']['clean'])
+        self.assertFalse(audited['infrastructure_valid'])
+
+    def test_framework_contamination_prevents_abba_description_and_stops_schedule(self):
+        values = supportive_control_cohort()
+        values[0]['framework_audit']['clean'] = False
+        self.assertEqual(e2.describe_effect(values)['status'], 'incomplete')
+        calls = []
+        def execute(block, arm, scenario):
+            calls.append((block, scenario))
+            streams = control_streams(exit_probe_raw(state='fail', gate_failed=True))
+            contaminated = framework_mutations(*streams)['unhandled-after-summary']
+            return e2.audit_process(dict(returncode=1, timed_out=False, cleanup_ok=True,
+                                        spawn_error=None, descendants_after_exit=[]), contaminated,
+                                    scenario, '*', RUNNER.parents[2])
+        phase = e2.serial_phase('abba', execute, lambda *_: {'failed': False})
+        self.assertEqual(len(calls), 1)
+        self.assertFalse(phase['infrastructure_valid'])
+
+    def test_selected_performance_fail_plus_later_pool_error_closes_framework_gate(self):
+        raw = exit_probe_raw(state='fail', gate_failed=True)
+        raw = raw.replace(b'   Start at ', b'     Errors  1 error\n   Start at ')
+        stderr = framework_stderr('fail') + ('\n⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯\n'
+                    'Vitest caught 1 unhandled error during the test run.\n'
+                    'This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.\n'
+                    '⎯⎯⎯⎯⎯⎯ Unhandled Error ⎯⎯⎯⎯⎯⎯\n'
+                    'Error: Failed to run tests\n').encode()
+        receipt = dict(returncode=1, timed_out=False, cleanup_ok=True,
+                       spawn_error=None, descendants_after_exit=[])
+        audited = e2.audit_process(receipt, raw + stderr, 'p1-4500', '*', RUNNER.parents[2])
+        self.assertEqual(audited['probe_audit']['original_task_state'], 'fail')
+        self.assertTrue(audited['original_audit']['performance_failed'])
+        self.assertEqual(audited['probe_audit']['probe_calls'], 30)
+        self.assertEqual(audited['process']['returncode'], 1)
+        self.assertTrue(audited['original_failed'])
+        self.assertFalse(audited['infrastructure_valid'])
+
     def test_unexplained_combined_real_exit_closes_collection(self):
         raw = exit_probe_raw()
         source = self.root / 'CONTROL-emits.raw'; source.write_bytes(raw)
@@ -842,7 +982,7 @@ class ExitControls(DisposableControls):
                 raw = exit_probe_raw(state=state, gate_failed=gates_failed)
                 receipt = {'returncode': code, 'timed_out': False, 'cleanup_ok': True,
                            'spawn_error': None, 'descendants_after_exit': []}
-                audited = e2.audit_process(receipt, raw, 'p1-4500', '*', RUNNER.parents[2])
+                audited = e2.audit_process(receipt, control_streams(raw), 'p1-4500', '*', RUNNER.parents[2])
                 self.assertEqual(audited['infrastructure_valid'], valid)
                 self.assertEqual(audited['original_failed'], state == 'fail' or gates_failed)
                 self.assertEqual(audited['failed'], not valid or code != 0 or state == 'fail' or gates_failed)
@@ -865,7 +1005,7 @@ class ExitControls(DisposableControls):
                 self.assertFalse(audit.get('infrastructure_valid'))
         audit = e2.audit_process(good, parts[0], 'p1-4500', 'id', RUNNER.parents[2])
         self.assertTrue(audit.get('failed')); self.assertFalse(audit.get('infrastructure_valid'))
-        failed = e2.audit_process(dict(good, returncode=1), probe_log(*dummy_probe_raw(state='fail')), 'p1-4500', 'id', RUNNER.parents[2])
+        failed = e2.audit_process(dict(good, returncode=1), control_streams(probe_log(*dummy_probe_raw(state='fail'))), 'p1-4500', 'id', RUNNER.parents[2])
         self.assertTrue(failed.get('failed')); self.assertTrue(failed.get('infrastructure_valid'))
         self.assertNotIn('original_exit', failed)
 
@@ -984,6 +1124,35 @@ def control_config_facts(backend):
 
 
 class PreflightControls(DisposableControls):
+    def test_reopening_reaudits_changed_framework_even_when_hashes_are_refreshed(self):
+        baseline = control_streams(exit_probe_raw(state='fail', gate_failed=True))
+        for name, streams in framework_mutations(*baseline).items():
+            with self.subTest(name=name):
+                path = self.root / name
+                identity, phase = self.complete_preflight(path, 1, 'fail', True)
+                self.assertTrue(e2.preflight_gate(path, identity)['processes'][0]['framework_audit']['clean'])
+                directory = path / 'preflight/p1-4500'
+                for filename, content in zip(('stdout.raw', 'stderr.raw'), streams):
+                    (directory / filename).write_bytes(content)
+                    phase['processes'][0]['process'][filename.split('.')[0] + '_sha256'] = hashlib.sha256(content).hexdigest()
+                # Keep stale accepted framework facts, but refresh every raw/hash
+                # binding. Reopening must fail from framework re-audit itself.
+                finalize_preflight_control(path, phase)
+                with self.assertRaisesRegex(ValueError, 'preflight re-audit failed'):
+                    e2.preflight_gate(path, identity)
+
+    def test_reopening_rejects_changed_or_missing_recorded_framework_facts(self):
+        for change in ('missing', 'changed'):
+            with self.subTest(change=change):
+                path = self.root / change
+                identity, phase = self.complete_preflight(path, 1, 'fail', True)
+                self.assertTrue(e2.preflight_gate(path, identity)['processes'][0]['framework_audit']['clean'])
+                if change == 'missing': del phase['processes'][0]['framework_audit']
+                else: phase['processes'][0]['framework_audit']['summary']['tests']['total'] = 3
+                finalize_preflight_control(path, phase)
+                with self.assertRaisesRegex(ValueError, 'preflight recorded audit drift'):
+                    e2.preflight_gate(path, identity)
+
     def complete_preflight(self, path, code=0, state='pass', gate_failed=False):
         identity = {'candidate': '1'*40, 'ref': e2.REF, 'run': '12', 'attempt': '1',
                     'runtime': {'node': 'v22.CONTROL'}}
@@ -992,12 +1161,13 @@ class PreflightControls(DisposableControls):
             raw = exit_probe_raw(scenario, state if scenario == 'p1-4500' else 'pass',
                                  gate_failed if scenario == 'p1-4500' else False)
             directory = path / 'preflight' / scenario; directory.mkdir(parents=True)
-            (directory / 'stdout.raw').write_bytes(raw); (directory / 'stderr.raw').write_bytes(b'')
+            stderr = control_streams(raw)[1]
+            (directory / 'stdout.raw').write_bytes(raw); (directory / 'stderr.raw').write_bytes(stderr)
             receipt = {'returncode': code if scenario == 'p1-4500' else 0, 'timed_out': False,
                        'cleanup_ok': True, 'spawn_error': None, 'descendants_after_exit': [],
                        'stdout_sha256': hashlib.sha256(raw).hexdigest(),
-                       'stderr_sha256': hashlib.sha256(b'').hexdigest()}
-            audited = e2.audit_process(receipt, raw, scenario, '*', RUNNER.parents[2])
+                       'stderr_sha256': hashlib.sha256(stderr).hexdigest()}
+            audited = e2.audit_process(receipt, control_streams(raw), scenario, '*', RUNNER.parents[2])
             # Reopening must reject a stale, previously permissive acceptance
             # using the raw records, even when the saved gate still says true.
             audited.update(scenario=scenario, infrastructure_valid=True)
@@ -1279,8 +1449,12 @@ class InferenceControls(unittest.TestCase):
         for block, arm in [('01-A','*'),('02-B','id'),('03-B','id'),('04-A','*')]:
             for scenario in ('p1-4500','plan-6000'):
                 parts=dummy_probe_raw(scenario,arm)
-                probe=e2.audit_probe(probe_log(*parts),e2.audit_original(parts[0],scenario),scenario,arm,RUNNER.parents[2])
-                values.append({'block':block,'scenario':scenario,'probe_audit':probe})
+                audited=e2.audit_process(dict(returncode=0, timed_out=False, cleanup_ok=True,
+                                              spawn_error=None, descendants_after_exit=[]),
+                                         control_streams(probe_log(*parts)),scenario,arm,RUNNER.parents[2])
+                e2.require(audited['infrastructure_valid'], 'invalid inference control fixture')
+                audited.update(block=block,scenario=scenario)
+                values.append(audited)
         return values
     def test_smaller_bytes_without_improvement_and_incomplete_blocks_are_not_support(self):
         values=self.controls()
@@ -1642,8 +1816,8 @@ class CommandPhaseControls(DisposableControls):
                     return receipt
                 inp = self.root / ('input-%03d.raw' % len(trace['attempts'])); inp.write_bytes(raw)
                 actual = [sys.executable, '-B', '-c',
-                          'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes()); sys.exit(int(sys.argv[2]))',
-                          str(inp), '1' if product_failed else '0']
+                          'import pathlib,sys; sys.stdout.buffer.write(pathlib.Path(sys.argv[1]).read_bytes()); sys.stderr.buffer.write(bytes.fromhex(sys.argv[3])); sys.exit(int(sys.argv[2]))',
+                          str(inp), '1' if product_failed else '0', framework_stderr('fail' if product_failed else 'pass').hex()]
             elif kind == 'renderer':
                 trace.setdefault('renderer_guard_counts', []).append(trace['guards'])
                 actual = [sys.executable, '-B', '-c',

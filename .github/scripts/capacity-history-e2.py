@@ -697,9 +697,92 @@ def write_json(path, value):
     Path(path).write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n')
     freeze_evidence(path)
 
-# Control interface: a successful hook must never mask a child failure.
+@validation
+def audit_framework(stdout, stderr, probe, root):
+    """Pinned Vitest 3.2.4 default reporter, non-TTY run with one file.
+
+    Summary counts are emitted by onFinished after pool completion. Suite
+    errors have their own stderr banner even if the file/test counts match.
+    Strip only SGR colors; terminal editing, invalid UTF8 and partial lines
+    fail closed. Never join streams to construct a completion summary.
+    """
+    facts = {'reporter': 'vitest@3.2.4/default/non-TTY', 'clean': False,
+             'stdout_sha256': hashlib.sha256(stdout).hexdigest(),
+             'stderr_sha256': hashlib.sha256(stderr).hexdigest(),
+             'summary_count': 0, 'summary': None, 'failed_test_counts': [],
+             'failed_test_banner_count': 0,
+             'additional_error_diagnostics': [], 'errors': []}
+    try:
+        def normalize(raw):
+            text = re.sub(rb'\x1b\[[0-9;]*m', b'', raw).decode('utf-8')
+            text = text.replace('\r\n', '\n')
+            require(not re.search(r'[\x00-\x08\x0b-\x1f\x7f-\x9f]', text), 'unsupported framework control bytes')
+            require(not text or text.endswith('\n'), 'truncated framework log line')
+            return text
+        out, err = normalize(stdout), normalize(stderr)
+        state = probe['original_task_state']
+        require(probe['preflight']['capture']['unexpected_log_calls'] == 0,
+                'unexpected test logging cannot establish reporter provenance')
+        banner = ' RUN  v3.2.4 ' + str(Path(root) / 'backend')
+        require(out.splitlines().count(banner) == 1, 'missing or duplicate pinned framework run banner')
+        # E2 JSON stays on single lines; strings in the test payload cannot
+        # supply reporter lines. All three records must precede completion on stdout.
+        ends = []
+        for marker in ('CAPACITY_RESULT', 'E2_PREFLIGHT', 'E2_HISTORY_RESULT'):
+            matches = list(re.finditer(r'^' + marker + r' [^\n]*\n', out, re.M))
+            require(len(matches) == 1 and marker + ' ' not in err, 'framework stdout record provenance')
+            ends.append(matches[0].end())
+        require(ends == sorted(ends), 'framework record order')
+        all_lines = out.splitlines() + err.splitlines()
+        facts['failed_test_counts'] = [int(m.group(1)) for line in all_lines
+                                      if (m := re.fullmatch(r'⎯+ Failed Tests ([0-9]+) ⎯+', line))]
+        facts['failed_test_banner_count'] = sum('Failed Tests' in line for line in all_lines)
+        facts['additional_error_diagnostics'] = [line for line in all_lines
+                if re.search(r'Failed Suites|Unhandled (?:Errors?|Rejection|Reporter Error)|'
+                             r'Vitest caught [0-9]+ unhandled|Error running worker:|'
+                             r'^\s*(?:Errors|Type Errors|Source Errors)\s', line)]
+        # Reserve every summary label across BOTH streams so duplicate, malformed,
+        # misplaced or truncated fragments cannot be ignored beside a valid block.
+        labels = ('Test Files', 'Tests', 'Start at', 'Duration')
+        for label in labels:
+            count = sum(bool(re.match(r'^\s*' + label + r'\s', line)) for line in all_lines)
+            if label == 'Test Files': facts['summary_count'] = count
+            require(count == 1, 'missing or duplicate framework ' + label)
+        result = 'failed' if state == 'fail' else 'passed'
+        duration = r'(?:[0-9]+ms|[0-9]+\.[0-9]{2}s)'
+        pattern = (r'^ Test Files  1 ' + result + r' \(1\)\n'
+                   r'      Tests  1 ' + result + r' \| 1 skipped \(2\)\n'
+                   r'   Start at  (?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]\n'
+                   r'   Duration  ' + duration + r' \(transform ' + duration +
+                   r', setup ' + duration + r', collect ' + duration + r', tests ' + duration +
+                   r', environment ' + duration + r', prepare ' + duration + r'\)\n\n')
+        summaries = list(re.finditer(pattern, out, re.M))
+        require(len(summaries) == 1, 'missing or malformed final framework summary/inventory')
+        summary = summaries[0]
+        facts['summary'] = {'text': summary.group(), 'stdout_start': summary.start(),
+                            'files': {result: 1, 'total': 1},
+                            'tests': {result: 1, 'skipped': 1, 'total': 2},
+                            'unhandled_errors': 0 if not facts['additional_error_diagnostics'] else None}
+        require(summary.start() >= max(ends), 'framework summary precedes probe completion')
+        require(not out[summary.end():].strip(), 'output after final framework summary')
+        require(not re.search(r'^(?:stdout|stderr) \|', out[max(ends):] + err, re.M),
+                'unexpected user console output after probe')
+        require(not facts['additional_error_diagnostics'], 'additional suite/pool/unhandled framework error')
+        require(facts['failed_test_counts'] == ([1] if state == 'fail' else []),
+                'failed-test diagnostics contradict selected leaf')
+        require(facts['failed_test_banner_count'] == (1 if state == 'fail' else 0)
+                and 'Failed Tests' not in out, 'malformed or misplaced failed-test diagnostics')
+        facts['clean'] = True
+    except (ValueError, UnicodeError) as error:
+        facts['errors'].append(str(error))
+    return facts
+
+# Control interface: preserve the combined exit and the two raw streams.
 def audit_process(receipt, raw, scenario, projection, root):
-    value = {'process': receipt, 'original_audit': None, 'probe_audit': None, 'audit_errors': []}
+    stdout, stderr = raw if isinstance(raw, tuple) else (raw, b'')
+    raw = stdout + stderr
+    value = {'process': receipt, 'original_audit': None, 'probe_audit': None,
+             'framework_audit': None, 'audit_errors': []}
     try: value['original_audit'] = audit_original(raw, scenario)
     except ValueError as error: value['audit_errors'].append({'original': str(error)})
     if value['original_audit'] is not None:
@@ -708,6 +791,9 @@ def audit_process(receipt, raw, scenario, projection, root):
     value['original_failed'] = bool((value['original_audit'] or {}).get('performance_failed')
                                    or (value['probe_audit'] or {}).get('original_task_state') == 'fail')
     if not value['audit_errors']:
+        value['framework_audit'] = audit_framework(stdout, stderr, value['probe_audit'], root)
+        if not value['framework_audit']['clean']:
+            value['audit_errors'].append({'framework': value['framework_audit']['errors']})
         state = value['probe_audit']['original_task_state']
         if value['original_audit']['performance_failed'] and state != 'fail':
             value['audit_errors'].append({'process': 'original task/gates contradiction'})
@@ -774,16 +860,16 @@ def preflight_gate(path, identity):
     for process in receipt['processes']:
         require(process['infrastructure_valid'] is True, 'invalid native preflight')
         directory = path / 'preflight' / process['scenario']
-        raw = b''
+        streams = []
         for name in ('stdout.raw','stderr.raw'):
             file = directory / name
             require(file.is_file() and not file.is_symlink(), 'missing preflight raw evidence')
             content = file.read_bytes()
             require(hashlib.sha256(content).hexdigest() == process['process'][name.split('.')[0] + '_sha256'], 'preflight raw hash drift')
-            raw += content
-        audited = audit_process(process['process'], raw, process['scenario'], '*', Path(__file__).resolve().parents[2])
+            streams.append(content)
+        audited = audit_process(process['process'], tuple(streams), process['scenario'], '*', Path(__file__).resolve().parents[2])
         require(audited['infrastructure_valid'], 'preflight re-audit failed')
-        for key in ('original_audit', 'probe_audit', 'original_failed', 'failed', 'audit_errors'):
+        for key in ('original_audit', 'probe_audit', 'framework_audit', 'original_failed', 'failed', 'audit_errors'):
             require(process.get(key) == audited[key], 'preflight recorded audit drift')
     require(receipt['scratch_cleanup_ok'] is True and receipt['source_guard_after'] is True, 'preflight cleanup/source receipt missing')
     require(receipt['failed'] is any(p['failed'] for p in receipt['processes']), 'preflight failure receipt drift')
@@ -816,6 +902,8 @@ def describe_effect(processes):
               'bytes_label': 'UTF8 JSON representation, not actual wire/IPC bytes',
               'allocation_limit': 'Bookkeeping allocations can affect later calls; the overhead bound cannot prove absence of later GC interference'}
     if [(p.get('block'),p.get('scenario')) for p in processes] != expected: return report
+    if any(not p.get('infrastructure_valid') or not (p.get('framework_audit') or {}).get('clean') for p in processes):
+        return report
     by = {(p['block'],p['scenario']): p['probe_audit'] for p in processes}
     for scenario in ('p1-4500','plan-6000'):
         cohort = [by[block,scenario] for block in ('01-A','02-B','03-B','04-A')]
@@ -1084,8 +1172,9 @@ def native(args):
                     command=['./node_modules/.bin/vitest','run','--config',str(Path(owner['path']).relative_to(root/'backend')/'config.ts'),'-t',scenario]
                     receipt=owned_command(command,root/'backend',directory,900)
                     require(receipt['cleanup_ok'], 'owned process/log drain incomplete; schedule stopped')
-                    raw=(directory/'stdout.raw').read_bytes()+(directory/'stderr.raw').read_bytes()
-                    audited=audit_process(receipt,raw,scenario,'*' if arm=='full' else 'id',root)
+                    streams=tuple((directory/name).read_bytes() for name in ('stdout.raw','stderr.raw'))
+                    raw=b''.join(streams)
+                    audited=audit_process(receipt,streams,scenario,'*' if arm=='full' else 'id',root)
                     after=source_guard(root,candidate,ref,owner['path']); write_json(directory/'source-after.json',after)
                     require(before==after and runtime(root)==identity['runtime'], 'source/runtime drift after process')
                     write_json(directory/'liveness-after.json',no_smoke())
