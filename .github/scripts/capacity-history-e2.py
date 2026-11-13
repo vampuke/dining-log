@@ -20,8 +20,9 @@ BACKEND_TREE = '29ba53b82cfa707e872f3571bebb42aecb6011b1'
 ALLOWED = ('.github/scripts/capacity-history-e2-probe.ts', '.github/scripts/capacity-history-e2.py',
            '.github/scripts/test_capacity_history_e2.py', '.github/workflows/capacity-history-e2.yml')
 SNAPSHOT_SOURCES = ('backend/tests/capacity/capacity_test.ts', 'backend/vitest.capacity.config.ts',
-                    'backend/package.json', 'backend/package-lock.json', *ALLOWED)
+                    'backend/package.json', 'backend/package-lock.json', 'backend/wrangler.toml', *ALLOWED)
 REQUIRED_SCRATCH = ('scratch/config.ts', 'scratch/setup.ts', 'scratch/config-facts.json')
+WRANGLER_SHA256 = 'c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f'
 
 def validation(fn):
     def checked(*args, **kwargs):
@@ -360,9 +361,36 @@ def expand_setup(template):
 
 CONFIG = b"""import original from '../vitest.capacity.config';
 import { fileURLToPath } from 'node:url';
-import { writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 export default async function(configEnv) {
+  // Use the frozen backend file in place: copying it would rebase main/migrations.
+  // Wrangler also reads adjacent .dev.vars, so reject supplemental inputs unread.
+  const scratch = dirname(fileURLToPath(import.meta.url));
+  const backend = fileURLToPath(new URL('../', import.meta.url)).replace(/\/$/, '');
+  for (const directory of [backend, scratch]) {
+    const info = lstatSync(directory);
+    if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid() ||
+        realpathSync(directory) !== directory ||
+        readdirSync(directory).some(name => /^\.(dev\.vars|env)(\.|$)/.test(name))) {
+      throw new Error('unsafe capacity config directory');
+    }
+  }
+  if (dirname(scratch) !== backend || !/^\.capacity-e2-scratch-[0-9]+-[0-9]+$/.test(scratch.slice(backend.length + 1)) ||
+      readdirSync(scratch).some(name => /^wrangler\.(toml|json|jsonc)$/.test(name))) {
+    throw new Error('foreign scratch Wrangler config');
+  }
+  const wranglerPath = resolve(backend, 'wrangler.toml');
+  const wranglerInfo = lstatSync(wranglerPath);
+  if (!wranglerInfo.isFile() || wranglerInfo.isSymbolicLink() || wranglerInfo.uid !== process.getuid() ||
+      realpathSync(wranglerPath) !== wranglerPath || dirname(wranglerPath) !== backend) {
+    throw new Error('tracked Wrangler config ownership/hash drift');
+  }
+  const wranglerHash = createHash('sha256').update(readFileSync(wranglerPath)).digest('hex');
+  if (wranglerHash !== 'c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f') {
+    throw new Error('tracked Wrangler config ownership/hash drift');
+  }
   const resolved = await (typeof original === 'function' ? original(configEnv) : original);
   const workers = resolved.test?.poolOptions?.workers;
   if (resolved.test.setupFiles != null || workers.isolatedStorage !== false ||
@@ -371,6 +399,22 @@ export default async function(configEnv) {
       workers.miniflare.d1Persist || workers.miniflare.persist ||
       JSON.stringify(workers).match(/remoteProxy|experimental_experimental_remote/)) {
     throw new Error('unsafe original capacity config');
+  }
+  const keys = value => Object.keys(value).sort().join(',');
+  if (keys(resolved.test.poolOptions) !== 'workers' || keys(workers) !== 'isolatedStorage,miniflare,wrangler' ||
+      keys(workers.wrangler) !== 'configPath' || keys(workers.miniflare) !== 'bindings,compatibilityDate' ||
+      keys(workers.miniflare.bindings) !== 'TEST_MIGRATIONS' || workers.miniflare.compatibilityDate !== '2025-06-17') {
+    throw new Error('unsafe original non-path pool option');
+  }
+  const poolBefore = JSON.stringify(resolved.test.poolOptions);
+  // The pinned pool resolves this option from the active scratch config directory.
+  workers.wrangler.configPath = wranglerPath;
+  const { configPath, ...wranglerOther } = workers.wrangler;
+  const normalizedPool = { ...resolved.test.poolOptions, workers: {
+    ...workers, wrangler: { configPath: './wrangler.toml', ...wranglerOther }
+  } };
+  if (JSON.stringify(normalizedPool) !== poolBefore) {
+    throw new Error('non-path pool option drift');
   }
   const setup = fileURLToPath(new URL('./setup.ts', import.meta.url));
   const result = { ...resolved, test: { ...resolved.test, setupFiles: [setup] } };
@@ -381,6 +425,9 @@ export default async function(configEnv) {
   const hashes = Object.fromEntries(names.map(k => [k, createHash('sha256').update(JSON.stringify(workers.miniflare.bindings[k])).digest('hex')]));
   writeFileSync(new URL('./config-facts.json', import.meta.url), JSON.stringify({
     inherited_once: true, plugins_same: true, pool_options_same: true,
+    pool_options_except_wrangler_path_same: true,
+    pool_options_sha256: createHash('sha256').update(poolBefore).digest('hex'),
+    wrangler_original_config: './wrangler.toml', wrangler_sha256: wranglerHash,
     test_original: { include: resolved.test.include, testTimeout: resolved.test.testTimeout, hookTimeout: resolved.test.hookTimeout },
     isolatedStorage: workers.isolatedStorage, wrangler_config: workers.wrangler.configPath,
     compatibilityDate: workers.miniflare.compatibilityDate, binding_names: names, binding_hashes: hashes,
@@ -701,6 +748,19 @@ def audit_renderer(receipt, directory):
     return {'process': receipt, 'outputs_present': present, 'failed': bool(failed)}
 
 @validation
+def resolved_config_guard(facts, backend, manifest):
+    require(facts.get('inherited_once') is True and facts.get('plugins_same') is True and facts.get('pool_options_same') is True
+            and facts.get('pool_options_except_wrangler_path_same') is True
+            and facts.get('isolatedStorage') is False and facts.get('remote_bindings') is False and facts.get('persistent_override') is False
+            and facts.get('test_original') == {'include':['tests/capacity/capacity_test.ts'],'testTimeout':600000,'hookTimeout':60000},
+            'unsafe resolved config')
+    require(facts.get('wrangler_original_config') == './wrangler.toml'
+            and facts.get('wrangler_config') == str(Path(backend) / 'wrangler.toml')
+            and facts.get('wrangler_sha256') == WRANGLER_SHA256 == manifest['backend/wrangler.toml']['sha256']
+            and type(facts.get('pool_options_sha256')) is str
+            and re.fullmatch('[0-9a-f]{64}', facts['pool_options_sha256']), 'unsafe resolved config path/hash')
+
+@validation
 def preflight_gate(path, identity):
     path = Path(path)
     require(path.is_dir() and not path.is_symlink(), 'missing preflight directory')
@@ -732,6 +792,17 @@ def preflight_gate(path, identity):
     try:
         hashes = parse_json(manifest.read_bytes())
         verify_artifact_members(path, hashes)
+        source = parse_json((path / 'source-before.json').read_bytes())['manifest']
+        facts = receipt['resolved_config']
+        # Bind the archived resolution to the recorded native cwd and frozen source.
+        backend = Path(receipt['processes'][0]['process']['cwd'])
+        require(backend.is_absolute() and '..' not in backend.parts, 'unsafe preflight backend path')
+        resolved_config_guard(facts, backend, source)
+        require(parse_json((path / 'scratch/config-facts.json').read_bytes()) == facts, 'preflight config archive drift')
+        for process in receipt['processes']:
+            directory = path / 'preflight' / process['scenario']
+            require(process['process']['cwd'] == str(backend)
+                    and parse_json((directory / 'resolved-config.json').read_bytes()) == facts, 'preflight resolved config drift')
     except OSError as error:
         raise ValueError('missing finalized preflight evidence') from error
     return receipt
@@ -1021,9 +1092,7 @@ def native(args):
                     facts_path=Path(owner['path'])/'config-facts.json'
                     require(facts_path.is_file() and not facts_path.is_symlink(), 'missing native resolved config facts')
                     facts=parse_json(facts_path.read_bytes())
-                    require(facts.get('inherited_once') is True and facts.get('plugins_same') is True and facts.get('pool_options_same') is True
-                            and facts.get('isolatedStorage') is False and facts.get('remote_bindings') is False and facts.get('persistent_override') is False
-                            and facts.get('test_original')=={'include':['tests/capacity/capacity_test.ts'],'testTimeout':600000,'hookTimeout':60000}, 'unsafe resolved config')
+                    resolved_config_guard(facts, root/'backend', before['manifest'])
                     if baseline_config is None: baseline_config=facts
                     require(facts==baseline_config, 'resolved binding/config drift')
                     write_json(directory/'resolved-config.json',facts)

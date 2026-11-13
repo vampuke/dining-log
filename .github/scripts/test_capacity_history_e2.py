@@ -925,9 +925,7 @@ def finalize_preflight_control(path, phase):
     """Complete stdlib prerequisite evidence; no native commands or measurements."""
     source = {'manifest': {name: {'sha256': hashlib.sha256((RUNNER.parents[2] / name).read_bytes()).hexdigest()}
                            for name in e2.SNAPSHOT_SOURCES}}
-    facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True,
-                 isolatedStorage=False, remote_bindings=False, persistent_override=False,
-                 test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+    facts = control_config_facts(RUNNER.parents[2] / 'backend')
     for name in e2.SNAPSHOT_SOURCES:
         target = path / e2.snapshot_member(name); target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((RUNNER.parents[2] / name).read_bytes())
@@ -942,6 +940,7 @@ def finalize_preflight_control(path, phase):
     e2.write_json(scratch / 'config-facts.json', facts)
     for process in phase['processes']:
         process.update(block='preflight', projection='full')
+        process['process']['cwd'] = str(RUNNER.parents[2] / 'backend')
         directory = path / 'preflight' / process['scenario']
         for name, value in [('process.json', process['process']), ('audit.json', process),
                             ('preflight-record.json', process['probe_audit']['preflight']),
@@ -971,6 +970,17 @@ def finalize_preflight_control(path, phase):
     for name, digest in expected.items(): e2.freeze_evidence(path / name, digest)
     e2.write_json(path / 'evidence-receipt.json', {'expected': expected, 'final_members': ['phase.json']})
     e2.write_json(path / 'artifact-hashes.json', e2.artifact_hashes(path))
+
+
+def control_config_facts(backend):
+    """Dummy resolved facts, retaining the real frozen Wrangler byte identity."""
+    return dict(inherited_once=True, plugins_same=True, pool_options_same=True,
+                pool_options_except_wrangler_path_same=True,
+                wrangler_original_config='./wrangler.toml', wrangler_config=str(Path(backend) / 'wrangler.toml'),
+                wrangler_sha256=WranglerPathControls.WRANGLER_SHA256,
+                pool_options_sha256='a' * 64,
+                isolatedStorage=False, remote_bindings=False, persistent_override=False,
+                test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
 
 
 class PreflightControls(DisposableControls):
@@ -1304,7 +1314,7 @@ class InferenceControls(unittest.TestCase):
 class FinalizationControls(DisposableControls):
     def snapshot_sources(self):
         return ('backend/tests/capacity/capacity_test.ts', 'backend/vitest.capacity.config.ts',
-                'backend/package.json', 'backend/package-lock.json', *e2.ALLOWED)
+                'backend/package.json', 'backend/package-lock.json', 'backend/wrangler.toml', *e2.ALLOWED)
 
     def finalized_control(self, cleanup_failed=False, source_failed=False, artifact_mutation=None):
         processes = supportive_control_cohort()
@@ -1567,9 +1577,7 @@ class CommandPhaseControls(DisposableControls):
             target = checkout / name; target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes((RUNNER.parents[2] / name).read_bytes())
         scratch = checkout / 'backend/test-owned-scratch'; scratch.mkdir()
-        facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True,
-                     isolatedStorage=False, remote_bindings=False, persistent_override=False,
-                     test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+        facts = control_config_facts(checkout / 'backend')
         (scratch / 'config-facts.json').write_text(json.dumps(facts))
         (scratch / 'config.ts').write_bytes(e2.CONFIG)
         (scratch / 'setup.ts').write_bytes(e2.expand_setup((RUNNER.parents[2] / e2.ALLOWED[0]).read_bytes())['full'])
@@ -2108,9 +2116,7 @@ class NativeScratchArchiveControls(DisposableControls):
             target.write_bytes((RUNNER.parents[2] / name).read_bytes())
         output = case / 'evidence'
         identity = dict(candidate='1' * 40, ref=e2.REF, run='12', attempt='1', runtime={'control_only': True})
-        facts = dict(inherited_once=True, plugins_same=True, pool_options_same=True, isolatedStorage=False,
-                     remote_bindings=False, persistent_override=False,
-                     test_original=dict(include=['tests/capacity/capacity_test.ts'], testTimeout=600000, hookTimeout=60000))
+        facts = control_config_facts(checkout / 'backend')
         if facts_mutation: facts_mutation(facts)
         source = {'manifest': {name: {'sha256': hashlib.sha256((checkout / name).read_bytes()).hexdigest()}
                                for name in e2.SNAPSHOT_SOURCES}}
@@ -2145,6 +2151,7 @@ class NativeScratchArchiveControls(DisposableControls):
             (directory / 'stdout.raw').write_bytes(raw)
             (directory / 'stderr.raw').write_bytes(b'')
             receipt = dict(returncode=0, cleanup_ok=True, timed_out=False, spawn_error=None, descendants_after_exit=[],
+                           cwd=str(cwd),
                            stdout_sha256=hashlib.sha256(raw).hexdigest(), stderr_sha256=hashlib.sha256(b'').hexdigest())
             e2.write_json(directory / 'process.json', receipt)
             return receipt
@@ -2378,49 +2385,195 @@ class ExecutorPoolControls(DisposableControls):
                     self.assertTrue(all('resolved config' in p['error'] or 'malformed evidence' in p['error'] for p in trace['phase']['processes']))
 
     def test_resolved_workers_config_keeps_original_objects_and_rejects_missing_or_unsafe_workers(self):
-        # Execute the checked-in config body with local objects; no adapter import,
-        # Vitest, Workers, migrations or D1 operation is executed.
+        # The path contract now needs real owned files. Reuse the source-bound
+        # body harness; it still imports no adapter and performs no D1 operation.
+        control = WranglerPathControls('test_active_scratch_config_resolves_same_tracked_wrangler_bytes')
+        control.root = self.root
+        result, backend, scratch = control.configured()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        facts = json.loads((scratch / 'config-facts.json').read_text())
+        self.assertEqual(facts['binding_names'], ['TEST_MIGRATIONS'])
+        self.assertEqual(facts['binding_hashes']['TEST_MIGRATIONS'], hashlib.sha256(json.dumps(['CONTROL ONLY'], separators=(',', ':')).encode()).hexdigest())
+        self.assertTrue(facts['pool_options_same']); self.assertTrue(facts['plugins_same'])
+        self.assertFalse(facts['isolatedStorage'])
+        self.assertEqual(facts['wrangler_config'], str(backend / 'wrangler.toml'))
+        self.assertEqual(facts['setup_path'], str(scratch / 'setup.ts'))
+        mutations = ['delete resolved.test.poolOptions.workers;', 'delete resolved.test.poolOptions;',
+                     'resolved.test.poolOptions.workers.isolatedStorage=true;',
+                     "resolved.test.poolOptions.workers.wrangler.configPath='./foreign.toml';",
+                     'resolved.test.poolOptions.workers.experimental_remoteBindings=true;',
+                     "resolved.test.poolOptions.workers.miniflare.d1Databases=['foreign'];",
+                     "resolved.test.poolOptions.workers.miniflare.d1Persist='foreign';",
+                     "resolved.test.poolOptions.workers.miniflare.persist='foreign';",
+                     "resolved.test.setupFiles=['foreign'];"]
+        for index, mutation in enumerate(mutations):
+            with self.subTest(mutation=mutation):
+                control.root = self.root / str(index); control.root.mkdir()
+                result, _, scratch = control.configured(mutation=mutation)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((scratch / 'config-facts.json').exists())
+
+
+class WranglerPathControls(DisposableControls):
+    members = NativeScratchArchiveControls.members
+    WRANGLER_SHA256 = 'c54fae36ad2d0eac2098cff9396f7405fe852b0ca8a82e261945db1987410a3f'
+    POOL_SHA256 = '188e21016501691fdcbcbca964cda86a71821114ccd3f36e78d683892b86271e'
+
+    def pinned_resolution(self):
+        # Read installed source only; never import or execute the adapter.
+        candidates = (RUNNER.parents[2] / 'backend/node_modules', Path('/root/dining_log/backend/node_modules'))
+        modules = next(p for p in candidates if (p / '@cloudflare/vitest-pool-workers/package.json').is_file())
+        package = json.loads((modules / '@cloudflare/vitest-pool-workers/package.json').read_text())
+        lock = json.loads((RUNNER.parents[2] / 'backend/package-lock.json').read_text())
+        self.assertEqual(package['version'], '0.8.49')
+        self.assertEqual(package['version'], lock['packages']['node_modules/@cloudflare/vitest-pool-workers']['version'])
+        source = (modules / '@cloudflare/vitest-pool-workers/dist/pool/index.mjs').read_bytes()
+        self.assertEqual(hashlib.sha256(source).hexdigest(), self.POOL_SHA256)
+        for rule in (b'return project.config.config ?? project.path;',
+                     b'const rootPath = typeof projectPath === "string" ? path2.dirname(projectPath) : "";',
+                     b'const configPath = path2.resolve(rootPath, options.wrangler.configPath);'):
+            self.assertIn(rule, source)
+
+    def configured(self, mutation='', target_mutation=None, body_mutation=None):
+        self.pinned_resolution()
+        backend = self.root / 'backend'; backend.mkdir(exist_ok=True)
+        target = backend / 'wrangler.toml'
+        raw = (RUNNER.parents[2] / 'backend/wrangler.toml').read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), self.WRANGLER_SHA256)
+        target.write_bytes(raw)
+        scratch = backend / '.capacity-e2-scratch-12-1'; scratch.mkdir(exist_ok=True)
+        (scratch / 'config.ts').write_bytes(e2.CONFIG)
+        (scratch / 'setup.ts').write_text('CONTROL ONLY; no setup execution')
+        if target_mutation: target_mutation(backend, target, scratch)
         body = '\n'.join(line for line in e2.CONFIG.decode().splitlines() if not line.startswith('import '))
         body = body.replace('export default async function(configEnv)', 'async function configure(configEnv)')
-        harness = self.root / 'resolved-config-control.cjs'
-        harness.write_text(r'''
-const assert = require('node:assert/strict');
-const { createHash } = require('node:crypto');
-const fileURLToPath = url => url.pathname;
-const importMeta = {url: 'file:///owned/backend/.capacity-e2-scratch-12-1/config.ts'};
-let facts, calls;
-const writeFileSync = (url, raw) => { facts = JSON.parse(raw); };
-let resolved;
+        if body_mutation: body = body_mutation(body)
+        harness = scratch / 'config-control.mjs'
+        harness.write_text('''import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+let calls=0;
+const resolved={plugins:[{name:'original-workers-plugin'}],test:{include:['tests/capacity/capacity_test.ts'],testTimeout:600000,hookTimeout:60000,
+  poolOptions:{workers:{isolatedStorage:false,wrangler:{configPath:'./wrangler.toml'},
+    miniflare:{compatibilityDate:'2025-06-17',bindings:{TEST_MIGRATIONS:['CONTROL ONLY']}}}}}};
+''' + mutation + '''
+const before = structuredClone(resolved.test.poolOptions);
 const original = async () => { calls++; return resolved; };
-function baseline() {
-  calls=0;
-  return {plugins:[{name:'original-workers-plugin'}],test:{include:['tests/capacity/capacity_test.ts'],testTimeout:600000,hookTimeout:60000,
-    poolOptions:{workers:{isolatedStorage:false,wrangler:{configPath:'./wrangler.toml'},
-      miniflare:{compatibilityDate:'2025-06-17',bindings:{TEST_MIGRATIONS:['CONTROL ONLY']}}}}}};
-}
-''' + body.replace('import.meta', 'importMeta') + r'''
-(async () => {
-  resolved=baseline(); const result=await configure({});
-  assert.equal(calls,1); assert.equal(result.plugins,resolved.plugins);
-  assert.equal(result.test.poolOptions,resolved.test.poolOptions);
-  assert.equal(result.test.poolOptions.workers,resolved.test.poolOptions.workers);
-  assert.deepEqual(facts.binding_names,['TEST_MIGRATIONS']);
-  assert.equal(facts.binding_hashes.TEST_MIGRATIONS, createHash('sha256').update(JSON.stringify(resolved.test.poolOptions.workers.miniflare.bindings.TEST_MIGRATIONS)).digest('hex'));
-  assert.equal(facts.pool_options_same,true); assert.equal(facts.plugins_same,true);
-  assert.equal(facts.isolatedStorage,false); assert.equal(facts.wrangler_config,'./wrangler.toml');
-  assert.equal(facts.setup_path,'/owned/backend/.capacity-e2-scratch-12-1/setup.ts');
-  const mutations=[r=>delete r.test.poolOptions.workers, r=>delete r.test.poolOptions,
-    r=>r.test.poolOptions.workers.isolatedStorage=true, r=>r.test.poolOptions.workers.wrangler.configPath='./foreign.toml',
-    r=>r.test.poolOptions.workers.experimental_remoteBindings=true,
-    r=>r.test.poolOptions.workers.miniflare.d1Databases=['foreign'], r=>r.test.poolOptions.workers.miniflare.d1Persist='foreign',
-    r=>r.test.poolOptions.workers.miniflare.persist='foreign', r=>r.test.setupFiles=['foreign']];
-  for(const mutate of mutations) { resolved=baseline(); mutate(resolved); await assert.rejects(configure({})); }
-  console.log('configured Workers object identity and safety guards passed; File.pool remains separate');
-})().catch(e=>{console.error(e);process.exitCode=1;});
+''' + body + '''
+const result=await configure({});
+assert.equal(calls,1); assert.equal(result.plugins,resolved.plugins);
+assert.equal(result.test.poolOptions,resolved.test.poolOptions);
+assert.equal(result.test.poolOptions.workers,resolved.test.poolOptions.workers);
+const effective=result.test.poolOptions.workers.wrangler.configPath;
+const normalized=structuredClone(result.test.poolOptions); normalized.workers.wrangler.configPath='./wrangler.toml';
+assert.deepEqual(normalized,before,'non-path pool option drift');
+const activeConfig=fileURLToPath(new URL('./config.ts',import.meta.url));
+const adapterTarget=resolve(dirname(activeConfig),effective);
+const originalTarget=resolve(dirname(fileURLToPath(new URL('../vitest.capacity.config.ts',import.meta.url))),'./wrangler.toml');
+console.log(JSON.stringify({active_config:activeConfig,inherited_path:'./wrangler.toml',effective_path:effective,
+  adapter_target:adapterTarget,original_target:originalTarget,pool_source_sha256:''' + json.dumps(self.POOL_SHA256) + '''}));
+const bytes=readFileSync(adapterTarget);
+assert.equal(adapterTarget,originalTarget);
+assert.equal(createHash('sha256').update(bytes).digest('hex'),''' + json.dumps(self.WRANGLER_SHA256) + ''');
 ''')
         result = subprocess.run(['node', str(harness)], capture_output=True, text=True, timeout=10)
+        print('CONTROL pinned Wrangler resolution:', result.returncode, result.stdout.strip(), result.stderr.strip())
+        return result, backend, scratch
+
+    def test_active_scratch_config_resolves_same_tracked_wrangler_bytes(self):
+        result, backend, scratch = self.configured()
         self.assertEqual(result.returncode, 0, result.stderr)
-        print(result.stdout.strip())
+        facts = json.loads((scratch / 'config-facts.json').read_text())
+        self.assertEqual(facts['wrangler_config'], str(backend / 'wrangler.toml'))
+        self.assertEqual(facts['wrangler_sha256'], self.WRANGLER_SHA256)
+        self.assertTrue(facts['pool_options_except_wrangler_path_same'])
+
+    def test_unsafe_wrangler_source_is_rejected_before_config_use(self):
+        def symlink(backend, target, scratch):
+            outside = self.root / 'foreign.toml'; outside.write_bytes(target.read_bytes())
+            target.unlink(); target.symlink_to(outside)
+        cases = {
+            'missing': lambda b, t, s: t.unlink(),
+            'changed': lambda b, t, s: t.write_bytes(t.read_bytes() + b'\n# drift\n'),
+            'symlink': symlink,
+            'foreign-scratch': lambda b, t, s: (s / 'wrangler.toml').write_bytes(t.read_bytes()),
+            'dev-vars': lambda b, t, s: (b / '.dev.vars').write_bytes(b'CONTROL ONLY'),
+            'env': lambda b, t, s: (b / '.env').write_bytes(b'CONTROL ONLY'),
+        }
+        original_root = self.root
+        for name, mutate in cases.items():
+            with self.subTest(name=name):
+                self.root = original_root / name; self.root.mkdir()
+                result, _, scratch = self.configured(target_mutation=mutate)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((scratch / 'config-facts.json').exists(), 'unsafe config was accepted before use')
+        self.root = original_root
+
+    def test_path_and_non_path_receipt_drift_close_native_and_preflight(self):
+        mutations = {
+            'missing-hash': lambda f: f.pop('wrangler_sha256'),
+            'changed-hash': lambda f: f.update(wrangler_sha256='0' * 64),
+            'relative': lambda f: f.update(wrangler_config='./wrangler.toml'),
+            'outside': lambda f: f.update(wrangler_config='/foreign/wrangler.toml'),
+            'traversal': lambda f: f.update(wrangler_config=f['wrangler_config'].replace('/wrangler.toml', '/../wrangler.toml')),
+            'non-path-drift': lambda f: f.update(pool_options_except_wrangler_path_same=False),
+            'missing-pool-hash': lambda f: f.pop('pool_options_sha256'),
+            'changed-original': lambda f: f.update(wrangler_original_config='./foreign.toml'),
+        }
+        for name, mutate in mutations.items():
+            with self.subTest(name=name):
+                _, trace = NativeScratchArchiveControls.native_scratch_control(self, facts_mutation=mutate)
+                self.assertEqual(trace['code'], 1)
+                self.assertFalse(trace['phase']['infrastructure_valid'])
+                self.assertFalse(trace['reopened'])
+
+    def test_traversal_overrides_and_any_added_pool_option_are_rejected(self):
+        mutations = [
+            "resolved.test.poolOptions.workers.wrangler.configPath='../wrangler.toml';",
+            "resolved.test.poolOptions.workers.wrangler.configPath='/foreign/wrangler.toml';",
+            "resolved.test.poolOptions.workers.wrangler.environment='foreign';",
+            "resolved.test.poolOptions.workers.miniflare.d1Persist='/foreign';",
+            "resolved.test.poolOptions.workers.miniflare.persist=true;",
+            "resolved.test.poolOptions.workers.miniflare.remoteProxyConnectionString='CONTROL';",
+            "resolved.test.poolOptions.workers.miniflare.workers=[];",
+            "resolved.test.poolOptions.workers.miniflare.compatibilityDate='2026-01-01';",
+            "resolved.test.poolOptions.workers.unrecognized='drift';",
+            "resolved.test.poolOptions.foreign={};",
+        ]
+        for index, mutation in enumerate(mutations):
+            with self.subTest(mutation=mutation):
+                control = WranglerPathControls('test_active_scratch_config_resolves_same_tracked_wrangler_bytes')
+                control.root = self.root / str(index); control.root.mkdir()
+                result, _, scratch = control.configured(mutation=mutation)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((scratch / 'config-facts.json').exists())
+
+    def test_non_path_mutation_during_rebase_is_rejected(self):
+        result, _, scratch = self.configured(body_mutation=lambda body: body.replace(
+            'workers.wrangler.configPath = wranglerPath;',
+            "workers.wrangler.configPath = wranglerPath; workers.miniflare.compatibilityDate='drift';"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('non-path pool option drift', result.stderr)
+        self.assertFalse((scratch / 'config-facts.json').exists())
+
+    def test_preflight_reopening_rejects_rehashed_path_or_pool_drift(self):
+        mutations = (lambda f: f.update(wrangler_config='/foreign/wrangler.toml'),
+                     lambda f: f.update(wrangler_sha256='0' * 64),
+                     lambda f: f.update(pool_options_except_wrangler_path_same=False),
+                     lambda f: f.update(pool_options_sha256='0' * 64))
+        for index, mutate in enumerate(mutations):
+            with self.subTest(index=index):
+                path = self.root / str(index); path.mkdir()
+                identity = PreflightControls.complete_preflight(self, path)
+                phase = json.loads((path / 'phase.json').read_text())
+                mutate(phase['resolved_config'])
+                e2.write_json(path / 'phase.json', phase)
+                # A refreshed inventory cannot bless semantic receipt drift.
+                e2.write_json(path / 'artifact-hashes.json', e2.artifact_hashes(path))
+                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+
 
 class ScratchRetentionControls(DisposableControls):
     members = NativeScratchArchiveControls.members
