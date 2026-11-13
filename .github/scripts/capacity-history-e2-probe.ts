@@ -5,6 +5,7 @@ import { sha256 } from '@noble/hashes/sha256';
 
 const projection = '__E2_PROJECTION__';
 const savedDB = env.DB;
+const savedConsole = console;
 const savedLog = console.log;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -205,7 +206,14 @@ afterAll(async suite => {
   let failure;
   let owned = false;
   let restored = false;
+  let loggerIdentity;
   try {
+    // Boolean-only diagnostics: pinned Console getters may rebind methods.
+    // These observations never authorize ownership or database reads.
+    const hookConsole = console;
+    const hookLog = hookConsole.log;
+    loggerIdentity={hook_console_same:hookConsole===savedConsole,hook_log_capture:hookLog===capture,
+      hook_log_saved:hookLog===savedLog,hook_log_stable:hookConsole.log===hookLog};
     const file = suite;
     // The pinned Workers adapter uses the threads executor identity; configured
     // Workers ownership is independently guarded by the resolved config chain.
@@ -289,13 +297,17 @@ afterAll(async suite => {
       restored=console.log===savedLog;
     }
     if(!owned || !restored) failure=failure ?? new Error('console wrapper ownership/restoration failed');
+    const exitConsole = console;
+    const exitLog = exitConsole.log;
+    Object.assign(loggerIdentity,{exit_console_same:exitConsole===savedConsole,exit_log_capture:exitLog===capture,
+      exit_log_saved:exitLog===savedLog,exit_log_stable:exitConsole.log===exitLog});
     if(preflight) {
       preflight.capture.wrapper_restored=restored;
       preflight.capture.unexpected_log_calls=unexpectedLogCalls;
       savedLog.call(console,'E2_PREFLIGHT '+JSON.stringify(preflight));
     }
     if(evidence) savedLog.call(console,'E2_HISTORY_RESULT '+JSON.stringify(evidence));
-    if(failure) savedLog.call(console,'E2_HISTORY_ERROR '+JSON.stringify({schemaVersion:1,error:String(failure),attempted_reads:attemptedReads,emit_count:emitCount,wrapper_owned:owned,wrapper_restored:restored}));
+    if(failure) savedLog.call(console,'E2_HISTORY_ERROR '+JSON.stringify({schemaVersion:1,error:String(failure),attempted_reads:attemptedReads,emit_count:emitCount,wrapper_owned:owned,wrapper_restored:restored,logger_identity:loggerIdentity}));
   }
   if(failure) throw failure;
 });

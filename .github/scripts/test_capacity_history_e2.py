@@ -3711,3 +3711,248 @@ class SupplementalConfigInputControls(DisposableControls):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# Execute the complete setup and its registered root hook. No Vitest import,
+# Workers process, or D1 database is constructed by this deterministic control.
+PROBE_LIFECYCLE_VM = r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const { Writable } = require('node:stream');
+const { formatWithOptions } = require('node:util');
+const { createHash } = require('node:crypto');
+const input = JSON.parse(fs.readFileSync(0, 'utf8'));
+const output = [], calls = [];
+let hook;
+const logger = (...args) => output.push(args.join(' ') + '\n');
+let consoleFixture = {log: logger};
+if (input.console_source) {
+  const native = vm.createContext({Writable, formatWithOptions, console: {log: logger}});
+  vm.runInContext(input.console_source.replace(/^import .*;\n/gm, '').replace(/export \{[\s\S]*?\};\n/, ''), native);
+  const Console = vm.runInContext('Console', native);
+  consoleFixture = new Console({stdout: new Writable({write(data, encoding, done) {
+    output.push(String(data)); done();
+  }})});
+}
+let clock = 1000;
+const reads = input.attestation.reads;
+const fullRows = reads.find(r => r.label === 'history_full').results.map((row, index) => {
+  const result = {};
+  for (const key of row.column_order) result[key] = null;
+  for (const key of ['id','user_id','restaurant_id','entity_type','entity_id','change_set_id',
+      'entity_version_before','entity_version_after','created_at']) result[key] = row[key];
+  result.diff_json = JSON.stringify([{field:'review',before:'雪'.repeat(4000),after:'餐'.repeat(4000)}]);
+  result.search_text = '雪'.repeat(8000);
+  return result;
+});
+const meta = {duration:0.5,size_after:123,rows_read:10,rows_written:0,last_row_id:0,changed_db:false,changes:0};
+const db = {prepare(sql) {
+  return {bind(...params) {return {async all() {
+    calls.push({sql,params});
+    let results;
+    if (sql.startsWith('EXPLAIN QUERY PLAN ')) {
+      results = [{id:4,parent:0,notused:0,detail:'CONTROL ONLY plan'}];
+    } else {
+      const read = reads.find(r => r.sql === sql && JSON.stringify(r.params) === JSON.stringify(params));
+      if (!read) throw new Error('CONTROL unexpected SQL/params');
+      results = read.label === 'history_full' ? fullRows : read.results;
+    }
+    if (input.exit_drift && calls.length === 1) sandbox.console.log = function foreign() {};
+    return {success:true,meta:{...meta},results:structuredClone(results)};
+  }}}};
+}};
+const env = {DB:db,TEST_MIGRATIONS:[]};
+const sandbox = vm.createContext({env,console:consoleFixture,TextEncoder,TextDecoder,
+  sha256:bytes => new Uint8Array(createHash('sha256').update(bytes).digest()),
+  Date:{now:() => ++clock},afterAll:fn => {if(hook) throw new Error('duplicate hook'); hook=fn;}});
+const source = input.source.replace(/^import .*;\n/gm, '').replace('__E2_PROJECTION__', input.projection || '*');
+vm.runInContext(source, sandbox);
+const capture = vm.runInContext('capture', sandbox);
+const savedLog = vm.runInContext('savedLog', sandbox);
+const sameConsole = sandbox.console;
+for (let index=0;index<(input.emit_count ?? 1);index++) sandbox.console.log(input.raw_emit);
+if (input.missing_raw) vm.runInContext('rawEmit=undefined', sandbox);
+if (input.db_drift) env.DB = {};
+if (input.transition === 'saved') sandbox.console.log = savedLog;
+if (input.transition === 'foreign') sandbox.console.log = function foreign() {};
+if (input.transition === 'object') sandbox.console.log = {};
+if (input.transition === 'console') sandbox.console = {log:savedLog};
+const entryLog = sandbox.console.log;
+const entry = {console_same:sandbox.console===sameConsole,log_capture:entryLog===capture,
+  log_saved:entryLog===savedLog,log_stable:sandbox.console.log===entryLog};
+const file = {type:'suite',filepath:input.filepath,pool:input.pool || 'threads',tasks:input.leaves};
+file.file = input.nonroot ? {} : file;
+(async () => {
+  let error = null;
+  try {await hook(file);} catch(failure) {error=String(failure);}
+  const exitLog = sandbox.console.log;
+  const exit = {console_same:sandbox.console===sameConsole,log_capture:exitLog===capture,
+    log_saved:exitLog===savedLog,log_stable:sandbox.console.log===exitLog};
+  process.stdout.write(JSON.stringify({error,entry,exit,calls,stdout:output.join('')}));
+})().catch(error => {process.stderr.write(String(error));process.exitCode=1;});
+"""
+
+
+class ConsoleLifecycleControls(unittest.TestCase):
+    PINNED_CONSOLE_SHA256 = 'a013d8808bca78e460b11d11e8189c9dc7d0ae95a00b502a150b1d5bd80c5d1b'
+
+    def lifecycle(self, pinned=False, original=None, **changes):
+        original = original or dummy_original()
+        parts = dummy_probe_raw(projection='*')
+        data = dict(source=RUNNER.with_name('capacity-history-e2-probe.ts').read_text(),
+                    raw_emit=emit(original)[:-1].decode(), attestation=dummy_attestation(),
+                    leaves=[dict(type='test', **leaf) for leaf in parts[1]['original_task']['leaves']],
+                    filepath=parts[1]['original_task']['filepath'])
+        for leaf in data['leaves']: leaf['result'] = dict(state=leaf.pop('state'))
+        data.update(changes)
+        if pinned:
+            candidates = (RUNNER.parents[2] / 'backend/node_modules', Path('/root/dining_log/backend/node_modules'))
+            modules = next(p for p in candidates if (p / '@cloudflare/vitest-pool-workers/package.json').is_file())
+            package = json.loads((modules / '@cloudflare/vitest-pool-workers/package.json').read_text())
+            self.assertEqual(package['version'], '0.8.49')
+            source = (modules / '@cloudflare/vitest-pool-workers/dist/worker/lib/node/console.mjs').read_bytes()
+            self.assertEqual(hashlib.sha256(source).hexdigest(), self.PINNED_CONSOLE_SHA256)
+            data['console_source'] = source.decode()
+        result = subprocess.run(['node', '-e', PROBE_LIFECYCLE_VM], input=json.dumps(data),
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '')
+        value = json.loads(result.stdout)
+        print('CONTROL actual probe lifecycle', json.dumps({k:v for k,v in value.items() if k != 'stdout'}, separators=(',', ':')))
+        return value
+
+    def error_record(self, value, message):
+        self.assertEqual(value['error'], 'Error: ' + message)
+        raw = value['stdout'].encode()
+        self.assertEqual(raw.count(b'E2_HISTORY_ERROR '), 1)
+        self.assertNotIn(b'E2_PREFLIGHT ', raw)
+        self.assertNotIn(b'E2_HISTORY_RESULT ', raw)
+        _, error = e2.record(raw, 'E2_HISTORY_ERROR')
+        self.assertEqual(error['error'], value['error'])
+        self.assertLess(len(json.dumps(error).encode()), 2048)
+        return error
+
+    def test_actual_pinned_console_rebinds_without_restoration_and_retains_capture(self):
+        value = self.lifecycle(pinned=True)
+        error = self.error_record(value, 'capture/binding/projection prerequisites')
+        self.assertEqual(value['entry'], dict(console_same=True,log_capture=False,log_saved=False,log_stable=False))
+        self.assertEqual(value['exit'], value['entry'])
+        self.assertEqual(value['calls'], [])
+        self.assertEqual(error['attempted_reads'], [])
+        self.assertEqual(error['emit_count'], 1)
+        self.assertIs(error['wrapper_owned'], False)
+        self.assertIs(error['wrapper_restored'], False)
+        self.assertEqual(value['stdout'].count('CAPACITY_RESULT '), 1)
+
+    def test_pinned_failure_records_only_boolean_logger_identity_diagnostics(self):
+        value = self.lifecycle(pinned=True)
+        error = self.error_record(value, 'capture/binding/projection prerequisites')
+        expected = {stage + '_' + key:flag for stage in ('hook','exit')
+                    for key, flag in value['entry' if stage == 'hook' else 'exit'].items()}
+        self.assertIn('logger_identity', error)
+        self.assertEqual(error['logger_identity'], expected)
+        self.assertTrue(all(type(flag) is bool for flag in error['logger_identity'].values()))
+        self.assertEqual(value['calls'], [])
+
+    def test_plain_capture_no_transition_is_accepted_and_self_restored(self):
+        value = self.lifecycle()
+        self.assertIsNone(value['error'])
+        self.assertEqual(value['entry'], dict(console_same=True,log_capture=True,log_saved=False,log_stable=True))
+        self.assertEqual(value['exit'], dict(console_same=True,log_capture=False,log_saved=True,log_stable=True))
+        raw = value['stdout'].encode()
+        self.assertEqual(raw.count(b'CAPACITY_RESULT '), 1)
+        self.assertEqual(raw.count(b'E2_PREFLIGHT '), 1)
+        self.assertEqual(raw.count(b'E2_HISTORY_RESULT '), 1)
+        self.assertNotIn(b'E2_HISTORY_ERROR ', raw)
+        preflight = e2.record(raw, 'E2_PREFLIGHT')[1]
+        history = e2.record(raw, 'E2_HISTORY_RESULT')[1]
+        self.assertIs(preflight['capture']['wrapper_owned'], True)
+        self.assertIs(preflight['capture']['wrapper_restored'], True)
+        original = e2.audit_original(raw, 'p1-4500')
+        for key in ('payload_sha256','payload_utf8_bytes','raw_emit_sha256'):
+            self.assertEqual(preflight['capture'][key], original[key])
+        audited = e2.audit_probe(raw, original, 'p1-4500', '*', RUNNER.parents[2])
+        self.assertEqual(audited['probe_calls'], 30)
+        expected = [dict(sql=r['sql'],params=r['params']) for r in dummy_attestation()['reads']]
+        plans = [dict(sql='EXPLAIN QUERY PLAN ' + sql,params=[USER,'restaurant',SELECTED['p1-4500']])
+                 for sql in (HISTORY,HISTORY.replace('SELECT *','SELECT id',1))]
+        self.assertEqual(value['calls'], expected + plans + [dict(sql=HISTORY,params=[USER,'restaurant',SELECTED['p1-4500']])] * 30 + plans + expected)
+        self.assertEqual(len(history['samples']), 30)
+
+    def test_unproven_saved_and_foreign_logger_identities_remain_rejected_before_reads(self):
+        for transition in ('saved','foreign','object','console'):
+            with self.subTest(transition=transition):
+                value = self.lifecycle(transition=transition)
+                error = self.error_record(value, 'capture/binding/projection prerequisites')
+                self.assertEqual(value['calls'], [])
+                self.assertEqual(error['attempted_reads'], [])
+                self.assertIs(error['wrapper_owned'], False)
+                self.assertIs(error['wrapper_restored'], False)
+                expected = {stage + '_' + key:flag for stage in ('hook','exit')
+                            for key, flag in value['entry' if stage == 'hook' else 'exit'].items()}
+                self.assertIn('logger_identity', error)
+                self.assertEqual(error['logger_identity'], expected)
+
+    def test_actual_hook_rejects_emit_binding_and_projection_prerequisites_before_reads(self):
+        for changes in (dict(emit_count=0),dict(emit_count=2),dict(missing_raw=True),
+                        dict(db_drift=True),dict(projection='foreign')):
+            with self.subTest(changes=changes):
+                value = self.lifecycle(**changes)
+                error = self.error_record(value, 'capture/binding/projection prerequisites')
+                self.assertEqual(value['calls'], [])
+                self.assertEqual(error['attempted_reads'], [])
+                self.assertIs(error['wrapper_restored'], True)
+
+    def test_actual_hook_rejects_wrong_file_pool_root_and_leaf_before_reads(self):
+        for changes in (dict(filepath='/backend/tests/capacity/foreign.ts'),dict(pool='forks'),dict(nonroot=True)):
+            with self.subTest(changes=changes):
+                value = self.lifecycle(**changes)
+                self.error_record(value, 'original root file/pool')
+                self.assertEqual(value['calls'], [])
+        for state in ('run','skip',None):
+            leaves = [dict(type='test', **leaf) for leaf in dummy_probe_raw()[1]['original_task']['leaves']]
+            leaves[0]['state'] = state
+            # Native tasks hold completion state inside result, rather than on the leaf.
+            for leaf in leaves: leaf['result'] = dict(state=leaf.pop('state'))
+            value = self.lifecycle(leaves=leaves)
+            self.error_record(value, 'original finished selected leaf')
+            self.assertEqual(value['calls'], [])
+
+    def test_original_performance_failure_is_preserved_and_framework_still_must_complete(self):
+        original = dummy_original()
+        query = original['queries'][0]
+        for sample in query['samples']: sample['wallMs'] = 101
+        query['wallMs'] = quantiles([101] * 30)
+        original['overLimit'] = ['updated_page']
+        leaves = [dict(type='test', **leaf) for leaf in dummy_probe_raw(state='fail')[1]['original_task']['leaves']]
+        for leaf in leaves: leaf['result'] = dict(state=leaf.pop('state'))
+        value = self.lifecycle(original=original, leaves=leaves)
+        self.assertIsNone(value['error'])
+        raw = value['stdout'].encode()
+        original_audit = e2.audit_original(raw, 'p1-4500')
+        self.assertTrue(original_audit['performance_failed'])
+        probe = e2.audit_probe(raw, original_audit, 'p1-4500', '*', RUNNER.parents[2])
+        self.assertEqual(probe['original_task_state'], 'fail')
+        receipt = dict(returncode=1,timed_out=False,cleanup_ok=True,spawn_error=None,descendants_after_exit=[])
+        streams = ((' RUN  v3.2.4 ' + str(RUNNER.parents[2] / 'backend') + '\n').encode() + raw + framework_summary('fail'),framework_stderr('fail'))
+        audited = e2.audit_process(receipt, streams, 'p1-4500', '*', RUNNER.parents[2])
+        self.assertTrue(audited['infrastructure_valid'], audited['audit_errors'])
+        self.assertTrue(audited['original_failed'])
+        self.assertTrue(audited['failed'])
+        contaminated = e2.audit_process(receipt, (streams[0],streams[1]+b'Unhandled Errors\n'), 'p1-4500', '*', RUNNER.parents[2])
+        self.assertFalse(contaminated['infrastructure_valid'])
+        self.assertTrue(contaminated['original_failed'])
+
+    def test_parser_does_not_treat_logger_diagnostics_as_ownership_or_prefix_authority(self):
+        for key in ('wrapper_owned','wrapper_restored'):
+            parts = dummy_probe_raw()
+            parts[1]['capture'][key] = False
+            parts[1]['capture']['logger_identity'] = dict(hook_log_capture=True,exit_log_saved=True)
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError,'console ownership'):
+                ProbeControls.audit(self, parts)
+        parts = dummy_probe_raw()
+        raw = probe_log(*parts)
+        for broken in (raw+b'E2_PREFLIGHT {}\n',raw+b'E2_HISTORY_RESULT {}\n',
+                       raw.replace(b'E2_PREFLIGHT ',b'E2_PREFLIGHT malformed '),raw+b'E2_HISTORY_ERROR {}\n'):
+            with self.subTest(prefix=broken[-40:]), self.assertRaises(ValueError):
+                e2.audit_probe(broken,e2.audit_original(parts[0],'p1-4500'),'p1-4500','id',RUNNER.parents[2])
