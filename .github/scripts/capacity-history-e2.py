@@ -359,7 +359,7 @@ def expand_setup(template):
     require(variants['full'].replace(b"projection = '*'", b"projection = 'id'", 1) == variants['id'], 'only projection may differ')
     return variants
 
-CONFIG = b"""import original from '../vitest.capacity.config';
+CONFIG = rb"""import original from '../vitest.capacity.config';
 import { dirname, resolve, basename } from 'node:path';
 import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';

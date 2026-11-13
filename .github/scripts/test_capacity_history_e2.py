@@ -3055,5 +3055,302 @@ class ScratchRetentionControls(DisposableControls):
                 else: self.assertEqual(target.read_bytes(), bytes.fromhex(trace['original_hex'][member]))
                 self.assert_retained_failure(output, trace, member)
 
+class WorkflowEvidenceBoundaryControls(DisposableControls):
+    """Execute source-bound Bash with invented stdlib fixtures, never native tools."""
+
+    def workflow(self):
+        return (RUNNER.parents[2] / '.github/workflows/capacity-history-e2.yml').read_text()
+
+    def step(self, name):
+        return self.workflow().split('      - name: ' + name + '\n', 1)[1].split('\n      - ', 1)[0]
+
+    def value(self, step, key, indent=10):
+        prefix = ' ' * indent + key + ': '
+        return next(line[len(prefix):] for line in step.splitlines() if line.startswith(prefix))
+
+    def run_text(self, step):
+        return '\n'.join(line[10:] for line in step.split('        run: |\n', 1)[1].splitlines()) + '\n'
+
+    def resolve_temp_path(self, expression, temp):
+        self.assertEqual(expression.count('${{ runner.temp }}'), 1)
+        resolved = expression.replace('${{ runner.temp }}', str(temp))
+        self.assertNotIn('$' + '{{', resolved)
+        self.assertFalse(any(c in resolved for c in '*?[]\r\n'), 'no wildcard upload/fixture paths')
+        return Path(resolved)
+
+    def layout(self, label):
+        base = self.root / label
+        temp = base / 'runner-temp'; temp.mkdir(parents=True)
+        checkout = base / 'checkout'; checkout.mkdir()
+        artifact = self.step('Always upload attempted raw evidence')
+        controls = self.step('Stdlib dummy controls')
+        upload = self.resolve_temp_path(self.value(artifact, 'path'), temp); upload.mkdir()
+        disposable = self.resolve_temp_path(self.value(controls, 'E2_TEST_EVIDENCE'), temp)
+        return temp, checkout, upload, disposable
+
+    def environment(self, temp, checkout, disposable):
+        return dict(os.environ, RUNNER_TEMP=str(temp), GITHUB_WORKSPACE=str(checkout),
+                    E2_TEST_EVIDENCE=str(disposable), GITHUB_SHA='1' * 40,
+                    GITHUB_REF=e2.REF, GITHUB_RUN_ID='12', GITHUB_RUN_ATTEMPT='1',
+                    GITHUB_EVENT_NAME='workflow_dispatch', REVIEWED_SHA='1' * 40)
+
+    def bash(self, step, checkout, env):
+        return subprocess.run(['bash', '--noprofile', '--norc', '-e', '-o', 'pipefail',
+                               '-c', self.run_text(step)], cwd=checkout, env=env,
+                              capture_output=True, timeout=10)
+
+    def direct_upload_members(self, upload):
+        self.assertTrue(upload.is_absolute() and upload.is_dir() and not upload.is_symlink()
+                        and upload.resolve() == upload, 'canonical nonsymlink upload root')
+        members = []
+        for directory, directories, files in os.walk(upload, followlinks=False):
+            for name in directories + files:
+                self.assertFalse(Path(directory, name).is_symlink(), 'no symlink artifact escape')
+            directories[:] = sorted(name for name in directories if not name.startswith('.'))
+            members.extend(str(Path(directory, name).relative_to(upload))
+                           for name in files if not name.startswith('.'))
+        return sorted(members)
+
+    def invalid_upload_names(self, members):
+        # upload-artifact/@actions/artifact's documented file-path policy, also
+        # printed by run 43461925842. Unicode is allowed; the quote rejects our
+        # intentional quote/backslash/Unicode Linux filesystem fixture.
+        invalid = ('"', ':', '<', '>', '|', '*', '?', '\r', '\n')
+        return {name: [char for char in invalid if char in name]
+                for name in members if any(char in name for char in invalid)}
+
+    def dummy_unittest(self, checkout, failed=False):
+        scripts = checkout / '.github/scripts'; scripts.mkdir(parents=True)
+        (scripts / 'test_capacity_history_e2.py').write_text(
+            'import os, sys, unittest\nfrom pathlib import Path\n'
+            'class CONTROL_ONLY(unittest.TestCase):\n'
+            '    def test_capture(self):\n'
+            "        Path('controls-invoked').write_bytes(b'CONTROL ONLY invoked')\n"
+            "        root = Path(os.environ['E2_TEST_EVIDENCE'])\n"
+            '        root.mkdir(parents=True, exist_ok=True)\n'
+            '        path = root / ' + repr('quote"-backslash\\-雪') + " / 'backend/wrangler.toml'\n"
+            '        path.parent.mkdir(parents=True, exist_ok=True)\n'
+            "        path.write_bytes(b'CONTROL ONLY unsafe filesystem fixture')\n"
+            "        print('CONTROL ONLY stdout capture')\n"
+            "        print('CONTROL ONLY stderr capture', file=sys.stderr)\n"
+            f'        self.assertFalse({failed!r})\n')
+
+    def test_workflow_resolved_upload_root_excludes_actual_unsafe_name_fixture(self):
+        temp, checkout, upload, disposable = self.layout('name-policy')
+        case = RelocatedConfigControls()
+        case.root = disposable / 'RelocatedConfigControls-upload-policy'; case.root.mkdir(parents=True)
+        # Execute the unchanged real adversarial control, including its Node VM
+        # stub and frozen Wrangler bytes, rather than sanitizing a renamed copy.
+        case.test_exact_injection_and_json_escaping_use_owned_canonical_paths()
+        fixture = case.root / 'quote"-backslash\\-雪/backend/wrangler.toml'
+        self.assertEqual(fixture.read_bytes(), (RUNNER.parents[2] / 'backend/wrangler.toml').read_bytes())
+        synthetic = ['attempt.json', 'controls/stdout', 'controls/stderr', 'controls/exit',
+                     'install.stdout', 'install.stderr', 'install.exit', 'guard/phase.json',
+                     'preflight/preflight/p1-4500/stdout.bin', 'preflight/preflight/plan-6000/stderr.bin',
+                     'abba/01-A/p1-4500/stdout.bin', 'abba/04-A/plan-6000/stderr.bin']
+        synthetic += ['guard/' + e2.snapshot_member(name) for name in e2.SNAPSHOT_SOURCES]
+        for name in synthetic:
+            path = upload / name; path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b'CONTROL ONLY synthetic required artifact member\n')
+        members = self.direct_upload_members(upload)
+        rejected = self.invalid_upload_names(members)
+        print('CONTROL workflow upload-name policy:', json.dumps({
+            'upload_root': str(upload.resolve()), 'disposable_root': str(disposable.resolve()),
+            'actual_unsafe_fixture': str(fixture), 'fixture_executed': True,
+            'direct_members': len(members), 'rejected': rejected}, ensure_ascii=False))
+        self.assertEqual(rejected, {}, 'GitHub upload-artifact rejects disposable fixture entries')
+        self.assertEqual(disposable, temp / 'capacity-history-e2-controls-disposable')
+        for root in (upload, checkout):
+            self.assertFalse(disposable.resolve().is_relative_to(root.resolve())
+                             or root.resolve().is_relative_to(disposable.resolve()))
+        self.assertFalse(fixture.resolve().is_relative_to(upload.resolve()))
+        self.assertEqual(set(members), set(synthetic))
+
+    def test_workflow_captures_real_unittest_success_and_failure_outside_disposable_uploads(self):
+        step = self.step('Stdlib dummy controls')
+        self.assertIn('python3 -B -m unittest discover -s .github/scripts -p test_capacity_history_e2.py -v',
+                      self.run_text(step), 'retain the full unittest discovery command')
+        for failed in (False, True):
+            with self.subTest(failed=failed):
+                temp, checkout, upload, disposable = self.layout('capture-' + str(failed))
+                self.dummy_unittest(checkout, failed)
+                result = self.bash(step, checkout, self.environment(temp, checkout, disposable))
+                expected = int(failed)
+                self.assertEqual(result.returncode, expected, result.stderr)
+                self.assertEqual((upload / 'controls/exit').read_text(), str(expected) + '\n')
+                self.assertIn(b'CONTROL ONLY stdout capture', (upload / 'controls/stdout').read_bytes())
+                stderr = (upload / 'controls/stderr').read_bytes()
+                self.assertIn(b'CONTROL ONLY stderr capture', stderr)
+                self.assertIn(b'Ran 1 test', stderr)
+                self.assertIn(b'FAILED (failures=1)' if failed else b'\nOK\n', stderr)
+                self.assertTrue((disposable / 'quote"-backslash\\-雪/backend/wrangler.toml').is_file())
+                self.assertEqual(disposable.resolve(), temp / 'capacity-history-e2-controls-disposable')
+                members = self.direct_upload_members(upload)
+                self.assertEqual(members, ['controls/exit', 'controls/stderr', 'controls/stdout'])
+                self.assertEqual(self.invalid_upload_names(members), {})
+                print('CONTROL workflow capture:', json.dumps({
+                    'unittest_exit': expected, 'shell_exit': result.returncode,
+                    'direct_artifact_members': members, 'external_unsafe_fixture_retained': True}))
+
+    def test_workflow_boundary_rejects_symlinks_aliases_overlap_and_unowned_roots(self):
+        cases = ('fixture-upload-symlink', 'fixture-checkout-symlink', 'fixture-foreign-symlink',
+                 'fixture-existing-directory', 'fixture-existing-file', 'controls-symlink',
+                 'upload-symlink', 'runner-temp-alias', 'checkout-alias', 'checkout-overlap',
+                 'outside-runner-temp', 'wildcard-fixture')
+        for name in cases:
+            with self.subTest(name=name):
+                temp, checkout, upload, disposable = self.layout(name)
+                self.dummy_unittest(checkout)
+                foreign = temp.parent / 'foreign'; foreign.mkdir()
+                sentinel = foreign / 'sentinel.txt'; sentinel.write_bytes(b'CONTROL ONLY unread foreign bytes')
+                env = self.environment(temp, checkout, disposable)
+                if name.startswith('fixture-') and name.endswith('-symlink'):
+                    target = {'fixture-upload-symlink': upload, 'fixture-checkout-symlink': checkout,
+                              'fixture-foreign-symlink': foreign}[name]
+                    disposable.parent.mkdir(parents=True, exist_ok=True)
+                    disposable.symlink_to(target, target_is_directory=True)
+                elif name == 'fixture-existing-directory':
+                    disposable.mkdir(parents=True); (disposable / 'sentinel.txt').write_bytes(sentinel.read_bytes())
+                elif name == 'fixture-existing-file':
+                    disposable.parent.mkdir(parents=True, exist_ok=True); disposable.write_bytes(sentinel.read_bytes())
+                elif name == 'controls-symlink':
+                    (upload / 'controls').symlink_to(foreign, target_is_directory=True)
+                elif name == 'upload-symlink':
+                    upload.rename(temp / 'saved-upload'); upload.symlink_to(foreign, target_is_directory=True)
+                elif name == 'runner-temp-alias':
+                    alias = temp.parent / 'temp-alias'; alias.symlink_to(temp, target_is_directory=True)
+                    env['RUNNER_TEMP'] = str(alias)
+                    env['E2_TEST_EVIDENCE'] = str(self.resolve_temp_path(
+                        self.value(self.step('Stdlib dummy controls'), 'E2_TEST_EVIDENCE'), alias))
+                elif name == 'checkout-alias':
+                    alias = temp.parent / 'checkout-alias'; alias.symlink_to(checkout, target_is_directory=True)
+                    env['GITHUB_WORKSPACE'] = str(alias)
+                elif name == 'checkout-overlap':
+                    env['GITHUB_WORKSPACE'] = str(temp)
+                elif name == 'outside-runner-temp':
+                    env['E2_TEST_EVIDENCE'] = str(foreign / 'disposable')
+                elif name == 'wildcard-fixture':
+                    env['E2_TEST_EVIDENCE'] = str(temp / 'capacity-history-e2-controls-*')
+                before = {str(p.relative_to(foreign)): p.read_bytes() for p in foreign.rglob('*') if p.is_file()}
+                result = self.bash(self.step('Stdlib dummy controls'), checkout, env)
+                self.assertNotEqual(result.returncode, 0, 'unsafe boundary must fail before unittest')
+                self.assertFalse((checkout / 'controls-invoked').exists(), 'no unsafe fixture writes or reads')
+                after = {str(p.relative_to(foreign)): p.read_bytes() for p in foreign.rglob('*') if p.is_file()}
+                self.assertEqual(after, before, 'foreign data must remain untouched and uncopied')
+                if name == 'fixture-existing-file':
+                    self.assertEqual(disposable.read_bytes(), sentinel.read_bytes())
+                if name == 'fixture-existing-directory':
+                    self.assertEqual(sorted(p.name for p in disposable.iterdir()), ['sentinel.txt'])
+                print('CONTROL workflow boundary rejected:', name, result.returncode)
+
+    def test_attempt_survives_route_failure_and_missing_native_evidence_keeps_gate_closed(self):
+        temp, checkout, upload, disposable = self.layout('early-failure')
+        env = self.environment(temp, checkout, disposable)
+        env['GITHUB_REF'] = 'refs/heads/CONTROL-invalid-route'
+        route = self.bash(self.step('Record attempt and validate exact route'), checkout, env)
+        self.assertNotEqual(route.returncode, 0)
+        attempt = json.loads((upload / 'attempt.json').read_text())
+        self.assertEqual(attempt['GITHUB_REF'], env['GITHUB_REF'])
+        self.assertEqual(attempt['GITHUB_SHA'], env['GITHUB_SHA'])
+        self.assertEqual(self.direct_upload_members(upload), ['attempt.json'])
+        env['GITHUB_OUTPUT'] = str(temp.parent / 'github-output')
+        gate = self.bash(self.step('Read preflight infrastructure gate'), RUNNER.parents[2], env)
+        self.assertEqual(gate.returncode, 0, gate.stderr)
+        self.assertEqual(Path(env['GITHUB_OUTPUT']).read_text(), 'valid=false\n')
+        self.assertFalse((upload / 'preflight').exists())
+        env['OUTCOMES'] = 'success success success success success success failure skipped success'
+        aggregate = self.bash(self.step('Aggregate every required exit including preflight and upload'), checkout, env)
+        self.assertNotEqual(aggregate.returncode, 0, 'upload success cannot substitute for missing native evidence')
+
+    def test_workflow_keeps_exact_upload_settings_and_all_nine_required_outcomes(self):
+        import re
+        artifact = self.step('Always upload attempted raw evidence')
+        self.assertEqual(self.value(artifact, 'if', 8), 'always()')
+        self.assertEqual(self.value(artifact, 'uses', 8),
+                         'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4')
+        self.assertEqual(self.value(artifact, 'name'),
+                         'DIAGNOSTIC_HISTORY_PROJECTION_E2_NOT_ROOT_CAUSE-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}')
+        self.assertEqual(self.value(artifact, 'path'), '${{ runner.temp }}/capacity-history-e2/')
+        self.assertEqual(self.value(artifact, 'retention-days'), '14')
+        self.assertEqual(self.value(artifact, 'if-no-files-found'), 'error')
+        self.assertNotIn('include-hidden-files:', artifact)
+        self.assertIn('permissions:\n  contents: read\n', self.workflow())
+        self.assertIn('  push:\n    branches: [verify/issue19-capacity-history-payload-20261112]\n',
+                      self.workflow())
+        self.assertIn('  workflow_dispatch:\n    inputs:\n      reviewed_candidate_sha:', self.workflow())
+        self.assertEqual(self.value(self.step('Stdlib dummy controls'), 'continue-on-error', 8), 'true')
+        self.assertEqual(self.value(self.step('Native preflight pair'), 'if', 8),
+                         "steps.controls.outcome == 'success'")
+        self.assertEqual(self.value(self.step('Native serial ABBA'), 'if', 8),
+                         "always() && steps.controls.outcome == 'success' && steps.gate.outputs.valid == 'true'")
+        aggregate = self.step('Aggregate every required exit including preflight and upload')
+        self.assertEqual(self.value(aggregate, 'if', 8), 'always()')
+        required = ['route', 'checkout', 'node', 'guard', 'install', 'controls', 'preflight', 'abba', 'artifact']
+        self.assertEqual(re.findall(r'\$\{\{ steps\.([a-z]+)\.outcome \}\}', self.value(aggregate, 'OUTCOMES')),
+                         required)
+        env = dict(os.environ, OUTCOMES=' '.join(['success'] * 9))
+        self.assertEqual(self.bash(aggregate, RUNNER.parents[2], env).returncode, 0)
+        for index, outcome in enumerate(required):
+            for failure in ('failure', 'skipped'):
+                with self.subTest(outcome=outcome, failure=failure):
+                    values = ['success'] * 9; values[index] = failure
+                    env['OUTCOMES'] = ' '.join(values)
+                    self.assertNotEqual(self.bash(aggregate, RUNNER.parents[2], env).returncode, 0)
+
+
+class GeneratedConfigLiteralControls(DisposableControls):
+    def test_raw_bytes_config_removes_warning_with_identical_generated_bytes_and_js_regexes(self):
+        import ast
+        import warnings
+        source = RUNNER.read_bytes()
+        with warnings.catch_warnings(record=True) as seen:
+            warnings.simplefilter('always')
+            tree = ast.parse(source)
+            compile(source, str(RUNNER), 'exec')
+        invalid = [str(item.message) for item in seen if 'invalid escape sequence' in str(item.message)]
+        print('CONTROL generated CONFIG invalid-escape warnings:', json.dumps(invalid))
+        self.assertEqual(invalid, [], 'generated JS regex literals must not warn during Python compilation')
+        config = next(node.value for node in tree.body if isinstance(node, ast.Assign)
+                      and any(isinstance(t, ast.Name) and t.id == 'CONFIG' for t in node.targets))
+        literal = ast.get_source_segment(source.decode(), config)
+        prefix, body = literal.split('"""', 1)
+        self.assertIn(prefix, ('rb', 'br'))
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            legacy = ast.literal_eval('b"""' + body)
+        self.assertEqual(legacy, e2.CONFIG)
+        self.assertEqual(hashlib.sha256(e2.CONFIG).hexdigest(),
+                         '02b4bbbd0b3cb220353474ca3bffedb4600ebecb019e92e67b24114500a89a3e',
+                         'exact reviewed CONFIG bytes must remain identical')
+        owner = SourceScratchControls.scratch(self)
+        generated = e2.render_config(owner['path_facts'])
+        with mock.patch.object(e2, 'CONFIG', legacy):
+            self.assertEqual(e2.render_config(owner['path_facts']), generated)
+        self.assertEqual((Path(owner['path']) / 'config.ts').read_bytes(), generated)
+        lines = e2.CONFIG.splitlines()
+        regexes = [
+            next(line.split(b'name => ', 1)[1].split(b'.test(', 1)[0] for line in lines if b'dev\\.vars|env' in line),
+            next(line.split(b'|| !', 1)[1].split(b'.test(', 1)[0] for line in lines if b'!/^\\.capacity-e2-scratch-' in line),
+            next(line.split(b'name => ', 1)[1].split(b'.test(', 1)[0] for line in lines if b'/^wrangler\\.' in line),
+        ]
+        cases = [
+            [('.dev.vars', True), ('.dev.vars.local', True), ('.env', True), ('.env.control', True),
+             ('dev.vars', False), ('.devXvars', False), ('.envy', False)],
+            [('.capacity-e2-scratch-12-1', True), ('capacity-e2-scratch-12-1', False),
+             ('.capacity-e2-scratch-x-1', False), ('.capacity-e2-scratch-12-1/../other', False)],
+            [('wrangler.toml', True), ('wrangler.json', True), ('wrangler.jsonc', True),
+             ('wranglerXtoml', False), ('other-wrangler.toml', False)],
+        ]
+        js = ("import assert from 'node:assert/strict';\nconst regexes = [" +
+              ','.join(value.decode() for value in regexes) + '];\nconst cases = ' + json.dumps(cases) + ';\n' +
+              'for (let i=0;i<regexes.length;i++) for(const [name,expected] of cases[i])\n' +
+              '  assert.equal(regexes[i].test(name), expected, name);\n' +
+              "console.log('CONTROL ONLY identical JS regex semantics: 16 cases');\n")
+        result = subprocess.run(['node', '--input-type=module', '-e', js],
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        print(result.stdout.strip())
+
+
 if __name__ == "__main__":
     unittest.main()

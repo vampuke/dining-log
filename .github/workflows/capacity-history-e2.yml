@@ -69,10 +69,30 @@ jobs:
         if: steps.install.outcome == 'success'
         continue-on-error: true
         env:
-          E2_TEST_EVIDENCE: ${{ runner.temp }}/capacity-history-e2/controls/disposable
+          E2_TEST_EVIDENCE: ${{ runner.temp }}/capacity-history-e2-controls-disposable
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/capacity-history-e2/controls"
+          # Adversarial stdlib trees stay outside the upload; the runner removes them.
+          python3 -B - <<'PY'
+          import os
+          from pathlib import Path
+          temp = Path(os.environ['RUNNER_TEMP'])
+          checkout = Path(os.environ['GITHUB_WORKSPACE'])
+          upload = temp / 'capacity-history-e2'
+          disposable = Path(os.environ['E2_TEST_EVIDENCE'])
+          for root in (temp, checkout, upload):
+              assert root.is_absolute() and root.is_dir() and not root.is_symlink() and root.resolve() == root, 'canonical nonsymlink evidence boundary required'
+          assert checkout == Path.cwd(), 'checkout boundary drift'
+          assert not any(c in str(temp) for c in '*?[]\r\n'), 'literal RUNNER_TEMP required'
+          assert disposable == temp / 'capacity-history-e2-controls-disposable' and str(disposable) == os.environ['E2_TEST_EVIDENCE'], 'fixed runner-temp fixture root required'
+          assert disposable.resolve() == disposable and not disposable.exists() and not disposable.is_symlink(), 'fresh nonsymlink fixture root required'
+          for root in (checkout, upload):
+              assert not disposable.is_relative_to(root) and not root.is_relative_to(disposable), 'overlapping fixture evidence roots'
+          controls = upload / 'controls'
+          assert not controls.exists() and not controls.is_symlink(), 'fresh nonsymlink control log root required'
+          disposable.mkdir(mode=0o700)
+          controls.mkdir(mode=0o700)
+          PY
           set +e
           python3 -B -m unittest discover -s .github/scripts -p test_capacity_history_e2.py -v > "$RUNNER_TEMP/capacity-history-e2/controls/stdout" 2> "$RUNNER_TEMP/capacity-history-e2/controls/stderr"
           code=$?
