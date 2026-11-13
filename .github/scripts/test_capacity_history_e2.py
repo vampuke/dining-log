@@ -3119,7 +3119,7 @@ class WorkflowEvidenceBoundaryControls(DisposableControls):
         return {name: [char for char in invalid if char in name]
                 for name in members if any(char in name for char in invalid)}
 
-    def dummy_unittest(self, checkout, failed=False):
+    def dummy_unittest(self, checkout, failed=False, exit_directory=False):
         scripts = checkout / '.github/scripts'; scripts.mkdir(parents=True)
         (scripts / 'test_capacity_history_e2.py').write_text(
             'import os, sys, unittest\nfrom pathlib import Path\n'
@@ -3132,8 +3132,221 @@ class WorkflowEvidenceBoundaryControls(DisposableControls):
             '        path.parent.mkdir(parents=True, exist_ok=True)\n'
             "        path.write_bytes(b'CONTROL ONLY unsafe filesystem fixture')\n"
             "        print('CONTROL ONLY stdout capture')\n"
-            "        print('CONTROL ONLY stderr capture', file=sys.stderr)\n"
+            "        print('CONTROL ONLY stderr capture', file=sys.stderr)\n" +
+            ("        Path(os.environ['RUNNER_TEMP'], 'capacity-history-e2/controls/exit').mkdir()\n"
+             if exit_directory else '') +
             f'        self.assertFalse({failed!r})\n')
+
+    def dummy_install(self, checkout, env, code=0, exit_directory=False):
+        tools = checkout / 'control-bin'; tools.mkdir()
+        command = tools / 'npm'
+        command.write_text('#!/bin/bash\n'
+                           'echo "CONTROL ONLY install stdout"\n'
+                           'echo "CONTROL ONLY install stderr" >&2\n' +
+                           ('mkdir "$RUNNER_TEMP/capacity-history-e2/install.exit"\n'
+                            if exit_directory else '') + f'exit {code}\n')
+        command.chmod(0o700)
+        env['PATH'] = str(tools) + os.pathsep + env['PATH']
+
+    def command_members(self, command):
+        return (['install.stdout', 'install.stderr', 'install.exit'] if command == 'install'
+                else ['controls/stdout', 'controls/stderr', 'controls/exit'])
+
+    def validator_fixture(self, label, install='success', controls='success'):
+        temp, checkout, upload, disposable = self.layout(label)
+        env = self.environment(temp, checkout, disposable)
+        step = self.step('Validate workflow command evidence')
+        env['UPLOAD_ROOT'] = str(self.resolve_temp_path(self.value(step, 'UPLOAD_ROOT'), temp))
+        env['INSTALL_OUTCOME'] = install
+        env['CONTROLS_OUTCOME'] = controls
+        (upload / 'attempt.json').write_text('{}\n')
+        for command, outcome in (('install', install), ('controls', controls)):
+            if outcome != 'skipped':
+                for name in self.command_members(command):
+                    path = upload / name; path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes((b'0\n' if outcome == 'success' else b'37\n')
+                                     if name.endswith(('exit', '.exit')) else b'CONTROL ONLY raw log\n')
+        return temp, checkout, upload, env
+
+    def test_command_success_with_exit_write_failure_fails_both_real_blocks(self):
+        for command in ('install', 'controls'):
+            with self.subTest(command=command):
+                temp, checkout, upload, disposable = self.layout('exit-write-' + command)
+                env = self.environment(temp, checkout, disposable)
+                if command == 'install':
+                    self.dummy_install(checkout, env, exit_directory=True)
+                else:
+                    self.dummy_unittest(checkout, exit_directory=True)
+                step = self.step('Install unchanged backend lock once' if command == 'install'
+                                 else 'Stdlib dummy controls')
+                result = self.bash(step, checkout, env)
+                stdout, stderr, receipt = (upload / name for name in self.command_members(command))
+                self.assertTrue(receipt.is_dir(), 'inject failure in the real exit receipt write')
+                self.assertIn(b'CONTROL ONLY', stdout.read_bytes())
+                self.assertIn(b'CONTROL ONLY', stderr.read_bytes())
+                if command == 'controls':
+                    self.assertIn(b'\nOK\n', stderr.read_bytes(), 'real unittest succeeded')
+                print('CONTROL exit write failure:', command, 'shell_exit=', result.returncode,
+                      'stderr=', result.stderr.decode().strip())
+                self.assertNotEqual(result.returncode, 0, 'successful command cannot hide failed exit evidence')
+
+    def test_true_command_failure_retains_exact_code_and_all_receipts(self):
+        for command, code in (('install', 37), ('controls', 1)):
+            with self.subTest(command=command):
+                temp, checkout, upload, disposable = self.layout('true-failure-' + command)
+                env = self.environment(temp, checkout, disposable)
+                if command == 'install':
+                    self.dummy_install(checkout, env, code=code)
+                else:
+                    self.dummy_unittest(checkout, failed=True)
+                result = self.bash(self.step('Install unchanged backend lock once' if command == 'install'
+                                             else 'Stdlib dummy controls'), checkout, env)
+                self.assertEqual(result.returncode, code, result.stderr)
+                self.assertEqual((upload / self.command_members(command)[2]).read_bytes(),
+                                 f'{code}\n'.encode())
+                for name in self.command_members(command)[:2]:
+                    self.assertIn(b'CONTROL ONLY', (upload / name).read_bytes())
+
+    def test_stdout_and_stderr_write_failures_fail_both_real_blocks(self):
+        for command in ('install', 'controls'):
+            for stream in ('stdout', 'stderr'):
+                with self.subTest(command=command, stream=stream):
+                    temp, checkout, upload, disposable = self.layout(command + '-write-' + stream)
+                    env = self.environment(temp, checkout, disposable)
+                    if command == 'install':
+                        (upload / ('install.' + stream)).mkdir()
+                        self.dummy_install(checkout, env)
+                    else:
+                        self.dummy_unittest(checkout)
+                        # Delegate the real setup Python, then obstruct one stream before
+                        # the unchanged discovery command starts. No native tools execute.
+                        tools = checkout / 'control-bin'; tools.mkdir()
+                        shim = tools / 'python3'
+                        shim.write_text('#!' + sys.executable + '\nimport os, subprocess, sys\n'
+                                        'from pathlib import Path\n'
+                                        f'code = subprocess.call([{sys.executable!r}] + sys.argv[1:])\n'
+                                        "if sys.argv[1:] == ['-B', '-'] and code == 0:\n"
+                                        f"    Path(os.environ['RUNNER_TEMP'], 'capacity-history-e2/controls/{stream}').mkdir()\n"
+                                        'sys.exit(code)\n')
+                        shim.chmod(0o700)
+                        env['PATH'] = str(tools) + os.pathsep + env['PATH']
+                    result = self.bash(self.step('Install unchanged backend lock once' if command == 'install'
+                                                 else 'Stdlib dummy controls'), checkout, env)
+                    self.assertNotEqual(result.returncode, 0, 'log write failures must fail independently')
+                    self.assertEqual((upload / self.command_members(command)[2]).read_bytes(), b'0\n',
+                                     'command succeeded; the independent log writer failed')
+
+    def test_validator_accepts_complete_success_failure_and_skipped_evidence(self):
+        for install in ('success', 'failure', 'skipped'):
+            for controls in ('success', 'failure', 'skipped'):
+                with self.subTest(install=install, controls=controls):
+                    temp, checkout, upload, env = self.validator_fixture(install + '-' + controls,
+                                                                        install, controls)
+                    result = self.bash(self.step('Validate workflow command evidence'), checkout, env)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    print('CONTROL command evidence accepted:', install, controls)
+
+    def test_validator_rejects_each_missing_directory_symlink_and_overlapping_member(self):
+        members = ['attempt.json'] + self.command_members('install') + self.command_members('controls')
+        for outcome in ('success', 'failure'):
+            for name in members:
+                for mutation in ('missing', 'directory', 'symlink', 'hardlink'):
+                    with self.subTest(outcome=outcome, name=name, mutation=mutation):
+                        temp, checkout, upload, env = self.validator_fixture(
+                            f'{outcome}-{name.replace("/", "-")}-{mutation}', outcome, outcome)
+                        foreign = checkout / 'foreign'; foreign.write_bytes(b'UNREAD FOREIGN\n')
+                        path = upload / name; path.unlink()
+                        if mutation == 'directory': path.mkdir()
+                        elif mutation == 'symlink': path.symlink_to(foreign)
+                        elif mutation == 'hardlink': os.link(upload / ('install.stderr' if name == 'attempt.json'
+                                                                     else 'attempt.json'), path)
+                        result = self.bash(self.step('Validate workflow command evidence'), checkout, env)
+                        self.assertNotEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(foreign.read_bytes(), b'UNREAD FOREIGN\n')
+                        self.assertTrue((upload / 'attempt.json').exists() or name == 'attempt.json')
+
+    def test_validator_rejects_malformed_receipts_outcome_mismatch_and_extra_members(self):
+        invalid = (b'', b'0', b'00\n', b'01\n', b'+1\n', b'-1\n', b' 0\n', b'0 \n',
+                   b'0\r\n', b'0\n\n', b'1.0\n', b'zero\n', b'\xff\n')
+        for command in ('install', 'controls'):
+            for index, receipt in enumerate(invalid + (b'37\n',)):
+                with self.subTest(command=command, receipt=receipt):
+                    temp, checkout, upload, env = self.validator_fixture(f'{command}-malformed-{index}')
+                    (upload / self.command_members(command)[2]).write_bytes(receipt)
+                    self.assertNotEqual(self.bash(self.step('Validate workflow command evidence'),
+                                                 checkout, env).returncode, 0)
+            for mutation in ('failure-zero', 'unknown-outcome', 'extra-member', 'parent-symlink'):
+                with self.subTest(command=command, mutation=mutation):
+                    temp, checkout, upload, env = self.validator_fixture(command + '-' + mutation)
+                    if mutation == 'failure-zero': env[command.upper() + '_OUTCOME'] = 'failure'
+                    elif mutation == 'unknown-outcome': env[command.upper() + '_OUTCOME'] = 'cancelled'
+                    elif mutation == 'extra-member':
+                        (upload / ('install.extra' if command == 'install' else 'controls/extra')).write_bytes(b'')
+                    else:
+                        target = upload if command == 'install' else upload / 'controls'
+                        saved = target.with_name(target.name + '-saved'); target.rename(saved)
+                        target.symlink_to(saved, target_is_directory=True)
+                    self.assertNotEqual(self.bash(self.step('Validate workflow command evidence'),
+                                                 checkout, env).returncode, 0)
+
+    def test_validator_rejects_noncanonical_unsafe_and_overlapping_upload_roots(self):
+        cases = ('relative', 'dot', 'dotdot', 'double-slash', 'trailing-slash', 'missing', 'file',
+                 'symlink', 'ancestor-symlink', 'outside-temp', 'temp-overlap', 'nested-root',
+                 'temp-relative', 'temp-dotdot', 'temp-symlink', 'temp-missing')
+        for case in cases:
+            with self.subTest(case=case):
+                temp, checkout, upload, env = self.validator_fixture('root-' + case)
+                if case == 'relative': env['UPLOAD_ROOT'] = 'capacity-history-e2'
+                elif case == 'dot': env['UPLOAD_ROOT'] = str(temp) + '/./capacity-history-e2'
+                elif case == 'dotdot': env['UPLOAD_ROOT'] = str(upload) + '/../capacity-history-e2'
+                elif case == 'double-slash': env['UPLOAD_ROOT'] = str(temp) + '//capacity-history-e2'
+                elif case == 'trailing-slash': env['UPLOAD_ROOT'] += '/'
+                elif case in ('missing', 'file', 'symlink'):
+                    upload.rename(temp / 'saved-upload')
+                    if case == 'file': upload.write_bytes(b'CONTROL ONLY')
+                    elif case == 'symlink': upload.symlink_to(temp / 'saved-upload', target_is_directory=True)
+                elif case == 'ancestor-symlink':
+                    alias = temp.parent / 'alias'; alias.symlink_to(temp.parent, target_is_directory=True)
+                    env['RUNNER_TEMP'] = str(alias / temp.name)
+                    env['UPLOAD_ROOT'] = env['RUNNER_TEMP'] + '/capacity-history-e2'
+                elif case == 'outside-temp': env['UPLOAD_ROOT'] = str(checkout)
+                elif case == 'temp-overlap': env['UPLOAD_ROOT'] = str(temp)
+                elif case == 'nested-root': env['UPLOAD_ROOT'] = str(upload / 'controls')
+                elif case == 'temp-relative': env['RUNNER_TEMP'] = 'runner-temp'
+                elif case == 'temp-dotdot': env['RUNNER_TEMP'] = str(temp) + '/../runner-temp'
+                elif case == 'temp-symlink':
+                    alias = temp.parent / 'alias'; alias.symlink_to(temp, target_is_directory=True)
+                    env['RUNNER_TEMP'] = str(alias)
+                elif case == 'temp-missing': env['RUNNER_TEMP'] = str(temp / 'missing')
+                result = self.bash(self.step('Validate workflow command evidence'), checkout, env)
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+
+    def test_validator_precedes_always_upload_and_is_an_exact_aggregate_gate(self):
+        import re
+        step = self.step('Validate workflow command evidence')
+        self.assertEqual(self.value(step, 'id', 8), 'evidence')
+        self.assertEqual(self.value(step, 'if', 8), 'always()')
+        self.assertEqual(self.value(step, 'continue-on-error', 8), 'true')
+        for command in ('install', 'controls'):
+            self.assertEqual(self.value(step, command.upper() + '_OUTCOME'),
+                             '${{ steps.' + command + '.outcome }}')
+        self.assertLess(self.workflow().index('- name: Validate workflow command evidence'),
+                        self.workflow().index('- name: Always upload attempted raw evidence'))
+        artifact = self.step('Always upload attempted raw evidence')
+        self.assertEqual(self.value(artifact, 'if', 8), 'always()')
+        required = ['route', 'checkout', 'node', 'guard', 'install', 'controls', 'preflight',
+                    'abba', 'evidence', 'artifact']
+        aggregate = self.step('Aggregate every required exit including preflight and upload')
+        self.assertEqual(re.findall(r'\$\{\{ steps\.([a-z]+)\.outcome \}\}',
+                                    self.value(aggregate, 'OUTCOMES')), required)
+        temp, checkout, upload, env = self.validator_fixture('validator-failure-upload')
+        (upload / 'install.exit').unlink()
+        validation = self.bash(step, checkout, env)
+        self.assertNotEqual(validation.returncode, 0)
+        self.assertIn('attempt.json', self.direct_upload_members(upload))
+        env['OUTCOMES'] = ' '.join('failure' if name == 'evidence' else 'success' for name in required)
+        self.assertNotEqual(self.bash(aggregate, checkout, env).returncode, 0,
+                            'artifact success cannot substitute for failed validation')
 
     def test_workflow_resolved_upload_root_excludes_actual_unsafe_name_fixture(self):
         temp, checkout, upload, disposable = self.layout('name-policy')
@@ -3258,7 +3471,13 @@ class WorkflowEvidenceBoundaryControls(DisposableControls):
         self.assertEqual(gate.returncode, 0, gate.stderr)
         self.assertEqual(Path(env['GITHUB_OUTPUT']).read_text(), 'valid=false\n')
         self.assertFalse((upload / 'preflight').exists())
-        env['OUTCOMES'] = 'success success success success success success failure skipped success'
+        env['INSTALL_OUTCOME'] = env['CONTROLS_OUTCOME'] = 'skipped'
+        validator = self.step('Validate workflow command evidence')
+        env['UPLOAD_ROOT'] = str(self.resolve_temp_path(self.value(validator, 'UPLOAD_ROOT'), temp))
+        validation = self.bash(validator, checkout, env)
+        self.assertEqual(validation.returncode, 0, validation.stderr)
+        self.assertEqual(self.direct_upload_members(upload), ['attempt.json'])
+        env['OUTCOMES'] = 'success success success success success success failure skipped success success'
         aggregate = self.bash(self.step('Aggregate every required exit including preflight and upload'), checkout, env)
         self.assertNotEqual(aggregate.returncode, 0, 'upload success cannot substitute for missing native evidence')
 
@@ -3285,15 +3504,16 @@ class WorkflowEvidenceBoundaryControls(DisposableControls):
                          "always() && steps.controls.outcome == 'success' && steps.gate.outputs.valid == 'true'")
         aggregate = self.step('Aggregate every required exit including preflight and upload')
         self.assertEqual(self.value(aggregate, 'if', 8), 'always()')
-        required = ['route', 'checkout', 'node', 'guard', 'install', 'controls', 'preflight', 'abba', 'artifact']
+        required = ['route', 'checkout', 'node', 'guard', 'install', 'controls', 'preflight', 'abba',
+                    'evidence', 'artifact']
         self.assertEqual(re.findall(r'\$\{\{ steps\.([a-z]+)\.outcome \}\}', self.value(aggregate, 'OUTCOMES')),
                          required)
-        env = dict(os.environ, OUTCOMES=' '.join(['success'] * 9))
+        env = dict(os.environ, OUTCOMES=' '.join(['success'] * len(required)))
         self.assertEqual(self.bash(aggregate, RUNNER.parents[2], env).returncode, 0)
         for index, outcome in enumerate(required):
             for failure in ('failure', 'skipped'):
                 with self.subTest(outcome=outcome, failure=failure):
-                    values = ['success'] * 9; values[index] = failure
+                    values = ['success'] * len(required); values[index] = failure
                     env['OUTCOMES'] = ' '.join(values)
                     self.assertNotEqual(self.bash(aggregate, RUNNER.parents[2], env).returncode, 0)
 

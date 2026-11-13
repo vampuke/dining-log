@@ -60,10 +60,24 @@ jobs:
         shell: bash
         run: |
           set +e
-          npm ci > "$RUNNER_TEMP/capacity-history-e2/install.stdout" 2> "$RUNNER_TEMP/capacity-history-e2/install.stderr"
-          code=$?
-          echo "$code" > "$RUNNER_TEMP/capacity-history-e2/install.exit"
-          exit "$code"
+          # FD 3 routes stdout to its writer; stderr has an independent writer.
+          # Keep the command's real status, and check every evidence writer.
+          {
+            {
+              npm ci 2>&1 1>&3
+              code=$?
+              printf '%s\n' "$code" > "$RUNNER_TEMP/capacity-history-e2/install.exit"
+              receipt_code=$?
+              if [ "$code" -ne 0 ]; then exit "$code"; fi
+              exit "$receipt_code"
+            } | tee "$RUNNER_TEMP/capacity-history-e2/install.stderr" > /dev/null
+            stderr_codes=("${PIPESTATUS[@]}")
+            if [ "${stderr_codes[0]}" -ne 0 ]; then exit "${stderr_codes[0]}"; fi
+            exit "${stderr_codes[1]}"
+          } 3>&1 | tee "$RUNNER_TEMP/capacity-history-e2/install.stdout" > /dev/null
+          stdout_codes=("${PIPESTATUS[@]}")
+          if [ "${stdout_codes[0]}" -ne 0 ]; then exit "${stdout_codes[0]}"; fi
+          exit "${stdout_codes[1]}"
       - name: Stdlib dummy controls
         id: controls
         if: steps.install.outcome == 'success'
@@ -94,10 +108,23 @@ jobs:
           controls.mkdir(mode=0o700)
           PY
           set +e
-          python3 -B -m unittest discover -s .github/scripts -p test_capacity_history_e2.py -v > "$RUNNER_TEMP/capacity-history-e2/controls/stdout" 2> "$RUNNER_TEMP/capacity-history-e2/controls/stderr"
-          code=$?
-          echo "$code" > "$RUNNER_TEMP/capacity-history-e2/controls/exit"
-          exit "$code"
+          # Check both log writers even if unittest succeeds or ignores I/O errors.
+          {
+            {
+              python3 -B -m unittest discover -s .github/scripts -p test_capacity_history_e2.py -v 2>&1 1>&3
+              code=$?
+              printf '%s\n' "$code" > "$RUNNER_TEMP/capacity-history-e2/controls/exit"
+              receipt_code=$?
+              if [ "$code" -ne 0 ]; then exit "$code"; fi
+              exit "$receipt_code"
+            } | tee "$RUNNER_TEMP/capacity-history-e2/controls/stderr" > /dev/null
+            stderr_codes=("${PIPESTATUS[@]}")
+            if [ "${stderr_codes[0]}" -ne 0 ]; then exit "${stderr_codes[0]}"; fi
+            exit "${stderr_codes[1]}"
+          } 3>&1 | tee "$RUNNER_TEMP/capacity-history-e2/controls/stdout" > /dev/null
+          stdout_codes=("${PIPESTATUS[@]}")
+          if [ "${stdout_codes[0]}" -ne 0 ]; then exit "${stdout_codes[0]}"; fi
+          exit "${stdout_codes[1]}"
       - name: Native preflight pair
         id: preflight
         if: steps.controls.outcome == 'success'
@@ -133,6 +160,104 @@ jobs:
         if: always() && steps.controls.outcome == 'success' && steps.gate.outputs.valid == 'true'
         continue-on-error: true
         run: python3 -B .github/scripts/capacity-history-e2.py --phase abba --preflight "$RUNNER_TEMP/capacity-history-e2/preflight" --output "$RUNNER_TEMP/capacity-history-e2/abba"
+      - name: Validate workflow command evidence
+        id: evidence
+        if: always()
+        continue-on-error: true
+        env:
+          UPLOAD_ROOT: ${{ runner.temp }}/capacity-history-e2
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          CONTROLS_OUTCOME: ${{ steps.controls.outcome }}
+        shell: bash
+        run: |
+          python3 -B - <<'PY'
+          import os, re, stat
+          from pathlib import Path
+
+          def require(condition, message):
+              if not condition:
+                  raise ValueError(message)
+
+          def directory(raw):
+              path = Path(raw)
+              require(path.anchor == '/' and str(path) == raw and '..' not in path.parts,
+                      'absolute canonical directory required')
+              # Open every component relative to its parent, never following a link.
+              fd = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+              try:
+                  for part in path.parts[1:]:
+                      child = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                      os.close(fd)
+                      fd = child
+                  return fd
+              except BaseException:
+                  os.close(fd)
+                  raise
+
+          temp = Path(os.environ['RUNNER_TEMP'])
+          os.close(directory(os.environ['RUNNER_TEMP']))
+          upload = Path(os.environ['UPLOAD_ROOT'])
+          require(upload == temp / 'capacity-history-e2', 'exact runner-temp upload root required')
+          require(upload.is_relative_to(temp) and upload != temp, 'overlapping or escaped upload root')
+          upload_fd = directory(os.environ['UPLOAD_ROOT'])
+          identities = set()
+
+          def member(relative, read=False):
+              path = upload / relative
+              require(path.is_relative_to(upload) and '..' not in path.parts, 'escaped evidence member')
+              parent = directory(str(path.parent))
+              try:
+                  facts = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
+                  require(stat.S_ISREG(facts.st_mode) and facts.st_nlink == 1, 'regular exclusive evidence member required')
+                  identity = (facts.st_dev, facts.st_ino)
+                  require(identity not in identities, 'overlapping evidence members')
+                  identities.add(identity)
+                  if not read:
+                      return None
+                  fd = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+                  with os.fdopen(fd, 'rb') as stream:
+                      opened = os.fstat(stream.fileno())
+                      require(stat.S_ISREG(opened.st_mode) and opened.st_nlink == 1 and
+                              (opened.st_dev, opened.st_ino) == identity, 'evidence changed during open')
+                      return stream.read()
+              finally:
+                  os.close(parent)
+
+          member('attempt.json')
+          for command, outcome in (('install', os.environ['INSTALL_OUTCOME']),
+                                   ('controls', os.environ['CONTROLS_OUTCOME'])):
+              require(outcome in ('success', 'failure', 'skipped'), 'unknown command outcome')
+              names = (['install.stdout', 'install.stderr', 'install.exit'] if command == 'install'
+                       else ['controls/stdout', 'controls/stderr', 'controls/exit'])
+              # Only fixed command namespaces are enumerated; native phase ledgers
+              # remain subject to their existing independent native gates.
+              if command == 'install':
+                  present = {name for name in os.listdir(upload_fd) if name.startswith('install.')}
+                  expected = set(names)
+              else:
+                  try:
+                      root_fd = os.open('controls', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                        dir_fd=upload_fd)
+                  except FileNotFoundError:
+                      present = set()
+                  else:
+                      try:
+                          present = set(os.listdir(root_fd))
+                      finally:
+                          os.close(root_fd)
+                  expected = {'stdout', 'stderr', 'exit'}
+              if outcome == 'skipped' and not present:
+                  continue
+              require(present == expected, 'incomplete or unexpected command evidence members')
+              for name in names[:2]:
+                  member(name)
+              receipt = member(names[2], read=True)
+              require(re.fullmatch(rb'(0|[1-9][0-9]*)\n', receipt) is not None, 'canonical decimal exit receipt required')
+              if outcome != 'skipped':
+                  require((receipt == b'0\n') == (outcome == 'success'), 'command outcome/exit mismatch')
+          os.close(upload_fd)
+          print('Workflow command evidence complete')
+          PY
       - name: Always upload attempted raw evidence
         id: artifact
         if: always()
@@ -145,10 +270,10 @@ jobs:
       - name: Aggregate every required exit including preflight and upload
         if: always()
         env:
-          OUTCOMES: ${{ steps.route.outcome }} ${{ steps.checkout.outcome }} ${{ steps.node.outcome }} ${{ steps.guard.outcome }} ${{ steps.install.outcome }} ${{ steps.controls.outcome }} ${{ steps.preflight.outcome }} ${{ steps.abba.outcome }} ${{ steps.artifact.outcome }}
+          OUTCOMES: ${{ steps.route.outcome }} ${{ steps.checkout.outcome }} ${{ steps.node.outcome }} ${{ steps.guard.outcome }} ${{ steps.install.outcome }} ${{ steps.controls.outcome }} ${{ steps.preflight.outcome }} ${{ steps.abba.outcome }} ${{ steps.evidence.outcome }} ${{ steps.artifact.outcome }}
         run: |
           python3 -B - <<'PY'
           import os
           outcomes = os.environ['OUTCOMES'].split()
-          assert len(outcomes) == 9 and all(x == 'success' for x in outcomes), outcomes
+          assert len(outcomes) == 10 and all(x == 'success' for x in outcomes), outcomes
           PY
