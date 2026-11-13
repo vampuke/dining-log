@@ -365,7 +365,8 @@ import { writeFileSync, readFileSync, lstatSync, realpathSync, readdirSync, exis
 import { createHash } from 'node:crypto';
 export default async function(configEnv) {
   // Use the frozen backend file in place: copying it would rebase main/migrations.
-  // Wrangler also reads adjacent .dev.vars, so reject supplemental inputs unread.
+  // Without a Wrangler environment, only exact .dev.vars is loaded.
+  // The inert backend example is bound by the frozen tracked source guards.
   // Vite relocates this module; only Python-owned source facts identify paths.
   const paths = __E2_PATH_FACTS__;
   const scratch = paths.scratch.path;
@@ -379,7 +380,8 @@ export default async function(configEnv) {
     const info = lstatSync(directory);
     if (!info.isDirectory() || info.isSymbolicLink() || info.uid !== process.getuid() ||
         realpathSync(directory) !== directory || info.ino !== entry.inode || info.dev !== entry.device || info.uid !== entry.uid ||
-        readdirSync(directory).some(name => /^\.(dev\.vars|env)(\.|$)/.test(name))) {
+        readdirSync(directory).some(name => /^\.(dev\.vars|env)(\.|$)/.test(name) &&
+            !(directory === backend && name === '.dev.vars.example'))) {
       throw new Error('unsafe capacity config directory');
     }
   }

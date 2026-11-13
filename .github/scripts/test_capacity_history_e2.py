@@ -2623,7 +2623,8 @@ class ExecutorPoolControls(DisposableControls):
 
 
 class RelocatedConfigControls(DisposableControls):
-    def relocated(self, body_mutation=None, path_mutation=None, cwd_mutation=False):
+    def relocated(self, body_mutation=None, path_mutation=None, cwd_mutation=False,
+                  original_mutation='', forbid_supplemental_reads=False):
         backend = self.root / 'backend'; backend.mkdir()
         (backend / 'wrangler.toml').write_bytes((RUNNER.parents[2] / 'backend/wrangler.toml').read_bytes())
         archive = self.root / 'archive'; archive.mkdir()
@@ -2643,12 +2644,13 @@ class RelocatedConfigControls(DisposableControls):
 import { SourceTextModule, SyntheticModule } from 'node:vm';
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-let calls=0;
+let calls=0, supplementalReads=0;
 const resolved={plugins:[{name:'inert-original-plugin'}],test:{include:['tests/capacity/capacity_test.ts'],testTimeout:600000,hookTimeout:60000,
   poolOptions:{workers:{isolatedStorage:false,wrangler:{configPath:'./wrangler.toml'},
     miniflare:{compatibilityDate:'2025-06-17',bindings:{TEST_MIGRATIONS:['CONTROL ONLY']}}}}}};
 const workers=resolved.test.poolOptions.workers, miniflare=workers.miniflare, bindings=miniflare.bindings, wrangler=workers.wrangler;
 const before=structuredClone(resolved.test.poolOptions);
+__ORIGINAL_MUTATION__
 const source=new SourceTextModule(Buffer.from(process.argv[1],'hex').toString(),{
   identifier:pathToFileURL(process.argv[2]).href,
   initializeImportMeta(meta,module){meta.url=module.identifier;}
@@ -2659,7 +2661,18 @@ await source.link(async specifier=>{
   });
   assert.ok(specifier.startsWith('node:'));
   const builtin=await import(specifier), names=Object.keys(builtin);
-  return new SyntheticModule(names,function(){for(const name of names)this.setExport(name,builtin[name]);});
+  return new SyntheticModule(names,function(){for(const name of names){
+    let value=builtin[name];
+    if (__FORBID_SUPPLEMENTAL_READS__ && specifier==='node:fs' && name==='readFileSync') {
+      value=(path,...args)=>{
+        if (/^\\.(dev\\.vars|env)(\\.|$)/.test(String(path).split('/').pop())) {
+          supplementalReads++; throw new Error('supplemental file read forbidden');
+        }
+        return builtin[name](path,...args);
+      };
+    }
+    this.setExport(name,value);
+  }});
 });
 await source.evaluate();
 try {
@@ -2672,9 +2685,10 @@ try {
   assert.deepEqual(normalized,before);
   assert.deepEqual(result.test.setupFiles,[process.argv[3]]);
   assert.equal(wrangler.configPath,process.argv[4]);
-  console.log(JSON.stringify({module_url:source.identifier,setup_path:result.test.setupFiles[0],wrangler_path:wrangler.configPath,calls}));
-} catch(error){console.error('original_calls='+calls);throw error;}
-''')
+  console.log(JSON.stringify({module_url:source.identifier,setup_path:result.test.setupFiles[0],wrangler_path:wrangler.configPath,calls,supplemental_reads:supplementalReads}));
+} catch(error){console.error('original_calls='+calls);console.error('supplemental_reads='+supplementalReads);throw error;}
+'''.replace('__ORIGINAL_MUTATION__', original_mutation).replace(
+            '__FORBID_SUPPLEMENTAL_READS__', 'true' if forbid_supplemental_reads else 'false'))
         result = subprocess.run(['node', '--experimental-vm-modules', '--input-type=module', '-e', harness.read_text(), raw.hex(), str(module),
                                  str(scratch / 'setup.ts'), str(backend / 'wrangler.toml')],
                                 cwd=self.root if cwd_mutation else backend, capture_output=True, text=True, timeout=10)
@@ -3540,36 +3554,159 @@ class GeneratedConfigLiteralControls(DisposableControls):
             legacy = ast.literal_eval('b"""' + body)
         self.assertEqual(legacy, e2.CONFIG)
         self.assertEqual(hashlib.sha256(e2.CONFIG).hexdigest(),
-                         '02b4bbbd0b3cb220353474ca3bffedb4600ebecb019e92e67b24114500a89a3e',
-                         'exact reviewed CONFIG bytes must remain identical')
+                         '269d7e38d57bb6c497e7eed2f6663438d62e8c0170e009724e0b0fa10750abaa',
+                         'exact reviewed fix13 CONFIG bytes, including the backend-only example exception')
         owner = SourceScratchControls.scratch(self)
         generated = e2.render_config(owner['path_facts'])
         with mock.patch.object(e2, 'CONFIG', legacy):
             self.assertEqual(e2.render_config(owner['path_facts']), generated)
         self.assertEqual((Path(owner['path']) / 'config.ts').read_bytes(), generated)
         lines = e2.CONFIG.splitlines()
+        input_line = next(i for i, line in enumerate(lines) if b'dev\\.vars|env' in line)
+        input_predicate = b'\n'.join(lines[input_line:input_line + 2]).split(b'.some(name => ', 1)[1].rsplit(b')) {', 1)[0]
         regexes = [
-            next(line.split(b'name => ', 1)[1].split(b'.test(', 1)[0] for line in lines if b'dev\\.vars|env' in line),
             next(line.split(b'|| !', 1)[1].split(b'.test(', 1)[0] for line in lines if b'!/^\\.capacity-e2-scratch-' in line),
             next(line.split(b'name => ', 1)[1].split(b'.test(', 1)[0] for line in lines if b'/^wrangler\\.' in line),
         ]
         cases = [
-            [('.dev.vars', True), ('.dev.vars.local', True), ('.env', True), ('.env.control', True),
-             ('dev.vars', False), ('.devXvars', False), ('.envy', False)],
             [('.capacity-e2-scratch-12-1', True), ('capacity-e2-scratch-12-1', False),
              ('.capacity-e2-scratch-x-1', False), ('.capacity-e2-scratch-12-1/../other', False)],
             [('wrangler.toml', True), ('wrangler.json', True), ('wrangler.jsonc', True),
              ('wranglerXtoml', False), ('other-wrangler.toml', False)],
         ]
+        input_cases = [('.dev.vars', True), ('.dev.vars.local', True), ('.env', True), ('.env.control', True),
+                       ('dev.vars', False), ('.devXvars', False), ('.envy', False),
+                       ('.dev.vars.example', False), ('.dev.vars.example.local', True),
+                       ('.dev.vars.example\n', True), ('.env.local', True), ('.env.test', True),
+                       ('.env.test.local', True)]
         js = ("import assert from 'node:assert/strict';\nconst regexes = [" +
               ','.join(value.decode() for value in regexes) + '];\nconst cases = ' + json.dumps(cases) + ';\n' +
               'for (let i=0;i<regexes.length;i++) for(const [name,expected] of cases[i])\n' +
               '  assert.equal(regexes[i].test(name), expected, name);\n' +
-              "console.log('CONTROL ONLY identical JS regex semantics: 16 cases');\n")
+              'const rejectInput = (name,directory,backend) => ' + input_predicate.decode() + ';\n' +
+              'for(const [name,expected] of ' + json.dumps(input_cases) + ") assert.equal(rejectInput(name,'backend','backend'),expected,name);\n" +
+              "assert.equal(rejectInput('.dev.vars.example','scratch','backend'),true);\n" +
+              "console.log('CONTROL ONLY reviewed JS input predicate and unchanged path regex semantics: 23 cases');\n")
         result = subprocess.run(['node', '--input-type=module', '-e', js],
                                 capture_output=True, text=True, timeout=5)
         self.assertEqual(result.returncode, 0, result.stderr)
         print(result.stdout.strip())
+
+
+class SupplementalConfigInputControls(DisposableControls):
+    example_name = '.dev.vars.example'
+    example_sha256 = '39ddbdebf594dbadafffd622764ccf4df650bf114cb95eb921952f13839dd99b'
+    example_blob = '88b46f002f7b5ca4d89007aa501695c70548ecba'
+
+    def frozen_example(self):
+        root = RUNNER.parents[2]
+        entry = subprocess.check_output(['git', 'ls-tree', 'HEAD', '--', 'backend/' + self.example_name], cwd=root)
+        self.assertEqual(entry, ('100644 blob ' + self.example_blob + '\tbackend/' + self.example_name + '\n').encode())
+        frozen = subprocess.check_output(['git', 'show', 'HEAD:backend/' + self.example_name], cwd=root)
+        self.assertEqual(hashlib.sha256(frozen).hexdigest(), self.example_sha256)
+        self.assertEqual((root / 'backend' / self.example_name).read_bytes(), frozen)
+        return frozen
+
+    def configured(self, name=None, directory='backend', original_mutation=''):
+        frozen = self.frozen_example()
+        def inputs(owner, scratch):
+            (scratch.parent / self.example_name).write_bytes(frozen)
+            if name is not None:
+                (scratch.parent if directory == 'backend' else scratch).joinpath(name).write_bytes(
+                    frozen if name == self.example_name else b'CONTROL ONLY: no credential value\n')
+        return RelocatedConfigControls.relocated(self, path_mutation=inputs,
+            original_mutation=original_mutation, forbid_supplemental_reads=True)
+
+    def assert_rejected_unread(self, result, scratch, error='unsafe capacity config directory'):
+        self.assertEqual(result.returncode, 1, result.stdout)
+        self.assertIn(error, result.stderr)
+        self.assertIn('original_calls=0', result.stderr)
+        self.assertIn('supplemental_reads=0', result.stderr)
+        self.assertNotIn('supplemental file read forbidden', result.stderr)
+        self.assertFalse((scratch / 'config-facts.json').exists())
+        self.assertEqual(list((self.root / 'archive').iterdir()), [])
+
+    def test_frozen_backend_example_reaches_original_with_all_path_and_hash_facts(self):
+        result, owner, scratch = self.configured()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout)['calls'], 1)
+        self.assertEqual(json.loads(result.stdout)['supplemental_reads'], 0)
+        facts = json.loads((scratch / 'config-facts.json').read_text())
+        self.assertEqual(facts['path_facts'], owner['path_facts'])
+        self.assertEqual(facts['config_sha256'], owner['config_sha256'])
+        self.assertEqual(facts['wrangler_sha256'], e2.WRANGLER_SHA256)
+        self.assertEqual(e2.owned_scratch(owner), scratch)
+        e2.resolved_config_guard(facts, scratch.parent, {'backend/wrangler.toml': {'sha256': e2.WRANGLER_SHA256}})
+        self.assertEqual(set(scratch.iterdir()), {scratch / name for name in ('config.ts', 'setup.ts', 'config-facts.json')})
+        self.assertEqual(list((self.root / 'archive').iterdir()), [])
+
+    def test_exact_dev_vars_is_rejected_before_original_without_read_or_copy(self):
+        for directory in ('backend', 'scratch'):
+            with self.subTest(directory=directory):
+                case = SupplementalConfigInputControls(); case.root = self.root / directory; case.root.mkdir()
+                result, _, scratch = case.configured('.dev.vars', directory)
+                case.assert_rejected_unread(result, scratch)
+
+    def test_all_env_variants_remain_rejected_before_original_unread(self):
+        for directory in ('backend', 'scratch'):
+            for name in ('.env', '.env.local', '.env.test', '.env.test.local', '.env.example'):
+                with self.subTest(directory=directory, name=name):
+                    case = SupplementalConfigInputControls(); case.root = self.root / (directory + name); case.root.mkdir()
+                    result, _, scratch = case.configured(name, directory)
+                    case.assert_rejected_unread(result, scratch)
+
+    def test_other_dev_vars_suffixes_stay_rejected_despite_being_unloaded_without_environment(self):
+        # Pinned loadDotEnv tries only .dev.vars without an environment. Keep
+        # the conservative suffix boundary except this checkout's exact example.
+        for name in ('.dev.vars.test', '.dev.vars.local', '.dev.vars.', '.dev.vars.example.local',
+                     '.dev.vars.examples', '.dev.vars.example.bak', '.dev.vars.example\n'):
+            with self.subTest(name=name):
+                case = SupplementalConfigInputControls(); case.root = self.root / str(len(list(self.root.iterdir()))); case.root.mkdir()
+                result, _, scratch = case.configured(name)
+                case.assert_rejected_unread(result, scratch)
+
+    def test_near_misses_outside_existing_input_families_remain_inert(self):
+        for name in ('dev.vars', '.devXvars', '.dev.vars-example', '.envy', '.env-example', 'example.dev.vars'):
+            with self.subTest(name=name):
+                case = SupplementalConfigInputControls(); case.root = self.root / name; case.root.mkdir()
+                result, owner, scratch = case.configured(name)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout)['supplemental_reads'], 0)
+                self.assertEqual(e2.owned_scratch(owner), scratch)
+
+    def test_example_exception_does_not_extend_to_scratch(self):
+        result, _, scratch = self.configured(self.example_name, 'scratch')
+        self.assert_rejected_unread(result, scratch)
+
+    def test_wrangler_environment_is_forbidden_even_when_it_would_load_example(self):
+        # The pool accepts environment in general; this wrapper's exact original
+        # key contract forbids every environment, including 'example' and 'test'.
+        for environment in ('example', 'test', None):
+            with self.subTest(environment=environment):
+                case = SupplementalConfigInputControls(); case.root = self.root / str(environment); case.root.mkdir()
+                result, _, scratch = case.configured(original_mutation='wrangler.environment=' + json.dumps(environment) + ';')
+                self.assertEqual(result.returncode, 1)
+                self.assertIn('unsafe original non-path pool option', result.stderr)
+                self.assertIn('original_calls=1', result.stderr)
+                self.assertIn('supplemental_reads=0', result.stderr)
+                self.assertFalse((scratch / 'config-facts.json').exists())
+
+    def test_changed_mode_or_symlinked_example_fails_existing_tracked_source_guard(self):
+        frozen = self.frozen_example()
+        backend = self.root / 'backend'; backend.mkdir()
+        example = backend / self.example_name; example.write_bytes(frozen); example.chmod(0o644)
+        expected = {'backend/' + self.example_name: {'mode': '100644', 'blob': self.example_blob}}
+        before = e2.verify_tracked_bytes(self.root, expected)
+        self.assertEqual(before['backend/' + self.example_name]['sha256'], self.example_sha256)
+        example.write_bytes(frozen + b'# CONTROL drift\n')
+        with self.assertRaisesRegex(ValueError, 'tracked bytes/modes changed'): e2.verify_tracked_bytes(self.root, expected)
+        example.write_bytes(frozen); example.chmod(0o755)
+        with self.assertRaisesRegex(ValueError, 'tracked bytes/modes changed'): e2.verify_tracked_bytes(self.root, expected)
+        target = self.root / 'inert-target'; target.write_bytes(frozen)
+        example.unlink(); example.symlink_to(target)
+        with mock.patch.object(Path, 'read_bytes', side_effect=AssertionError('symlink target must not be read')):
+            with self.assertRaisesRegex(ValueError, 'tracked source ownership'): e2.verify_tracked_bytes(self.root, expected)
+        self.assertEqual(target.read_bytes(), frozen)
 
 
 if __name__ == "__main__":
