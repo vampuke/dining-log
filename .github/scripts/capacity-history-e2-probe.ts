@@ -6,7 +6,36 @@ import { sha256 } from '@noble/hashes/sha256';
 const projection = '__E2_PROJECTION__';
 const savedDB = env.DB;
 const savedConsole = console;
-const savedLog = console.log;
+const savedLogDescriptor = Object.getOwnPropertyDescriptor(savedConsole, 'log');
+const savedConsolePrototype = Object.getPrototypeOf(savedConsole);
+const savedLogPrototypes = [];
+let inheritedLogDescriptor;
+for (let object=savedConsolePrototype;object!==null;object=Object.getPrototypeOf(object)) {
+  check(savedLogPrototypes.length<32, 'unsafe original console log descriptor');
+  const descriptor=Object.getOwnPropertyDescriptor(object,'log');
+  if(inheritedLogDescriptor===undefined && descriptor!==undefined) inheritedLogDescriptor=descriptor;
+  savedLogPrototypes.push({object,prototype:Object.getPrototypeOf(object),descriptor});
+}
+function sameLogDescriptor(actual, expected) {
+  if(actual===undefined || expected===undefined) return actual===expected;
+  return ['value','writable','get','set','enumerable','configurable'].every(key =>
+    Object.hasOwn(actual,key)===Object.hasOwn(expected,key) && actual[key]===expected[key]);
+}
+function originalLogPrototypeSame() {
+  return Object.getPrototypeOf(savedConsole)===savedConsolePrototype && savedLogPrototypes.every(saved =>
+    Object.getPrototypeOf(saved.object)===saved.prototype &&
+    sameLogDescriptor(Object.getOwnPropertyDescriptor(saved.object,'log'),saved.descriptor));
+}
+const originalLogDescriptor=savedLogDescriptor ?? inheritedLogDescriptor;
+check(originalLogDescriptor!==undefined && Object.hasOwn(originalLogDescriptor,'value') &&
+  typeof originalLogDescriptor.value==='function' && originalLogDescriptor.writable===true &&
+  (savedLogDescriptor!==undefined || Object.isExtensible(savedConsole)), 'unsafe original console log descriptor');
+// Only read the method after proving the effective property is writable data.
+// The pinned Console get trap binds it; this saved function is for forwarding.
+const savedLog = savedConsole.log;
+check(typeof savedLog==='function' && console===savedConsole &&
+  sameLogDescriptor(Object.getOwnPropertyDescriptor(savedConsole,'log'),savedLogDescriptor) &&
+  originalLogPrototypeSame(), 'unsafe original console log descriptor');
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 let rawEmit;
@@ -22,7 +51,63 @@ function capture(...args) {
   }
   return savedLog.apply(this, args);
 }
-console.log = capture;
+const captureLogDescriptor=savedLogDescriptor===undefined ?
+  {value:capture,writable:true,enumerable:true,configurable:true} : {...savedLogDescriptor,value:capture};
+function loggerState() {
+  const currentConsole=console;
+  const facts={console_same:currentConsole===savedConsole,own_present:false,data:false,capture_value:false,
+    writable:false,enumerable:false,configurable:false,flags_match:false,original_exact:false,
+    prototype_same:false,descriptor_readable:false};
+  let descriptor;
+  try {
+    descriptor=Object.getOwnPropertyDescriptor(currentConsole,'log');
+    facts.own_present=descriptor!==undefined;
+    facts.data=facts.own_present && Object.hasOwn(descriptor,'value');
+    facts.capture_value=facts.data && descriptor.value===capture;
+    facts.writable=facts.data && descriptor.writable===true;
+    facts.enumerable=descriptor?.enumerable===true;
+    facts.configurable=descriptor?.configurable===true;
+    facts.flags_match=facts.data && descriptor.writable===captureLogDescriptor.writable &&
+      descriptor.enumerable===captureLogDescriptor.enumerable && descriptor.configurable===captureLogDescriptor.configurable;
+    facts.original_exact=sameLogDescriptor(descriptor,savedLogDescriptor);
+    facts.prototype_same=facts.console_same && originalLogPrototypeSame();
+    facts.descriptor_readable=true;
+  } catch {
+    // Inability to inspect a descriptor fails proof; never emit thrown values.
+  }
+  return {facts,descriptor};
+}
+function ownsCapture(state) {
+  return state.facts.console_same && state.facts.descriptor_readable && state.facts.prototype_same &&
+    sameLogDescriptor(state.descriptor,captureLogDescriptor);
+}
+function originalLoggerRestored(state) {
+  return state.facts.console_same && state.facts.descriptor_readable && state.facts.prototype_same &&
+    sameLogDescriptor(state.descriptor,savedLogDescriptor);
+}
+function restoreLogger() {
+  if(!ownsCapture(loggerState())) return false;
+  try {
+    const applied=savedLogDescriptor===undefined ? Reflect.deleteProperty(savedConsole,'log') :
+      Reflect.defineProperty(savedConsole,'log',savedLogDescriptor);
+    return applied && originalLoggerRestored(loggerState());
+  } catch {
+    return false;
+  }
+}
+function installCapture() {
+  if(!originalLoggerRestored(loggerState())) return false;
+  try {
+    return Reflect.defineProperty(savedConsole,'log',captureLogDescriptor) && ownsCapture(loggerState());
+  } catch {
+    return false;
+  }
+}
+try {
+  check(installCapture(), 'console capture installation failed');
+} catch {
+  throw new Error('console capture installation failed');
+}
 
 const user = '00000000-0000-4000-8000-000000000001';
 const fixed = 1793448000000;
@@ -206,19 +291,18 @@ afterAll(async suite => {
   let failure;
   let owned = false;
   let restored = false;
-  let loggerIdentity;
+  let restorationAttempted = false;
+  let loggerIdentity = {};
   try {
-    // Boolean-only diagnostics: pinned Console getters may rebind methods.
-    // These observations never authorize ownership or database reads.
-    const hookConsole = console;
-    const hookLog = hookConsole.log;
-    loggerIdentity={hook_console_same:hookConsole===savedConsole,hook_log_capture:hookLog===capture,
-      hook_log_saved:hookLog===savedLog,hook_log_stable:hookConsole.log===hookLog};
+    // Exact private data-property ownership works with bind-on-get Console.
+    // Diagnostics contain booleans only and never authorize acceptance.
+    const entryState=loggerState();
+    loggerIdentity=Object.fromEntries(Object.entries(entryState.facts).map(([key,value])=>['hook_'+key,value]));
+    owned=ownsCapture(entryState);
     const file = suite;
     // The pinned Workers adapter uses the threads executor identity; configured
     // Workers ownership is independently guarded by the resolved config chain.
     check(file.file===file && typeof file.filepath==='string' && file.filepath.endsWith('/backend/tests/capacity/capacity_test.ts') && file.pool==='threads', 'original root file/pool');
-    owned=console.log===capture;
     check(owned && env.DB===savedDB && emitCount===1 && rawEmit!==undefined && ['*','id'].includes(projection), 'capture/binding/projection prerequisites');
     let payload = rawEmit.slice('CAPACITY_RESULT '.length);
     let original = JSON.parse(payload);
@@ -227,7 +311,15 @@ afterAll(async suite => {
     const selected=task.leaves.filter((l)=>l.name.startsWith(context.name+': '));
     const other=task.leaves.filter((l)=>!l.name.startsWith(context.name+': '));
     check(task.leaves.length===2 && selected.length===1 && other.length===1 && selected[0].mode==='run' && ['pass','fail'].includes(selected[0].state) && other[0].mode==='skip' && other[0].state==='skip', 'original finished selected leaf');
-    const captureEvidence={emit_count:emitCount,unexpected_log_calls:unexpectedLogCalls,wrapper_owned:owned,wrapper_restored:false,
+    // Prove reversible restoration before reads, then keep capture through the
+    // hook so the existing unexpected-log gate still observes every call.
+    restorationAttempted=true;
+    restored=restoreLogger();
+    check(restored, 'console wrapper ownership/restoration failed');
+    check(installCapture(), 'console capture installation failed');
+    restorationAttempted=false;
+    restored=false;
+    const captureEvidence={emit_count:emitCount,unexpected_log_calls:unexpectedLogCalls,wrapper_owned:owned,wrapper_restored:restored,
       payload_sha256:hash(payload),payload_utf8_bytes:length(payload),raw_emit_sha256:hash(rawEmit)};
     rawEmit=undefined; payload=undefined; original=undefined;
     const before=await attestation(context);
@@ -292,22 +384,21 @@ afterAll(async suite => {
     failure=error;
   } finally {
     rawEmit=undefined;
-    if(console.log===capture) {
-      console.log=savedLog;
-      restored=console.log===savedLog;
+    if(!restorationAttempted) {
+      restorationAttempted=true;
+      restored=restoreLogger();
     }
+    const exitState=loggerState();
+    restored=restored && originalLoggerRestored(exitState);
     if(!owned || !restored) failure=failure ?? new Error('console wrapper ownership/restoration failed');
-    const exitConsole = console;
-    const exitLog = exitConsole.log;
-    Object.assign(loggerIdentity,{exit_console_same:exitConsole===savedConsole,exit_log_capture:exitLog===capture,
-      exit_log_saved:exitLog===savedLog,exit_log_stable:exitConsole.log===exitLog});
+    Object.assign(loggerIdentity,Object.fromEntries(Object.entries(exitState.facts).map(([key,value])=>['exit_'+key,value])));
     if(preflight) {
       preflight.capture.wrapper_restored=restored;
       preflight.capture.unexpected_log_calls=unexpectedLogCalls;
-      savedLog.call(console,'E2_PREFLIGHT '+JSON.stringify(preflight));
+      savedLog.call(savedConsole,'E2_PREFLIGHT '+JSON.stringify(preflight));
     }
-    if(evidence) savedLog.call(console,'E2_HISTORY_RESULT '+JSON.stringify(evidence));
-    if(failure) savedLog.call(console,'E2_HISTORY_ERROR '+JSON.stringify({schemaVersion:1,error:String(failure),attempted_reads:attemptedReads,emit_count:emitCount,wrapper_owned:owned,wrapper_restored:restored,logger_identity:loggerIdentity}));
+    if(evidence) savedLog.call(savedConsole,'E2_HISTORY_RESULT '+JSON.stringify(evidence));
+    if(failure) savedLog.call(savedConsole,'E2_HISTORY_ERROR '+JSON.stringify({schemaVersion:1,error:String(failure),attempted_reads:attemptedReads,emit_count:emitCount,wrapper_owned:owned,wrapper_restored:restored,logger_identity:loggerIdentity}));
   }
   if(failure) throw failure;
 });

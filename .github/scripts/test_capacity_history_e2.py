@@ -3720,6 +3720,7 @@ const { createHash } = require('node:crypto');
 const input = JSON.parse(fs.readFileSync(0, 'utf8'));
 const output = [], calls = [];
 let hook;
+let accessorCalls = 0, defineCalls = 0, deleteCalls = 0, phase = 'setup';
 const logger = (...args) => output.push(args.join(' ') + '\n');
 let consoleFixture = {log: logger};
 if (input.console_source) {
@@ -3729,6 +3730,91 @@ if (input.console_source) {
   consoleFixture = new Console({stdout: new Writable({write(data, encoding, done) {
     output.push(String(data)); done();
   }})});
+}
+if (input.original_shape === 'inherited' && !input.console_source) consoleFixture = Object.create({log:logger});
+if (input.original_shape === 'own' || input.original_shape === 'nonwritable' || input.original_shape === 'nonfunction') {
+  Object.defineProperty(consoleFixture, 'log', {value:input.original_shape === 'nonfunction' ? {} : consoleFixture.log,
+    writable:input.original_shape !== 'nonwritable',enumerable:input.original_enumerable ?? false,
+    configurable:input.original_configurable ?? true});
+}
+if (input.original_shape === 'accessor' || input.original_shape === 'inherited_accessor') {
+  if (input.original_shape === 'inherited_accessor' && !input.console_source) consoleFixture = Object.create({log:logger});
+  const target = input.original_shape === 'accessor' ? consoleFixture : Object.getPrototypeOf(consoleFixture);
+  Object.defineProperty(target, 'log', {get() {accessorCalls++; throw new Error('CONTROL accessor invoked');},configurable:true});
+  if (input.original_shape === 'inherited_accessor') Reflect.deleteProperty(consoleFixture, 'log');
+}
+if (input.original_shape === 'inherited_nonwritable') {
+  if (!input.console_source) consoleFixture = Object.create({log:logger});
+  Reflect.deleteProperty(consoleFixture, 'log');
+  Object.defineProperty(Object.getPrototypeOf(consoleFixture), 'log', {writable:false});
+}
+if (input.original_shape === 'missing') consoleFixture = Object.create(null);
+if (input.original_shape === 'nonextensible') {
+  if (!input.console_source) consoleFixture = Object.create({log:logger});
+  Object.preventExtensions(consoleFixture);
+}
+if (input.restore_failure || input.install_failure || input.descriptor_failure || input.final_restore_failure || input.reinstall_failure) {
+  consoleFixture = new Proxy(consoleFixture, {
+    defineProperty(target, key, descriptor) {
+      if (key === 'log') {
+        defineCalls++;
+        const failure = defineCalls === 1 ? input.install_failure : input.restore_failure;
+        const lateFailure = phase === 'reads' ? input.final_restore_failure :
+          defineCalls === 3 ? input.reinstall_failure : undefined;
+        if (lateFailure === 'throw') throw new Error('CONTROL late define failed');
+        if (lateFailure === 'false') return false;
+        if (lateFailure === 'noop') return true;
+        if (failure === 'throw') throw new Error('CONTROL define failed');
+        if (failure === 'false') return false;
+        if (failure === 'noop') return true;
+      }
+      return Reflect.defineProperty(target, key, descriptor);
+    },
+    deleteProperty(target, key) {
+      if (key === 'log') {
+        deleteCalls++;
+        if (phase === 'reads' && input.final_restore_failure === 'throw') throw new Error('CONTROL late delete failed');
+        if (phase === 'reads' && input.final_restore_failure === 'false') return false;
+        if (phase === 'reads' && input.final_restore_failure === 'noop') return true;
+        if (input.restore_failure === 'throw') throw new Error('CONTROL delete failed');
+        if (input.restore_failure === 'false') return false;
+        if (input.restore_failure === 'noop') return true;
+      }
+      return Reflect.deleteProperty(target, key);
+    },
+    getOwnPropertyDescriptor(target, key) {
+      if (key === 'log' && phase === input.descriptor_failure) throw new Error('CONTROL descriptor unavailable');
+      return Reflect.getOwnPropertyDescriptor(target, key);
+    }
+  });
+}
+const originalConsole = consoleFixture;
+const originalDescriptor = Object.getOwnPropertyDescriptor(originalConsole, 'log');
+const originalPrototype = Object.getPrototypeOf(originalConsole);
+const prototypes = [];
+for (let object=originalPrototype;object!==null;object=Object.getPrototypeOf(object)) {
+  prototypes.push({object,prototype:Object.getPrototypeOf(object),descriptor:Object.getOwnPropertyDescriptor(object,'log')});
+}
+function descriptorSame(a, b) {
+  if (a === undefined || b === undefined) return a === b;
+  const keys = ['value','writable','get','set','enumerable','configurable'];
+  return keys.every(key => Object.hasOwn(a,key) === Object.hasOwn(b,key) && a[key] === b[key]);
+}
+function prototypeSame() {
+  return Object.getPrototypeOf(originalConsole) === originalPrototype && prototypes.every(saved =>
+    Object.getPrototypeOf(saved.object) === saved.prototype && descriptorSame(Object.getOwnPropertyDescriptor(saved.object,'log'),saved.descriptor));
+}
+function descriptorFacts(object, capture, injected) {
+  const descriptor = Object.getOwnPropertyDescriptor(object,'log');
+  const data = descriptor !== undefined && Object.hasOwn(descriptor,'value');
+  return {console_same:object===originalConsole,own_present:descriptor!==undefined,data,
+    capture_value:data && descriptor.value===capture,
+    writable:data && descriptor.writable===true,enumerable:descriptor?.enumerable===true,
+    configurable:descriptor?.configurable===true,
+    flags_match:data && injected!==undefined && descriptor.writable===injected.writable &&
+      descriptor.enumerable===injected.enumerable && descriptor.configurable===injected.configurable,
+    original_exact:descriptorSame(descriptor,originalDescriptor),prototype_same:object===originalConsole && prototypeSame(),
+    descriptor_readable:true};
 }
 let clock = 1000;
 const reads = input.attestation.reads;
@@ -3745,6 +3831,7 @@ const meta = {duration:0.5,size_after:123,rows_read:10,rows_written:0,last_row_i
 const db = {prepare(sql) {
   return {bind(...params) {return {async all() {
     calls.push({sql,params});
+    if (phase !== 'exit') phase = 'reads';
     let results;
     if (sql.startsWith('EXPLAIN QUERY PLAN ')) {
       results = [{id:4,parent:0,notused:0,detail:'CONTROL ONLY plan'}];
@@ -3753,7 +3840,12 @@ const db = {prepare(sql) {
       if (!read) throw new Error('CONTROL unexpected SQL/params');
       results = read.label === 'history_full' ? fullRows : read.results;
     }
-    if (input.exit_drift && calls.length === 1) sandbox.console.log = function foreign() {};
+    if (calls.length === 1) {
+      if (input.hook_log) sandbox.console.log('CONTROL unexpected hook logging');
+      if (input.exit_drift) transition('foreign');
+      if (input.exit_transition) transition(input.exit_transition);
+      if (input.descriptor_failure === 'exit') phase = 'exit';
+    }
     return {success:true,meta:{...meta},results:structuredClone(results)};
   }}}};
 }};
@@ -3762,29 +3854,66 @@ const sandbox = vm.createContext({env,console:consoleFixture,TextEncoder,TextDec
   sha256:bytes => new Uint8Array(createHash('sha256').update(bytes).digest()),
   Date:{now:() => ++clock},afterAll:fn => {if(hook) throw new Error('duplicate hook'); hook=fn;}});
 const source = input.source.replace(/^import .*;\n/gm, '').replace('__E2_PROJECTION__', input.projection || '*');
-vm.runInContext(source, sandbox);
-const capture = vm.runInContext('capture', sandbox);
-const savedLog = vm.runInContext('savedLog', sandbox);
-const sameConsole = sandbox.console;
-for (let index=0;index<(input.emit_count ?? 1);index++) sandbox.console.log(input.raw_emit);
-if (input.missing_raw) vm.runInContext('rawEmit=undefined', sandbox);
-if (input.db_drift) env.DB = {};
-if (input.transition === 'saved') sandbox.console.log = savedLog;
-if (input.transition === 'foreign') sandbox.console.log = function foreign() {};
-if (input.transition === 'object') sandbox.console.log = {};
-if (input.transition === 'console') sandbox.console = {log:savedLog};
-const entryLog = sandbox.console.log;
-const entry = {console_same:sandbox.console===sameConsole,log_capture:entryLog===capture,
-  log_saved:entryLog===savedLog,log_stable:sandbox.console.log===entryLog};
+let setupError = null, capture, savedLog, injected;
+try {vm.runInContext(source, sandbox);} catch(error) {setupError=String(error);}
+if (!setupError) {
+  capture = vm.runInContext('capture', sandbox);
+  savedLog = vm.runInContext('savedLog', sandbox);
+  injected = Object.getOwnPropertyDescriptor(originalConsole,'log');
+  for (let index=0;index<(input.emit_count ?? 1);index++) sandbox.console.log(input.raw_emit);
+  if (input.missing_raw) vm.runInContext('rawEmit=undefined', sandbox);
+  if (input.db_drift) env.DB = {};
+  if (input.transition) transition(input.transition);
+}
+function transition(name) {
+  if (name === 'saved') sandbox.console.log = savedLog;
+  if (name === 'foreign') sandbox.console.log = function foreign() {};
+  if (name === 'object') sandbox.console.log = {};
+  if (name === 'console') sandbox.console = {log:savedLog};
+  if (name === 'accessor') Object.defineProperty(sandbox.console,'log',{
+    get() {accessorCalls++; throw new Error('CONTROL foreign accessor invoked');},
+    set() {accessorCalls++; throw new Error('CONTROL foreign setter invoked');},enumerable:true,configurable:true});
+  if (['writable','enumerable','configurable'].includes(name)) {
+    const descriptor = Object.getOwnPropertyDescriptor(sandbox.console,'log');
+    Object.defineProperty(sandbox.console,'log',{[name]:!descriptor[name]});
+  }
+  if (name === 'deleted') Reflect.deleteProperty(sandbox.console,'log');
+  if (name === 'prototype') Object.setPrototypeOf(sandbox.console,Object.create(originalPrototype,{log:{value:logger,writable:true,configurable:true}}));
+  if (name === 'inherited_log') Object.defineProperty(originalPrototype,'log',{value:(...args)=>logger(...args),writable:true,configurable:true});
+}
+function getterFacts() {
+  let descriptor;
+  for (let object=sandbox.console;object!==null;object=Object.getPrototypeOf(object)) {
+    descriptor = Object.getOwnPropertyDescriptor(object,'log');
+    if (descriptor !== undefined) break;
+  }
+  // No accessor is invoked even by this independent observer.
+  const log = descriptor && Object.hasOwn(descriptor,'value') ? sandbox.console.log : undefined;
+  return {console_same:sandbox.console===originalConsole,log_capture:log!==undefined && log===capture,
+    log_saved:log!==undefined && log===savedLog,log_stable:log!==undefined && sandbox.console.log===log};
+}
+const entry = setupError ? null : getterFacts();
+const entryDescriptor = descriptorFacts(sandbox.console,capture,injected);
+if (input.descriptor_failure === 'hook') phase = 'hook';
 const file = {type:'suite',filepath:input.filepath,pool:input.pool || 'threads',tasks:input.leaves};
 file.file = input.nonroot ? {} : file;
 (async () => {
   let error = null;
-  try {await hook(file);} catch(failure) {error=String(failure);}
-  const exitLog = sandbox.console.log;
-  const exit = {console_same:sandbox.console===sameConsole,log_capture:exitLog===capture,
-    log_saved:exitLog===savedLog,log_stable:sandbox.console.log===exitLog};
-  process.stdout.write(JSON.stringify({error,entry,exit,calls,stdout:output.join('')}));
+  if (!setupError) try {await hook(file);} catch(failure) {error=String(failure);}
+  phase = 'observe';
+  const exit = setupError ? null : getterFacts();
+  const exitDescriptor = descriptorFacts(sandbox.console,capture,injected);
+  const stdout = output.join('');
+  const rawLines = stdout.split('\n').filter(line=>line.startsWith('CAPACITY_RESULT '));
+  process.stdout.write(JSON.stringify({error,setup_error:setupError,entry,exit,calls,stdout,
+    descriptors:{original_own_present:originalDescriptor!==undefined,entry:entryDescriptor,exit:exitDescriptor,
+      original_object_unchanged:sandbox.console===originalConsole,
+      original_descriptor_exact:descriptorSame(Object.getOwnPropertyDescriptor(originalConsole,'log'),originalDescriptor),
+      original_prototype_unchanged:prototypeSame()},accessor_calls:accessorCalls,define_calls:defineCalls,delete_calls:deleteCalls,
+    prefixes:Object.fromEntries(['CAPACITY_RESULT','E2_PREFLIGHT','E2_HISTORY_RESULT','E2_HISTORY_ERROR'].map(prefix=>
+      [prefix,stdout.split('\n').filter(line=>line.startsWith(prefix+' ')).length])),
+    forwarded_raw_exact:rawLines.length===1 && rawLines[0]===input.raw_emit,
+    forwarded_raw_sha256:rawLines.length===1 ? createHash('sha256').update(rawLines[0]).digest('hex') : null}));
 })().catch(error => {process.stderr.write(String(error));process.exitCode=1;});
 """
 
@@ -3818,6 +3947,7 @@ class ConsoleLifecycleControls(unittest.TestCase):
         return value
 
     def error_record(self, value, message):
+        self.assertIsNone(value['setup_error'])
         self.assertEqual(value['error'], 'Error: ' + message)
         raw = value['stdout'].encode()
         self.assertEqual(raw.count(b'E2_HISTORY_ERROR '), 1)
@@ -3828,30 +3958,62 @@ class ConsoleLifecycleControls(unittest.TestCase):
         self.assertLess(len(json.dumps(error).encode()), 2048)
         return error
 
-    def test_actual_pinned_console_rebinds_without_restoration_and_retains_capture(self):
-        value = self.lifecycle(pinned=True)
-        error = self.error_record(value, 'capture/binding/projection prerequisites')
-        self.assertEqual(value['entry'], dict(console_same=True,log_capture=False,log_saved=False,log_stable=False))
-        self.assertEqual(value['exit'], value['entry'])
-        self.assertEqual(value['calls'], [])
-        self.assertEqual(error['attempted_reads'], [])
-        self.assertEqual(error['emit_count'], 1)
-        self.assertIs(error['wrapper_owned'], False)
-        self.assertIs(error['wrapper_restored'], False)
-        self.assertEqual(value['stdout'].count('CAPACITY_RESULT '), 1)
-
-    def test_pinned_failure_records_only_boolean_logger_identity_diagnostics(self):
-        value = self.lifecycle(pinned=True)
-        error = self.error_record(value, 'capture/binding/projection prerequisites')
-        expected = {stage + '_' + key:flag for stage in ('hook','exit')
-                    for key, flag in value['entry' if stage == 'hook' else 'exit'].items()}
-        self.assertIn('logger_identity', error)
+    def assert_diagnostics(self, value, error):
+        expected = {stage + '_' + key:flag for stage, facts in
+                    (('hook',value['descriptors']['entry']),('exit',value['descriptors']['exit']))
+                    for key, flag in facts.items()}
         self.assertEqual(error['logger_identity'], expected)
         self.assertTrue(all(type(flag) is bool for flag in error['logger_identity'].values()))
+        self.assertEqual(value['accessor_calls'], 0)
+
+    def assert_completed(self, value, projection='*'):
+        self.assertIsNone(value['setup_error'])
+        self.assertIsNone(value['error'])
+        self.assertEqual(value['prefixes'], dict(CAPACITY_RESULT=1,E2_PREFLIGHT=1,E2_HISTORY_RESULT=1,E2_HISTORY_ERROR=0))
+        self.assertIs(value['forwarded_raw_exact'], True)
+        proof = value['descriptors']
+        self.assertTrue(proof['entry']['console_same'] and proof['entry']['capture_value'] and proof['entry']['flags_match'])
+        self.assertTrue(proof['exit']['console_same'] and proof['exit']['original_exact'] and proof['exit']['prototype_same'])
+        self.assertTrue(proof['original_object_unchanged'] and proof['original_descriptor_exact'] and proof['original_prototype_unchanged'])
+        self.assertEqual(proof['exit']['own_present'], proof['original_own_present'])
+        self.assertIs(proof['exit']['capture_value'], False)
+        self.assertEqual(value['accessor_calls'], 0)
+        raw = value['stdout'].encode()
+        preflight = e2.record(raw,'E2_PREFLIGHT')[1]
+        history = e2.record(raw,'E2_HISTORY_RESULT')[1]
+        self.assertIs(preflight['capture']['wrapper_owned'], True)
+        self.assertIs(preflight['capture']['wrapper_restored'], True)
+        original = e2.audit_original(raw,'p1-4500')
+        self.assertEqual(value['forwarded_raw_sha256'], original['raw_emit_sha256'])
+        for key in ('payload_sha256','payload_utf8_bytes','raw_emit_sha256'):
+            self.assertEqual(preflight['capture'][key],original[key])
+        audited = e2.audit_probe(raw,original,'p1-4500',projection,RUNNER.parents[2])
+        self.assertEqual(audited['probe_calls'],30)
+        expected = [dict(sql=r['sql'],params=r['params']) for r in dummy_attestation()['reads']]
+        plans = [dict(sql='EXPLAIN QUERY PLAN '+sql,params=[USER,'restaurant',SELECTED['p1-4500']])
+                 for sql in (HISTORY,HISTORY.replace('SELECT *','SELECT id',1))]
+        sql = HISTORY if projection=='*' else HISTORY.replace('SELECT *','SELECT id',1)
+        self.assertEqual(value['calls'],expected+plans+[dict(sql=sql,params=[USER,'restaurant',SELECTED['p1-4500']])]*30+plans+expected)
+        self.assertEqual(len(history['samples']),30)
+
+    def test_actual_pinned_console_rebinds_without_restoration_and_retains_capture(self):
+        # Preserve the reviewed test name; the pinned lifecycle must now complete.
+        value = self.lifecycle(pinned=True)
+        self.assert_completed(value)
+        self.assertEqual(value['entry'], dict(console_same=True,log_capture=False,log_saved=False,log_stable=False))
+        self.assertEqual(value['exit'], value['entry'])
+        self.assertIs(value['descriptors']['original_own_present'], False)
+        self.assertIs(value['descriptors']['exit']['own_present'], False)
+
+    def test_pinned_failure_records_only_boolean_logger_identity_diagnostics(self):
+        value = self.lifecycle(pinned=True,transition='accessor')
+        error = self.error_record(value, 'capture/binding/projection prerequisites')
+        self.assert_diagnostics(value,error)
         self.assertEqual(value['calls'], [])
 
     def test_plain_capture_no_transition_is_accepted_and_self_restored(self):
         value = self.lifecycle()
+        self.assert_completed(value)
         self.assertIsNone(value['error'])
         self.assertEqual(value['entry'], dict(console_same=True,log_capture=True,log_saved=False,log_stable=True))
         self.assertEqual(value['exit'], dict(console_same=True,log_capture=False,log_saved=True,log_stable=True))
@@ -3884,10 +4046,7 @@ class ConsoleLifecycleControls(unittest.TestCase):
                 self.assertEqual(error['attempted_reads'], [])
                 self.assertIs(error['wrapper_owned'], False)
                 self.assertIs(error['wrapper_restored'], False)
-                expected = {stage + '_' + key:flag for stage in ('hook','exit')
-                            for key, flag in value['entry' if stage == 'hook' else 'exit'].items()}
-                self.assertIn('logger_identity', error)
-                self.assertEqual(error['logger_identity'], expected)
+                self.assert_diagnostics(value,error)
 
     def test_actual_hook_rejects_emit_binding_and_projection_prerequisites_before_reads(self):
         for changes in (dict(emit_count=0),dict(emit_count=2),dict(missing_raw=True),
@@ -3952,6 +4111,161 @@ class ConsoleLifecycleControls(unittest.TestCase):
                        raw.replace(b'E2_PREFLIGHT ',b'E2_PREFLIGHT malformed '),raw+b'E2_HISTORY_ERROR {}\n'):
             with self.subTest(prefix=broken[-40:]), self.assertRaises(ValueError):
                 e2.audit_probe(broken,e2.audit_original(parts[0],'p1-4500'),'p1-4500','id',RUNNER.parents[2])
+
+    def test_pinned_and_plain_original_descriptor_attributes_and_inheritance_restore_exactly(self):
+        for pinned in (False,True):
+            for projection in ('*','id'):
+                with self.subTest(pinned=pinned,projection=projection,inherited=True):
+                    value = self.lifecycle(pinned=pinned,original_shape='inherited',projection=projection)
+                    self.assert_completed(value,projection)
+                    self.assertIs(value['descriptors']['original_own_present'],False)
+                    self.assertIs(value['descriptors']['exit']['own_present'],False)
+            for enumerable in (False,True):
+                for configurable in (False,True):
+                    with self.subTest(pinned=pinned,enumerable=enumerable,configurable=configurable):
+                        value = self.lifecycle(pinned=pinned,original_shape='own',original_enumerable=enumerable,
+                                               original_configurable=configurable)
+                        self.assert_completed(value)
+                        self.assertIs(value['descriptors']['exit']['enumerable'],enumerable)
+                        self.assertIs(value['descriptors']['exit']['configurable'],configurable)
+
+    def test_foreign_accessor_descriptor_flags_and_object_replacements_reject_before_reads(self):
+        for pinned in (False,True):
+            for transition in ('saved','foreign','object','accessor','writable','enumerable','configurable','console','deleted'):
+                with self.subTest(pinned=pinned,transition=transition):
+                    value = self.lifecycle(pinned=pinned,transition=transition)
+                    error = self.error_record(value,'capture/binding/projection prerequisites')
+                    self.assertEqual(value['calls'],[])
+                    self.assertEqual(error['attempted_reads'],[])
+                    self.assertIs(error['wrapper_owned'],False)
+                    self.assertIs(error['wrapper_restored'],False)
+                    self.assert_diagnostics(value,error)
+
+    def test_unsafe_original_descriptor_shapes_never_invoke_accessors_or_probe_reads(self):
+        for pinned in (False,True):
+            for shape in ('accessor','inherited_accessor','nonwritable','inherited_nonwritable','nonfunction','missing','nonextensible'):
+                with self.subTest(pinned=pinned,shape=shape):
+                    value = self.lifecycle(pinned=pinned,original_shape=shape)
+                    self.assertEqual(value['setup_error'],'Error: unsafe original console log descriptor')
+                    self.assertIsNone(value['error'])
+                    self.assertEqual(value['calls'],[])
+                    self.assertEqual(value['accessor_calls'],0)
+                    self.assertTrue(value['descriptors']['original_descriptor_exact'])
+                    self.assertTrue(value['descriptors']['original_prototype_unchanged'])
+                    self.assertEqual(set(value['prefixes'].values()),{0})
+
+    def test_restore_define_and_delete_false_throw_or_noop_fail_before_probe_reads(self):
+        for pinned in (False,True):
+            for shape in ('own','inherited'):
+                for failure in ('false','throw','noop'):
+                    with self.subTest(pinned=pinned,shape=shape,failure=failure):
+                        value = self.lifecycle(pinned=pinned,original_shape=shape,restore_failure=failure)
+                        error = self.error_record(value,'console wrapper ownership/restoration failed')
+                        self.assertEqual(value['calls'],[])
+                        self.assertEqual(error['attempted_reads'],[])
+                        self.assertIs(error['wrapper_owned'],True)
+                        self.assertIs(error['wrapper_restored'],False)
+                        self.assertEqual(value['define_calls'],2 if shape=='own' else 1)
+                        self.assertEqual(value['delete_calls'],0 if shape=='own' else 1)
+                        self.assert_diagnostics(value,error)
+
+        for pinned in (False,True):
+            value = self.lifecycle(pinned=pinned,hook_log=True)
+            self.assertIsNone(value['error'])
+            raw = value['stdout'].encode()
+            original = e2.audit_original(raw,'p1-4500')
+            probe = e2.audit_probe(raw,original,'p1-4500','*',RUNNER.parents[2])
+            self.assertEqual(probe['preflight']['capture']['unexpected_log_calls'],1)
+            receipt = dict(returncode=0,timed_out=False,cleanup_ok=True,spawn_error=None,descendants_after_exit=[])
+            streams = ((' RUN  v3.2.4 '+str(RUNNER.parents[2]/'backend')+'\n').encode()+raw+framework_summary('pass'),b'')
+            process = e2.audit_process(receipt,streams,'p1-4500','*',RUNNER.parents[2])
+            self.assertFalse(process['infrastructure_valid'])
+
+        for pinned in (False,True):
+            for shape in ('own','inherited'):
+                for failure in ('false','throw','noop'):
+                    with self.subTest(pinned=pinned,shape=shape,final_restore_failure=failure):
+                        value = self.lifecycle(pinned=pinned,original_shape=shape,final_restore_failure=failure)
+                        self.assertEqual(value['error'],'Error: console wrapper ownership/restoration failed')
+                        raw = value['stdout'].encode()
+                        error = e2.record(raw,'E2_HISTORY_ERROR')[1]
+                        self.assertIs(error['wrapper_owned'],True)
+                        self.assertIs(error['wrapper_restored'],False)
+                        self.assertEqual(len(e2.record(raw,'E2_HISTORY_RESULT')[1]['samples']),30)
+                        self.assert_diagnostics(value,error)
+                        with self.assertRaisesRegex(ValueError,'native hook error'):
+                            e2.audit_probe(raw,e2.audit_original(raw,'p1-4500'),'p1-4500','*',RUNNER.parents[2])
+
+    def test_failed_capture_installation_has_no_reads_or_success_prefixes(self):
+        for pinned in (False,True):
+            for failure in ('false','throw','noop'):
+                with self.subTest(pinned=pinned,failure=failure):
+                    value = self.lifecycle(pinned=pinned,install_failure=failure)
+                    self.assertEqual(value['setup_error'],'Error: console capture installation failed')
+                    self.assertEqual(value['calls'],[])
+                    self.assertTrue(value['descriptors']['original_descriptor_exact'])
+                    self.assertEqual(value['define_calls'],1)
+                    self.assertEqual(set(value['prefixes'].values()),{0})
+        for pinned in (False,True):
+            for failure in ('false','throw','noop'):
+                with self.subTest(pinned=pinned,reinstall_failure=failure):
+                    value = self.lifecycle(pinned=pinned,original_shape='own',reinstall_failure=failure)
+                    error = self.error_record(value,'console capture installation failed')
+                    self.assertEqual(value['calls'],[])
+                    self.assertEqual(error['attempted_reads'],[])
+                    self.assertIs(error['wrapper_owned'],True)
+                    self.assertIs(error['wrapper_restored'],True)
+                    self.assertTrue(value['descriptors']['original_descriptor_exact'])
+
+    def test_inherited_prototype_or_log_drift_rejects_before_probe_reads(self):
+        for pinned in (False,True):
+            for transition in ('prototype','inherited_log'):
+                with self.subTest(pinned=pinned,transition=transition):
+                    value = self.lifecycle(pinned=pinned,original_shape='inherited',transition=transition)
+                    error = self.error_record(value,'capture/binding/projection prerequisites')
+                    self.assertEqual(value['calls'],[])
+                    self.assertIs(error['wrapper_owned'],False)
+                    self.assertIs(error['wrapper_restored'],False)
+                    self.assert_diagnostics(value,error)
+
+    def test_exit_descriptor_object_and_prototype_drift_invalidates_completed_samples(self):
+        for pinned in (False,True):
+            for transition in ('foreign','object','accessor','writable','enumerable','configurable','console','deleted','prototype','inherited_log'):
+                with self.subTest(pinned=pinned,transition=transition):
+                    value = self.lifecycle(pinned=pinned,original_shape='own',exit_transition=transition)
+                    self.assertEqual(value['error'],'Error: console wrapper ownership/restoration failed')
+                    self.assertEqual(value['accessor_calls'],0)
+                    raw = value['stdout'].encode()
+                    error = e2.record(raw,'E2_HISTORY_ERROR')[1]
+                    self.assertIs(error['wrapper_owned'],True)
+                    self.assertIs(error['wrapper_restored'],False)
+                    preflight = e2.record(raw,'E2_PREFLIGHT')[1]
+                    self.assertIs(preflight['capture']['wrapper_restored'],False)
+                    history = e2.record(raw,'E2_HISTORY_RESULT')[1]
+                    self.assertEqual(len(history['samples']),30)
+                    self.assert_diagnostics(value,error)
+                    with self.assertRaisesRegex(ValueError,'native hook error'):
+                        e2.audit_probe(raw,e2.audit_original(raw,'p1-4500'),'p1-4500','*',RUNNER.parents[2])
+
+    def test_unreadable_hook_or_exit_descriptor_fails_closed_with_boolean_diagnostics(self):
+        for pinned in (False,True):
+            for stage in ('hook','exit'):
+                with self.subTest(pinned=pinned,stage=stage):
+                    value = self.lifecycle(pinned=pinned,descriptor_failure=stage)
+                    raw = value['stdout'].encode()
+                    error = e2.record(raw,'E2_HISTORY_ERROR')[1]
+                    self.assertIs(error['wrapper_restored'],False)
+                    self.assertTrue(all(type(flag) is bool for flag in error['logger_identity'].values()))
+                    self.assertIs(error['logger_identity'][('hook' if stage=='hook' else 'exit')+'_descriptor_readable'],False)
+                    self.assertEqual(value['accessor_calls'],0)
+                    if stage=='hook':
+                        self.assertEqual(value['calls'],[])
+                        self.assertEqual(error['attempted_reads'],[])
+                        self.assertIs(error['wrapper_owned'],False)
+                    else:
+                        self.assertEqual(len(e2.record(raw,'E2_HISTORY_RESULT')[1]['samples']),30)
+                    with self.assertRaises(ValueError):
+                        e2.audit_probe(raw,e2.audit_original(raw,'p1-4500'),'p1-4500','*',RUNNER.parents[2])
 
 
 class TestRunnerPlacementControls(unittest.TestCase):
