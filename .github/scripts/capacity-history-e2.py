@@ -208,12 +208,16 @@ def audit_probe(raw, original, scenario, projection, root):
     require(task == history['original_task'], 'task drift')
     require(task['filepath'] == str(Path(root) / 'backend/tests/capacity/capacity_test.ts')
             and task['pool'] == 'threads', 'original file/pool')
-    require(len(task['leaves']) == 2 and len({l['id'] for l in task['leaves']}) == 2, 'selected leaf count')
+    require(type(task['leaves']) is list and len(task['leaves']) == 2
+            and all(type(l) is dict and set(l) == {'id','name','mode','state'}
+                    and type(l['id']) is str and type(l['name']) is str for l in task['leaves'])
+            and len({l['id'] for l in task['leaves']}) == len({l['name'] for l in task['leaves']}) == 2, 'selected leaf count')
     selected = [l for l in task['leaves'] if l['name'].startswith(scenario + ': ')]
     other = [l for l in task['leaves'] if not l['name'].startswith(scenario + ': ')]
     require(len(selected) == len(other) == 1 and selected[0]['mode'] == 'run'
             and selected[0]['state'] in ('pass', 'fail') and other[0]['mode'] == 'skip'
-            and other[0]['state'] == 'skip' and other[0]['name'].startswith(('plan-6000' if scenario == 'p1-4500' else 'p1-4500') + ': '), 'finished selected original leaf')
+            and other[0]['state'] is None and other[0]['name'].startswith(('plan-6000' if scenario == 'p1-4500' else 'p1-4500') + ': '), 'finished selected original leaf')
+    require((selected[0]['state'] == 'fail') == original['performance_failed'], 'finished selected original leaf')
     require(len(history['samples']) == 30, 'first thirty probe samples')
     rows = attest(preflight['attestation_before'], original['result'], scenario)
     attest(history['attestation_after'], original['result'], scenario)

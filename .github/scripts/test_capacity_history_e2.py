@@ -195,13 +195,27 @@ def dummy_attestation(scenario="p1-4500"):
     return {"reads": reads}
 
 
+def dummy_performance_original(scenario='p1-4500', metric=None):
+    """Invented over-limit samples, with the same p95 assertion inputs."""
+    original = dummy_original(scenario)
+    if metric=='API':
+        original['actualAPI'][0]['samples'] = [101]*30
+        original['actualAPI'][0]['wallMs'] = quantiles([101]*30)
+    elif metric:
+        query = original['queries'][0]
+        for sample in query['samples']: sample[metric] = 101
+        query[metric] = quantiles([101]*30)
+        original['overLimit'] = [query['id']]
+    return original
+
+
 def dummy_probe_raw(scenario="p1-4500", projection="id", state="pass"):
-    original = emit(dummy_original(scenario))
+    original = emit(dummy_performance_original(scenario,'wallMs' if state=='fail' else None))
     payload = original[len(b"CAPACITY_RESULT "):-1]
     task = {"filepath": str(RUNNER.parents[2] / "backend/tests/capacity/capacity_test.ts"),
             "pool": "threads", "leaves": [
                 {"id": "control-selected", "name": scenario + ": exact corpus, measured SQL, atomic complete write, p95 <= 100ms", "mode": "run", "state": state},
-                {"id": "control-skipped", "name": ("plan-6000" if scenario == "p1-4500" else "p1-4500") + ": exact corpus, measured SQL, atomic complete write, p95 <= 100ms", "mode": "skip", "state": "skip"}]}
+                {"id": "control-skipped", "name": ("plan-6000" if scenario == "p1-4500" else "p1-4500") + ": exact corpus, measured SQL, atomic complete write, p95 <= 100ms", "mode": "skip", "state": None}]}
     capture = {"emit_count": 1, "unexpected_log_calls": 0, "wrapper_owned": True, "wrapper_restored": True,
                "payload_sha256": hashlib.sha256(payload).hexdigest(), "payload_utf8_bytes": len(payload),
                "raw_emit_sha256": hashlib.sha256(original[:-1]).hexdigest()}
@@ -221,6 +235,15 @@ def dummy_probe_raw(scenario="p1-4500", projection="id", state="pass"):
                "measurement": measurement, "plans_before": plans("explain_before"), "plans_after": plans("explain_after"),
                "attestation_after": dummy_attestation(scenario), "samples": [dummy_sample(i, projection) for i in range(1, 31)]}
     return original, preflight, history
+
+
+def native_task_leaves(task):
+    """Restore the pinned task inputs from the audit's lossy projection."""
+    leaves = [dict(type='test', **leaf) for leaf in task['leaves']]
+    for leaf in leaves:
+        state = leaf.pop('state')
+        if state is not None: leaf['result'] = dict(state=state)
+    return leaves
 
 
 def probe_log(original, preflight, history):
@@ -286,21 +309,17 @@ def framework_mutations(stdout, stderr):
 
 def exit_probe_raw(scenario='p1-4500', state='pass', gate_failed=False):
     original, preflight, history = dummy_probe_raw(scenario, '*', state)
-    if gate_failed:
-        result = json.loads(original[len(b'CAPACITY_RESULT '):])
-        query = result['queries'][0]
-        for sample in query['samples']: sample['wallMs'] = 101
-        query['wallMs'] = quantiles([s['wallMs'] for s in query['samples']])
-        original = emit(result)
-        payload = original[len(b'CAPACITY_RESULT '):-1]
-        preflight['capture'].update(payload_sha256=hashlib.sha256(payload).hexdigest(),
-                                    payload_utf8_bytes=len(payload),
-                                    raw_emit_sha256=hashlib.sha256(original[:-1]).hexdigest())
+    # This fixture deliberately models contradictions for the exit truth table.
+    original = emit(dummy_performance_original(scenario,'wallMs' if gate_failed else None))
+    payload = original[len(b'CAPACITY_RESULT '):-1]
+    preflight['capture'].update(payload_sha256=hashlib.sha256(payload).hexdigest(),
+                                payload_utf8_bytes=len(payload),
+                                raw_emit_sha256=hashlib.sha256(original[:-1]).hexdigest())
     return probe_log(original, preflight, history)
 
 
 EXIT_STATES = ((1, 'pass', False, False), (0, 'pass', False, True),
-               (1, 'fail', False, True), (1, 'fail', True, True),
+               (1, 'fail', False, False), (1, 'fail', True, True),
                (1, 'pass', True, False), (0, 'fail', False, False),
                (0, 'fail', True, False), (0, 'pass', True, False))
 
@@ -985,10 +1004,15 @@ class ExitControls(DisposableControls):
                            'spawn_error': None, 'descendants_after_exit': []}
                 audited = e2.audit_process(receipt, control_streams(raw), 'p1-4500', '*', RUNNER.parents[2])
                 self.assertEqual(audited['infrastructure_valid'], valid)
-                self.assertEqual(audited['original_failed'], state == 'fail' or gates_failed)
+                self.assertEqual(audited['original_failed'], gates_failed)
                 self.assertEqual(audited['failed'], not valid or code != 0 or state == 'fail' or gates_failed)
                 self.assertEqual(audited['process']['returncode'], code)
-                self.assertEqual(audited['probe_audit']['original_task_state'], state)
+                if (state == 'fail') == gates_failed:
+                    self.assertEqual(audited['probe_audit']['original_task_state'], state)
+                else:
+                    self.assertIsNone(audited['probe_audit'])
+                    self.assertIsNone(audited['framework_audit'])
+                    self.assertIn({'probe': 'finished selected original leaf'}, audited['audit_errors'])
                 self.assertEqual(audited['original_audit']['performance_failed'], gates_failed)
                 self.assertEqual(audited['original_audit']['gates'], e2.audit_original(raw, 'p1-4500')['gates'])
                 self.assertNotIn('original_exit', audited)
@@ -1085,9 +1109,14 @@ def finalize_preflight_control(path, phase):
         process.update(block='preflight', projection='full')
         process['process']['cwd'] = str(RUNNER.parents[2] / 'backend')
         directory = path / 'preflight' / process['scenario']
+        # Retain the inert raw task records even when the audit rejects a
+        # deliberately contradictory selected leaf before attestation.
+        raw = (directory / 'stdout.raw').read_bytes()
+        preflight_record = e2.record(raw,'E2_PREFLIGHT')[1]
+        history_record = e2.record(raw,'E2_HISTORY_RESULT')[1]
         for name, value in [('process.json', process['process']), ('audit.json', process),
-                            ('preflight-record.json', process['probe_audit']['preflight']),
-                            ('history-record.json', process['probe_audit']['history']),
+                            ('preflight-record.json', preflight_record),
+                            ('history-record.json', history_record),
                             ('source-before.json', source), ('source-after.json', source),
                             ('resolved-config.json', facts), ('liveness-before.json', {'smoke_state': 'absent'}),
                             ('liveness-after.json', {'smoke_state': 'absent'})]:
@@ -1224,13 +1253,13 @@ class PreflightControls(DisposableControls):
             (lambda x: x['processes'][0]['process'].__setitem__('returncode', 0), 'preflight re-audit failed'),
             (lambda x: x['processes'][0]['probe_audit'].__setitem__('original_task_state', 'pass'), 'preflight recorded audit drift'),
             (lambda x: x['processes'][0]['original_audit']['gates'][0].__setitem__('p95', 200), 'preflight recorded audit drift'),
-            (lambda x: x['processes'][0]['original_audit'].__setitem__('performance_failed', True), 'preflight recorded audit drift'),
+            (lambda x: x['processes'][0]['original_audit'].__setitem__('performance_failed', False), 'preflight recorded audit drift'),
             (lambda x: x['processes'][0].__setitem__('original_failed', False), 'preflight recorded audit drift'),
             (lambda x: x.__setitem__('failed', False), 'preflight failure receipt drift'),
         )
         for index, (mutate, reason) in enumerate(mutations):
             path = self.root / str(index)
-            identity, phase = self.complete_preflight(path, 1, 'fail', False)
+            identity, phase = self.complete_preflight(path, 1, 'fail', True)
             mutate(phase); (path / 'phase.json').write_text(json.dumps(phase))
             with self.subTest(index=index), self.assertRaisesRegex(ValueError, reason):
                 e2.preflight_gate(path, identity)
@@ -3895,7 +3924,8 @@ function getterFacts() {
 const entry = setupError ? null : getterFacts();
 const entryDescriptor = descriptorFacts(sandbox.console,capture,injected);
 if (input.descriptor_failure === 'hook') phase = 'hook';
-const file = {type:'suite',filepath:input.filepath,pool:input.pool || 'threads',tasks:input.leaves};
+const file = {type:input.file_type ?? 'suite',id:'control-file',name:'tests/capacity/capacity_test.ts',mode:'run',
+  filepath:input.filepath,pool:Object.hasOwn(input,'pool') ? input.pool : 'threads',tasks:input.leaves};
 file.file = input.nonroot ? {} : file;
 (async () => {
   let error = null;
@@ -3926,9 +3956,8 @@ class ConsoleLifecycleControls(unittest.TestCase):
         parts = dummy_probe_raw(projection='*')
         data = dict(source=RUNNER.with_name('capacity-history-e2-probe.ts').read_text(),
                     raw_emit=emit(original)[:-1].decode(), attestation=dummy_attestation(),
-                    leaves=[dict(type='test', **leaf) for leaf in parts[1]['original_task']['leaves']],
+                    leaves=native_task_leaves(parts[1]['original_task']),
                     filepath=parts[1]['original_task']['filepath'])
-        for leaf in data['leaves']: leaf['result'] = dict(state=leaf.pop('state'))
         data.update(changes)
         if pinned:
             candidates = (RUNNER.parents[2] / 'backend/node_modules', Path('/root/dining_log/backend/node_modules'))
@@ -4065,10 +4094,10 @@ class ConsoleLifecycleControls(unittest.TestCase):
                 self.error_record(value, 'original root file/pool')
                 self.assertEqual(value['calls'], [])
         for state in ('run','skip',None):
-            leaves = [dict(type='test', **leaf) for leaf in dummy_probe_raw()[1]['original_task']['leaves']]
-            leaves[0]['state'] = state
+            task = dummy_probe_raw()[1]['original_task']
+            task['leaves'][0]['state'] = state
             # Native tasks hold completion state inside result, rather than on the leaf.
-            for leaf in leaves: leaf['result'] = dict(state=leaf.pop('state'))
+            leaves = native_task_leaves(task)
             value = self.lifecycle(leaves=leaves)
             self.error_record(value, 'original finished selected leaf')
             self.assertEqual(value['calls'], [])
@@ -4079,8 +4108,7 @@ class ConsoleLifecycleControls(unittest.TestCase):
         for sample in query['samples']: sample['wallMs'] = 101
         query['wallMs'] = quantiles([101] * 30)
         original['overLimit'] = ['updated_page']
-        leaves = [dict(type='test', **leaf) for leaf in dummy_probe_raw(state='fail')[1]['original_task']['leaves']]
-        for leaf in leaves: leaf['result'] = dict(state=leaf.pop('state'))
+        leaves = native_task_leaves(dummy_probe_raw(state='fail')[1]['original_task'])
         value = self.lifecycle(original=original, leaves=leaves)
         self.assertIsNone(value['error'])
         raw = value['stdout'].encode()
@@ -4283,6 +4311,339 @@ class TestRunnerPlacementControls(unittest.TestCase):
         for node in ast.walk(module):
             if isinstance(node, ast.ClassDef):
                 self.assertLess(node.end_lineno, guard.lineno, node.name + ' must be defined before unittest main')
+
+
+PINNED_NAME_PATTERN_VM = r"""
+const fs = require('node:fs');
+const vm = require('node:vm');
+const input = JSON.parse(fs.readFileSync(0,'utf8'));
+const events = [];
+const file = {type:'suite',id:'control-file',name:'tests/capacity/capacity_test.ts',mode:'run',
+  filepath:input.filepath,pool:'threads',tasks:[]};
+file.file = file;
+const suite = {type:'suite',id:'control-suite',name:input.suite_name,mode:'run',tasks:[],file};
+file.tasks.push(suite);
+for (const [id,scenario] of [['control-selected',input.scenario],['control-skipped',input.other_scenario]]) {
+  suite.tasks.push({type:'test',id,name:scenario+input.test_suffix,mode:'run',suite,file});
+}
+const snapshot = (event,test) => events.push({event,id:test.id,mode:test.mode,
+  result_absent:!Object.hasOwn(test,'result'),state:test.result?.state ?? null});
+const runner = {onBeforeRunTask:test => snapshot('onBeforeRunTask',test)};
+const sandbox = vm.createContext({file,runner,namePattern:new RegExp(input.scenario),
+  updateTask:(event,test) => snapshot(event,test)});
+// Execute the hash-pinned collection functions and only runTest's early-return
+// prefix. Selected completion below is an inert input, never a native run.
+vm.runInContext(input.collection_source+'\n'+input.run_test_skip_source,sandbox);
+(async () => {
+  vm.runInContext('interpretTaskModes(file,namePattern,undefined,false,false,true)',sandbox);
+  const selected = suite.tasks.find(test => test.id==='control-selected');
+  const skipped = suite.tasks.find(test => test.id==='control-skipped');
+  if (selected.mode!=='run' || skipped.mode!=='skip') throw new Error('CONTROL name filter route drift');
+  sandbox.skipped = skipped;
+  await vm.runInContext('runTest(skipped,runner)',sandbox);
+  selected.result = {state:input.selected_state};
+  function inert(task) {
+    const value = {type:task.type,id:task.id,name:task.name,mode:task.mode};
+    if (task.type==='suite') value.tasks = task.tasks.map(inert);
+    if (Object.hasOwn(task,'result')) value.result = task.result;
+    return value;
+  }
+  function project(task) {
+    if (task.type==='test') return [{id:task.id,name:task.name,mode:task.mode,state:task.result?.state ?? null}];
+    return task.tasks.flatMap(project);
+  }
+  process.stdout.write(JSON.stringify({tree_tasks:file.tasks.map(inert),events,
+    original_task:{filepath:file.filepath,pool:file.pool,leaves:project(file)},
+    skipped_result_absent:!Object.hasOwn(skipped,'result'),
+    selected_completion_origin:'inert pass/fail fixture; selected runTest not executed'}));
+})().catch(error => {process.stderr.write(String(error));process.exitCode=1;});
+"""
+
+
+class NamePatternLeafControls(unittest.TestCase):
+    PINNED_RUNNER_SHA256 = '5e0b0ece2242e3475a0312a375fac6e47287602792d7f4999d2d733ecda2d69a'
+    PINNED_CONSOLE_SHA256 = ConsoleLifecycleControls.PINNED_CONSOLE_SHA256
+    SUITE_NAME = 'deterministic capacity in the local Cloudflare Workers D1 pool (GitHub Actions only)'
+    TEST_SUFFIX = ': exact corpus, measured SQL, atomic complete write, p95 <= 100ms'
+    lifecycle = ConsoleLifecycleControls.lifecycle
+    error_record = ConsoleLifecycleControls.error_record
+    assert_diagnostics = ConsoleLifecycleControls.assert_diagnostics
+    _pinned_tasks = {}
+
+    def pinned_tasks(self, scenario='p1-4500', state='pass'):
+        key = (scenario,state)
+        if key not in self._pinned_tasks:
+            candidates = (RUNNER.parents[2] / 'backend/node_modules', Path('/root/dining_log/backend/node_modules'))
+            modules = next(p for p in candidates if (p / '@vitest/runner/package.json').is_file())
+            package = json.loads((modules / '@vitest/runner/package.json').read_text())
+            self.assertEqual(package['version'],'3.2.7')
+            source_path = modules / '@vitest/runner/dist/chunk-hooks.js'
+            source = source_path.read_bytes()
+            self.assertEqual(hashlib.sha256(source).hexdigest(),self.PINNED_RUNNER_SHA256)
+            source = source.decode()
+            collection = source.split('function interpretTaskModes(',1)[1].split('function generateHash(',1)[0]
+            collection = 'function interpretTaskModes('+collection
+            prefix = source.split('async function runTest(test, runner) {',1)[1].split('\n\tif (((_test$result',1)[0]
+            run_test_skip = 'async function runTest(test, runner) {'+prefix+'\n}\n'
+            self.assertIn('if (test.mode !== "run" && test.mode !== "queued") {',run_test_skip)
+            self.assertNotIn('test.result =',run_test_skip)
+            data = dict(collection_source=collection,run_test_skip_source=run_test_skip,
+                        scenario=scenario,other_scenario='plan-6000' if scenario=='p1-4500' else 'p1-4500',
+                        selected_state=state,suite_name=self.SUITE_NAME,test_suffix=self.TEST_SUFFIX,
+                        filepath=str(RUNNER.parents[2] / 'backend/tests/capacity/capacity_test.ts'))
+            result = subprocess.run(['node','-e',PINNED_NAME_PATTERN_VM],input=json.dumps(data),
+                                    capture_output=True,text=True,timeout=10)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(result.stderr,'')
+            value = json.loads(result.stdout)
+            self.assertIs(value['skipped_result_absent'],True)
+            self.assertEqual([event['event'] for event in value['events']],
+                             ['onBeforeRunTask','test-prepare','test-finished'])
+            self.assertTrue(all(event['result_absent'] and event['state'] is None for event in value['events']))
+            value['source_proof'] = dict(version=package['version'],path=str(source_path),
+                sha256=self.PINNED_RUNNER_SHA256,collection_sha256=hashlib.sha256(collection.encode()).hexdigest(),
+                run_test_skip_sha256=hashlib.sha256(run_test_skip.encode()).hexdigest())
+            self._pinned_tasks[key] = value
+        return copy.deepcopy(self._pinned_tasks[key])
+
+    def performance_original(self, scenario='p1-4500', metric=None):
+        return dummy_performance_original(scenario,metric)
+
+    def run_case(self, label, fixture=None, original=None, scenario='p1-4500', **changes):
+        fixture = fixture or self.pinned_tasks(scenario)
+        original = original or dummy_original(scenario)
+        changes.setdefault('leaves',fixture['tree_tasks'])
+        changes.setdefault('attestation',dummy_attestation(scenario))
+        value = self.lifecycle(pinned=True,original=original,**changes)
+        error = e2.record(value['stdout'].encode(),'E2_HISTORY_ERROR')[1] if value['prefixes']['E2_HISTORY_ERROR'] else None
+        print('CONTROL name-pattern leaf',json.dumps(dict(case=label,scenario=scenario,
+            tree_tasks=changes['leaves'],source_proof=fixture['source_proof'],
+            selected_completion_origin=fixture['selected_completion_origin'],
+            original_performance_failed=e2.audit_original(emit(original),scenario)['performance_failed'],
+            input_changes={k:v for k,v in changes.items() if k not in ('leaves','attestation')},
+            error=error,hook_error=value['error'],calls=value['calls'],prefixes=value['prefixes'],
+            descriptors=value['descriptors'],forwarded_raw_exact=value['forwarded_raw_exact']),separators=(',',':')))
+        return value
+
+    def assert_rejected_before_reads(self, value, message='original finished selected leaf'):
+        error = self.error_record(value,message)
+        self.assertEqual(value['calls'],[])
+        self.assertEqual(error['attempted_reads'],[])
+        self.assertEqual(error['emit_count'],1)
+        self.assertIs(error['wrapper_owned'],True)
+        self.assertIs(error['wrapper_restored'],True)
+        self.assertIs(value['forwarded_raw_exact'],True)
+        self.assert_diagnostics(value,error)
+
+    def assert_finished(self, value, scenario='p1-4500', projection='*', state='pass'):
+        self.assertIsNone(value['setup_error'])
+        self.assertIsNone(value['error'])
+        self.assertEqual(value['prefixes'],dict(CAPACITY_RESULT=1,E2_PREFLIGHT=1,E2_HISTORY_RESULT=1,E2_HISTORY_ERROR=0))
+        self.assertIs(value['forwarded_raw_exact'],True)
+        proof = value['descriptors']
+        self.assertTrue(proof['entry']['capture_value'] and proof['entry']['flags_match'])
+        self.assertTrue(proof['exit']['original_exact'] and proof['exit']['prototype_same'])
+        self.assertTrue(proof['original_object_unchanged'] and proof['original_descriptor_exact'] and proof['original_prototype_unchanged'])
+        raw = value['stdout'].encode()
+        original = e2.audit_original(raw,scenario)
+        audited = e2.audit_probe(raw,original,scenario,projection,RUNNER.parents[2])
+        self.assertEqual(audited['original_task_state'],state)
+        self.assertEqual(audited['probe_calls'],30)
+        task = audited['preflight']['original_task']
+        expected_task = self.pinned_tasks(scenario,state)['original_task']
+        self.assertEqual(sorted(task['leaves'],key=lambda leaf:leaf['id']),
+                         sorted(expected_task['leaves'],key=lambda leaf:leaf['id']))
+        self.assertEqual(task['filepath'],expected_task['filepath'])
+        self.assertEqual(task['pool'],expected_task['pool'])
+        self.assertIs(audited['preflight']['capture']['wrapper_owned'],True)
+        self.assertIs(audited['preflight']['capture']['wrapper_restored'],True)
+        expected = [dict(sql=r['sql'],params=r['params']) for r in dummy_attestation(scenario)['reads']]
+        params = [USER,'restaurant',SELECTED[scenario]]
+        plans = [dict(sql='EXPLAIN QUERY PLAN '+sql,params=params) for sql in (HISTORY,HISTORY.replace('SELECT *','SELECT id',1))]
+        sql = HISTORY if projection=='*' else HISTORY.replace('SELECT *','SELECT id',1)
+        self.assertEqual(value['calls'],expected+plans+[dict(sql=sql,params=params)]*30+plans+expected)
+        receipt = dict(returncode=1 if state=='fail' else 0,timed_out=False,cleanup_ok=True,
+                       spawn_error=None,descendants_after_exit=[])
+        streams = ((' RUN  v3.2.4 '+str(RUNNER.parents[2] / 'backend')+'\n').encode()+raw+framework_summary(state),framework_stderr(state))
+        process = e2.audit_process(receipt,streams,scenario,projection,RUNNER.parents[2])
+        self.assertTrue(process['infrastructure_valid'],process['audit_errors'])
+        self.assertEqual(process['original_failed'],state=='fail')
+        self.assertEqual(process['failed'],state=='fail')
+        self.assertEqual(process['process']['returncode'],receipt['returncode'])
+        return audited
+
+    def test_pinned_327_name_filter_and_run_test_project_absent_skipped_result(self):
+        original_source = (RUNNER.parents[2] / 'backend/tests/capacity/capacity_test.ts').read_text()
+        self.assertIn("describe('"+self.SUITE_NAME+"'",original_source)
+        self.assertIn("it.each(SCENARIOS)('$name"+self.TEST_SUFFIX+"'",original_source)
+        for scenario in ('p1-4500','plan-6000'):
+            for state in ('pass','fail'):
+                with self.subTest(scenario=scenario,state=state):
+                    value = self.pinned_tasks(scenario,state)
+                    selected,skipped = value['tree_tasks'][0]['tasks']
+                    self.assertEqual((selected['mode'],selected['result']['state']),('run',state))
+                    self.assertEqual(skipped['mode'],'skip')
+                    self.assertNotIn('result',skipped)
+                    self.assertEqual(value['original_task']['leaves'][1]['state'],None)
+                    print('CONTROL pinned name-pattern projection',json.dumps(value,separators=(',',':')))
+
+    def test_dummy_task_fixture_equals_pinned_native_projection(self):
+        for scenario in ('p1-4500','plan-6000'):
+            for state in ('pass','fail'):
+                with self.subTest(scenario=scenario,state=state):
+                    fixture = dummy_probe_raw(scenario,state=state)[1]['original_task']
+                    expected = self.pinned_tasks(scenario,state)['original_task']
+                    print('CONTROL dummy pinned task equality',json.dumps(dict(scenario=scenario,state=state,fixture=fixture,pinned=expected)))
+                    self.assertEqual(fixture,expected)
+
+    def test_actual_root_hook_accepts_pinned_name_pattern_pass_leaf(self):
+        for projection in ('*','id'):
+            with self.subTest(projection=projection):
+                value = self.run_case('native-pass-'+projection,projection=projection)
+                self.assert_finished(value,projection=projection)
+
+    def test_actual_root_hook_accepts_pinned_name_pattern_fail_with_original_evidence(self):
+        for metric in ('wallMs','sqlMs','API'):
+            with self.subTest(metric=metric):
+                value = self.run_case('native-fail-'+metric,fixture=self.pinned_tasks(state='fail'),
+                                      original=self.performance_original(metric=metric))
+                audited = self.assert_finished(value,state='fail')
+                self.assertEqual(audited['original_task_state'],'fail')
+
+    def test_actual_root_hook_accepts_other_scenario_and_reversed_collection_order(self):
+        for scenario in ('p1-4500','plan-6000'):
+            fixture = self.pinned_tasks(scenario)
+            fixture['tree_tasks'][0]['tasks'].reverse()
+            with self.subTest(scenario=scenario):
+                value = self.run_case('reversed-'+scenario,fixture=fixture,scenario=scenario,projection='id')
+                self.assert_finished(value,scenario=scenario,projection='id')
+
+    def test_nonselected_result_must_be_absent_before_any_probe_read(self):
+        for result in ({'state':'skip'},{'state':'pass'},{'state':'fail'},{'state':None},{},None):
+            fixture = self.pinned_tasks()
+            fixture['tree_tasks'][0]['tasks'][1]['result'] = result
+            with self.subTest(result=result):
+                self.assert_rejected_before_reads(self.run_case('nonselected-result-'+json.dumps(result),fixture=fixture))
+
+    def test_wrong_leaf_modes_and_selected_states_reject_before_any_probe_read(self):
+        cases = []
+        for mode in ('queued','todo','run',None): cases.append(('nonselected-mode-'+str(mode),1,'mode',mode))
+        for mode in ('queued','todo','skip',None): cases.append(('selected-mode-'+str(mode),0,'mode',mode))
+        for state in (None,'run','skip','todo','queued'): cases.append(('selected-state-'+str(state),0,'result',{'state':state}))
+        cases += [('selected-result-absent',0,'result','absent'),('selected-result-null',0,'result',None),
+                  ('selected-result-empty',0,'result',{})]
+        for label,index,field,value in cases:
+            fixture = self.pinned_tasks()
+            target = fixture['tree_tasks'][0]['tasks'][index]
+            if value=='absent': target.pop(field)
+            else: target[field] = value
+            with self.subTest(case=label):
+                self.assert_rejected_before_reads(self.run_case(label,fixture=fixture))
+
+    def structural_cases(self):
+        cases = []
+        def add(label,mutate):
+            fixture = self.pinned_tasks()
+            mutate(fixture['tree_tasks'])
+            cases.append((label,fixture))
+        def swap_names(tree):
+            selected,other = tree[0]['tasks']
+            selected['name'],other['name'] = other['name'],selected['name']
+        add('swapped-scenario-names',swap_names)
+        add('other-arbitrary-name',lambda tree: tree[0]['tasks'][1].__setitem__('name','foreign: '+self.TEST_SUFFIX))
+        add('other-selected-prefix',lambda tree: tree[0]['tasks'][1].__setitem__('name','p1-4500'+self.TEST_SUFFIX))
+        add('duplicate-id',lambda tree: tree[0]['tasks'][1].__setitem__('id',tree[0]['tasks'][0]['id']))
+        add('duplicate-name',lambda tree: tree[0]['tasks'][1].__setitem__('name',tree[0]['tasks'][0]['name']))
+        for index in (0,1):
+            for field in ('id','name'):
+                for value in (None,17,{}):
+                    add(f'leaf-{index}-{field}-{value}',lambda tree,i=index,k=field,v=value: tree[0]['tasks'][i].__setitem__(k,v))
+                add(f'leaf-{index}-missing-{field}',lambda tree,i=index,k=field: tree[0]['tasks'][i].pop(k))
+        add('duplicate-leaf',lambda tree: tree[0]['tasks'].__setitem__(1,copy.deepcopy(tree[0]['tasks'][0])))
+        add('missing-leaf',lambda tree: tree[0]['tasks'].pop())
+        add('extra-leaf',lambda tree: tree[0]['tasks'].append(dict(type='test',id='extra',name='foreign',mode='skip')))
+        add('nested-extra-leaf',lambda tree: tree[0]['tasks'].append(dict(type='suite',id='nested',name='nested',mode='run',
+            tasks=[dict(type='test',id='extra-nested',name='foreign',mode='skip')])))
+        add('nested-duplicate-leaf',lambda tree: tree.append(dict(type='suite',id='nested',name='nested',mode='run',
+            tasks=[copy.deepcopy(tree[0]['tasks'][0])])))
+        add('test-with-hidden-nested-leaf',lambda tree: tree[0]['tasks'][1].__setitem__('tasks',
+            [dict(type='test',id='hidden',name='foreign',mode='skip')]))
+        return cases
+
+    def test_names_ids_and_duplicate_extra_or_nested_leaves_reject_before_any_probe_read(self):
+        for label,fixture in self.structural_cases():
+            with self.subTest(case=label):
+                self.assert_rejected_before_reads(self.run_case(label,fixture=fixture))
+
+    def test_wrong_root_file_and_pool_reject_pinned_shape_before_any_probe_read(self):
+        cases = [('nonroot',dict(nonroot=True)),('wrong-file',dict(filepath='/backend/tests/capacity/foreign.ts')),
+                 ('missing-file',dict(filepath=None)),('wrong-root-type',dict(file_type='test'))]
+        cases += [('pool-'+str(pool),dict(pool=pool)) for pool in ('forks','@cloudflare/vitest-pool-workers','',None)]
+        for label,changes in cases:
+            with self.subTest(case=label):
+                message = 'original finished selected leaf' if label=='wrong-root-type' else 'original root file/pool'
+                self.assert_rejected_before_reads(self.run_case(label,**changes),message)
+
+    def test_selected_completion_requires_original_performance_evidence_before_any_probe_read(self):
+        self.assert_rejected_before_reads(self.run_case('fail-without-over-limit',fixture=self.pinned_tasks(state='fail')))
+        for metric in ('wallMs','sqlMs','API'):
+            with self.subTest(metric=metric):
+                self.assert_rejected_before_reads(self.run_case('pass-with-over-limit-'+metric,
+                    original=self.performance_original(metric=metric)))
+
+    def test_projected_task_audit_rejects_wrong_shapes_before_attestation(self):
+        cases = []
+        for state in ('skip','pass','fail'):
+            cases.append(('nonselected-state-'+state,lambda task,s=state: task['leaves'][1].__setitem__('state',s)))
+        for mode in ('queued','todo','run'):
+            cases.append(('nonselected-mode-'+mode,lambda task,m=mode: task['leaves'][1].__setitem__('mode',m)))
+        for state in (None,'run','skip'):
+            cases.append(('selected-state-'+str(state),lambda task,s=state: task['leaves'][0].__setitem__('state',s)))
+        for mode in ('queued','todo','skip'):
+            cases.append(('selected-mode-'+mode,lambda task,m=mode: task['leaves'][0].__setitem__('mode',m)))
+        for index in (0,1):
+            for field in ('id','name'):
+                for value in (None,17,{}):
+                    cases.append((f'leaf-{index}-{field}-{value}',lambda task,i=index,k=field,v=value: task['leaves'][i].__setitem__(k,v)))
+        cases += [('duplicate-id',lambda task: task['leaves'][1].__setitem__('id',task['leaves'][0]['id'])),
+                  ('duplicate-name',lambda task: task['leaves'][1].__setitem__('name',task['leaves'][0]['name'])),
+                  ('swapped-names',lambda task: task['leaves'].reverse()),
+                  ('other-arbitrary-name',lambda task: task['leaves'][1].__setitem__('name','foreign: control')),
+                  ('extra-leaf',lambda task: task['leaves'].append(copy.deepcopy(task['leaves'][0]))),
+                  ('missing-leaf',lambda task: task['leaves'].pop()),
+                  ('wrong-file',lambda task: task.__setitem__('filepath','/backend/tests/capacity/foreign.ts')),
+                  ('wrong-pool',lambda task: task.__setitem__('pool','forks')),
+                  ('null-with-result',lambda task: task['leaves'][1].__setitem__('result',{'state':None}))]
+        for label,mutate in cases:
+            original,preflight,history = dummy_probe_raw()
+            task = self.pinned_tasks()['original_task']
+            mutate(task)
+            if label=='swapped-names':
+                a,b = task['leaves']
+                a['mode'],b['mode'] = b['mode'],a['mode']
+                a['state'],b['state'] = b['state'],a['state']
+            preflight['original_task'] = history['original_task'] = task
+            with self.subTest(case=label), mock.patch.object(e2,'attest',side_effect=AssertionError('task prerequisite must precede attestation')) as attest:
+                with self.assertRaises(ValueError):
+                    e2.audit_probe(probe_log(original,preflight,history),e2.audit_original(original,'p1-4500'),
+                                   'p1-4500','id',RUNNER.parents[2])
+                attest.assert_not_called()
+
+    def test_projected_task_completion_requires_original_over_limit_evidence(self):
+        cases = [('fail-without-over-limit','fail',None),('pass-with-query-wall-over-limit','pass','wallMs'),
+                 ('pass-with-query-sql-over-limit','pass','sqlMs'),('pass-with-api-over-limit','pass','API')]
+        for label,state,metric in cases:
+            original,preflight,history = dummy_probe_raw(state=state)
+            original = emit(self.performance_original(metric=metric))
+            payload = original[len(b'CAPACITY_RESULT '):-1]
+            preflight['capture'].update(payload_sha256=hashlib.sha256(payload).hexdigest(),payload_utf8_bytes=len(payload),
+                                        raw_emit_sha256=hashlib.sha256(original[:-1]).hexdigest())
+            preflight['original_task'] = history['original_task'] = self.pinned_tasks(state=state)['original_task']
+            with self.subTest(case=label), mock.patch.object(e2,'attest',side_effect=AssertionError('completion prerequisite must precede attestation')) as attest:
+                with self.assertRaisesRegex(ValueError,'finished selected original leaf'):
+                    e2.audit_probe(probe_log(original,preflight,history),e2.audit_original(original,'p1-4500'),
+                                   'p1-4500','id',RUNNER.parents[2])
+                attest.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -143,7 +143,13 @@ function uuids(ids) {
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)), 'ten distinct revision UUIDs');
 }
 function leaves(task) {
-  if (task.type === 'test') return [{ id: task.id, name: task.name, mode: task.mode, state: task.result?.state ?? null }];
+  check(task && ['suite','test'].includes(task.type) && typeof task.id==='string' && typeof task.name==='string', 'original finished selected leaf');
+  if (task.type === 'test') {
+    // The pinned name filter skips without assigning a result in runTest.
+    check(task.tasks===undefined && (task.mode!=='skip' || task.result===undefined), 'original finished selected leaf');
+    return [{ id: task.id, name: task.name, mode: task.mode, state: task.result?.state ?? null }];
+  }
+  check(Array.isArray(task.tasks), 'original finished selected leaf');
   return task.tasks.flatMap(leaves);
 }
 function textEvidence(value) {
@@ -310,7 +316,13 @@ afterAll(async suite => {
     const task={filepath:file.filepath,pool:file.pool,leaves:leaves(file)};
     const selected=task.leaves.filter((l)=>l.name.startsWith(context.name+': '));
     const other=task.leaves.filter((l)=>!l.name.startsWith(context.name+': '));
-    check(task.leaves.length===2 && selected.length===1 && other.length===1 && selected[0].mode==='run' && ['pass','fail'].includes(selected[0].state) && other[0].mode==='skip' && other[0].state==='skip', 'original finished selected leaf');
+    const otherName=context.name==='p1-4500' ? 'plan-6000' : 'p1-4500';
+    check(task.leaves.length===2 && new Set(task.leaves.map(l=>l.id)).size===2 && new Set(task.leaves.map(l=>l.name)).size===2 &&
+      selected.length===1 && other.length===1 && selected[0].mode==='run' && ['pass','fail'].includes(selected[0].state) &&
+      other[0].name.startsWith(otherName+': ') && other[0].mode==='skip' && other[0].state===null, 'original finished selected leaf');
+    const originalFailed=[...original.queries.flatMap(q=>['wallMs','sqlMs'].map(metric=>q[metric].p95)),
+      ...original.actualAPI.map(q=>q.wallMs.p95)].some(p95=>p95>original.p95LimitMs);
+    check((selected[0].state==='fail')===originalFailed, 'original finished selected leaf');
     // Prove reversible restoration before reads, then keep capture through the
     // hook so the existing unexpected-log gate still observes every call.
     restorationAttempted=true;
