@@ -2987,20 +2987,23 @@ assert.equal(createHash('sha256').update(bytes).digest('hex'),''' + json.dumps(s
         self.assertFalse((scratch / 'config-facts.json').exists())
 
     def test_preflight_reopening_rejects_rehashed_path_or_pool_drift(self):
-        mutations = (lambda f: f.update(wrangler_config='/foreign/wrangler.toml'),
-                     lambda f: f.update(wrangler_sha256='0' * 64),
-                     lambda f: f.update(pool_options_except_wrangler_path_same=False),
-                     lambda f: f.update(pool_options_sha256='0' * 64))
-        for index, mutate in enumerate(mutations):
+        mutations = ((lambda f: f.update(wrangler_config='/foreign/wrangler.toml'), 'unsafe resolved config path/hash'),
+                     (lambda f: f.update(wrangler_sha256='0' * 64), 'unsafe resolved config path/hash'),
+                     (lambda f: f.update(pool_options_except_wrangler_path_same=False), 'unsafe resolved config'),
+                     (lambda f: f.update(pool_options_sha256='0' * 64), 'preflight config archive drift'))
+        for index, (mutate, reason) in enumerate(mutations):
             with self.subTest(index=index):
                 path = self.root / str(index); path.mkdir()
-                identity = PreflightControls.complete_preflight(self, path)
-                phase = json.loads((path / 'phase.json').read_text())
+                identity, phase = PreflightControls.complete_preflight(self, path)
+                self.assertEqual(e2.preflight_gate(path, identity), phase, 'unchanged finalized preflight must reopen')
+                print('CONTROL finalized preflight reopened:', index)
                 mutate(phase['resolved_config'])
                 e2.write_json(path / 'phase.json', phase)
                 # A refreshed inventory cannot bless semantic receipt drift.
                 e2.write_json(path / 'artifact-hashes.json', e2.artifact_hashes(path))
-                with self.assertRaises(ValueError): e2.preflight_gate(path, identity)
+                with self.assertRaisesRegex(ValueError, '^' + reason + '$') as rejected:
+                    e2.preflight_gate(path, identity)
+                print('CONTROL preflight semantic rejection:', index, str(rejected.exception))
 
 
 class ScratchRetentionControls(DisposableControls):
